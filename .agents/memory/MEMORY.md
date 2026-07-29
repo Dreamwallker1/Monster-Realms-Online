@@ -1,0 +1,1 @@
+- [Phaser 4 compatibility](phaser4-compatibility.md) — Graphics.setTint() gone; guard init() with ??; use one Graphics object for all tiles

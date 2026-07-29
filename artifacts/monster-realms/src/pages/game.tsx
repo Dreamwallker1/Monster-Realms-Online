@@ -10,17 +10,16 @@ import { useGameStore } from '@/store/game-store';
 import { useGetMe, useExploreTile, type ExploreInput } from '@workspace/api-client-react';
 import { getToken } from '@/lib/auth';
 import { Menu } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 
 export default function Game() {
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const socketRef = useRef<Socket | null>(null);
-  
+
   const {
     player,
     setPlayer,
+    characterType,
     setSidebarOpen,
     exploredTiles,
     markTileExplored,
@@ -28,112 +27,126 @@ export default function Game() {
     otherPlayers,
     setOtherPlayers,
   } = useGameStore();
-  
+
   const { data: me, isLoading } = useGetMe({
     query: { enabled: !!getToken() },
   });
-  
+
   const exploreTile = useExploreTile();
-  
+
+  // Redirect if no token
   useEffect(() => {
     if (!getToken()) {
       setLocation('/');
-      return;
     }
-    
+  }, []);
+
+  // Sync latest server state into store
+  useEffect(() => {
     if (me) {
       setPlayer(me);
       markTileExplored(me.posX, me.posY);
     }
   }, [me]);
-  
-  // Socket.io connection for multiplayer
+
+  // Socket.io multiplayer
   useEffect(() => {
     if (!player) return;
-    
-    const socket = io('/game', {
-      auth: { token: getToken() },
-    });
-    
+
+    const socket = io('/game', { auth: { token: getToken() } });
     socketRef.current = socket;
-    
-    socket.on('world:players', (players: Array<{ id: string; username: string; posX: number; posY: number; avatarColor: string }>) => {
-      const playersMap = new Map(
-        players
-          .filter((p) => p.id !== player.id)
-          .map((p) => [p.id, { username: p.username, x: p.posX, y: p.posY, color: p.avatarColor }])
-      );
-      setOtherPlayers(playersMap);
+
+    socket.on(
+      'world:players',
+      (players: Array<{ id: string; username: string; posX: number; posY: number; avatarColor: string; characterType?: string }>) => {
+        const map = new Map(
+          players
+            .filter((p) => p.id !== player.id)
+            .map((p) => [
+              p.id,
+              {
+                username: p.username,
+                x: p.posX,
+                y: p.posY,
+                color: p.avatarColor,
+                characterType: p.characterType ?? 'kai',
+              },
+            ]),
+        );
+        setOtherPlayers(map);
+      },
+    );
+
+    // Announce ourselves
+    socket.emit('player:join', {
+      username: player.username,
+      avatarColor: player.avatarColor,
+      posX: player.posX,
+      posY: player.posY,
+      regionId: player.regionId ?? 'verdant-meadows',
     });
-    
-    return () => {
-      socket.disconnect();
-    };
-  }, [player]);
-  
+
+    return () => { socket.disconnect(); };
+  }, [player?.id]);
+
   const handleMove = async (input: ExploreInput) => {
     try {
       const result = await exploreTile.mutateAsync({ data: input });
-      
-      // Update player position
-      if (me) {
-        setPlayer({ ...me, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
+
+      if (player) {
+        setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
       }
-      
-      // Mark tile as explored
-      if (result.newTile) {
-        markTileExplored(result.newPosX, result.newPosY);
-      }
-      
-      // Trigger encounter if present
+
+      markTileExplored(result.newPosX, result.newPosY);
+
       if (result.encounterTriggered && result.encounter) {
-        triggerEncounter(result.encounter.species, result.encounter.wildLevel, result.encounter.shinyVariant);
+        triggerEncounter(
+          result.encounter.species,
+          result.encounter.wildLevel,
+          result.encounter.shinyVariant,
+        );
       }
-      
-      // Emit move to socket
-      if (socketRef.current) {
-        socketRef.current.emit('player:move', {
-          posX: result.newPosX,
-          posY: result.newPosY,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to explore tile:', error);
+
+      socketRef.current?.emit('player:move', {
+        posX: result.newPosX,
+        posY: result.newPosY,
+        regionId: input.regionId,
+      });
+    } catch (err) {
+      console.error('Failed to explore tile:', err);
     }
   };
-  
-  const handleRadarUpdate = () => {
-    // Radar updates can be polled here
-  };
-  
-  // Show loading only when there is no player yet (e.g. hard-refresh on /game).
-  // If the store already has a player (coming from the landing page), show the
-  // game immediately and let useGetMe refresh in the background.
+
+  // Show spinner only when we have no player at all yet (e.g. hard refresh)
   if (!player && isLoading) {
     return (
-      <div className="min-h-[100dvh] w-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto mb-4" />
-          <p className="text-lg font-semibold text-muted-foreground">Loading world...</p>
+      <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto" />
+          <p className="text-muted-foreground font-semibold">Loading world…</p>
         </div>
       </div>
     );
   }
-  
+
+  // No token and no cached player → send to landing (must happen outside render)
+  if (!player) {
+    return null;
+  }
+
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      {/* Phaser Game Canvas */}
       <PhaserGame
         playerX={player.posX}
         playerY={player.posY}
-        playerColor={player.avatarColor}
+        characterType={characterType}
         onMove={handleMove}
-        onRadarUpdate={handleRadarUpdate}
+        onRadarUpdate={() => {}}
         exploredTiles={exploredTiles}
         otherPlayers={otherPlayers}
       />
-      
-      {/* Menu Toggle */}
+
+      {/* Menu toggle */}
       <div className="fixed top-4 right-4 z-30">
         <Button
           variant="default"
@@ -145,17 +158,10 @@ export default function Game() {
           <Menu size={24} />
         </Button>
       </div>
-      
-      {/* HUD */}
+
       <GameHUD />
-      
-      {/* Sidebar */}
       <GameSidebar />
-      
-      {/* Encounter Popup */}
       <EncounterPopup />
-      
-      {/* Battle Overlay */}
       <BattleOverlay />
     </div>
   );

@@ -6,79 +6,79 @@ import type { ExploreInput } from '@workspace/api-client-react';
 interface PhaserGameProps {
   playerX: number;
   playerY: number;
-  playerColor: string;
+  characterType: string;
   onMove: (input: ExploreInput) => void;
   onRadarUpdate: () => void;
   exploredTiles: Set<string>;
-  otherPlayers: Map<string, { username: string; x: number; y: number; color: string }>;
+  otherPlayers: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>;
 }
 
 export default function PhaserGame({
   playerX,
   playerY,
-  playerColor,
+  characterType,
   onMove,
   onRadarUpdate,
   exploredTiles,
   otherPlayers,
 }: PhaserGameProps) {
-  const gameRef = useRef<Phaser.Game | null>(null);
+  const gameRef   = useRef<Phaser.Game | null>(null);
+  const sceneRef  = useRef<WorldScene | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<WorldScene | null>(null);
-  
+
+  // Boot game once
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
-    
+
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       width: window.innerWidth,
       height: window.innerHeight,
       parent: containerRef.current,
-      backgroundColor: '#0a0a0a',
+      backgroundColor: '#0a0e1a',
       scene: WorldScene,
-      physics: {
-        default: 'arcade',
-        arcade: {
-          debug: false,
-        },
-      },
+      physics: { default: 'arcade', arcade: { debug: false } },
     };
-    
-    gameRef.current = new Phaser.Game(config);
-    
-    gameRef.current.events.once('ready', () => {
-      const scene = gameRef.current?.scene.getScene('WorldScene') as WorldScene;
+
+    const game = new Phaser.Game(config);
+    gameRef.current = game;
+
+    // When Phaser is ready, restart the scene with real player data
+    game.events.once('ready', () => {
+      const scene = game.scene.getScene('WorldScene') as WorldScene;
       sceneRef.current = scene;
       scene.scene.restart({
         playerX,
         playerY,
-        playerColor,
+        characterType,
         onMove,
         onRadarUpdate,
         exploredTiles,
       });
     });
-    
+
     return () => {
-      gameRef.current?.destroy(true);
+      game.destroy(true);
       gameRef.current = null;
+      sceneRef.current = null;
     };
-  }, []);
-  
-  // Update other players when they change
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync other players
   useEffect(() => {
-    if (sceneRef.current) {
-      sceneRef.current.updateOtherPlayers(otherPlayers);
-    }
+    sceneRef.current?.updateOtherPlayers(otherPlayers);
   }, [otherPlayers]);
-  
-  // Update player position when it changes from server
+
+  // Sync position from server (e.g. after explore API response)
   useEffect(() => {
-    if (sceneRef.current) {
-      sceneRef.current.updatePlayerPosition(playerX, playerY);
-    }
+    sceneRef.current?.updatePlayerPosition(playerX, playerY);
   }, [playerX, playerY]);
-  
+
+  // Sync character type if it changes
+  useEffect(() => {
+    sceneRef.current?.updateCharacterType(characterType);
+  }, [characterType]);
+
   return (
     <div
       ref={containerRef}
