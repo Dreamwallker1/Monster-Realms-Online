@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MonsterPortrait from '@/components/game/MonsterPortrait';
 import { useGameStore } from '@/store/game-store';
-import { useGetPlayerCollection, MonsterSpeciesElement, MonsterSpeciesRarity } from '@workspace/api-client-react';
+import { useGetPlayerCollection } from '@workspace/api-client-react';
+import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
 import { ArrowLeft, Search } from 'lucide-react';
-import { ELEMENT_COLORS, RARITY_COLORS } from '@/lib/element-colors';
 
 export default function Collection() {
   const { player } = useGameStore();
@@ -68,25 +68,22 @@ export default function Collection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Elements</SelectItem>
-              {Object.keys(MonsterSpeciesElement).map((element) => (
-                <SelectItem key={element} value={element}>
-                  {element}
-                </SelectItem>
+              {['Fire', 'Water', 'Nature', 'Electric', 'Dark'].map((el) => (
+                <SelectItem key={el} value={el}>{el}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           <Select value={rarityFilter} onValueChange={setRarityFilter}>
             <SelectTrigger data-testid="select-rarity">
-              <SelectValue placeholder="Filter by rarity" />
+              <SelectValue placeholder="Filter by quality" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Rarities</SelectItem>
-              {Object.keys(MonsterSpeciesRarity).map((rarity) => (
-                <SelectItem key={rarity} value={rarity}>
-                  {rarity}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">All Qualities</SelectItem>
+              <SelectItem value="C">Common (C)</SelectItem>
+              <SelectItem value="B">Uncommon (B)</SelectItem>
+              <SelectItem value="A">Rare (A)</SelectItem>
+              <SelectItem value="S">Legendary (S)</SelectItem>
             </SelectContent>
           </Select>
         </div>

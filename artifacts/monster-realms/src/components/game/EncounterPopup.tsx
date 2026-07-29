@@ -3,157 +3,135 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/store/game-store';
 import { useStartBattle, useGetPlayerTeam } from '@workspace/api-client-react';
-import { ELEMENT_COLORS, RARITY_COLORS } from '@/lib/element-colors';
+import { getElementColors, getRarityColors, QUALITY_LABEL } from '@/lib/element-colors';
 import { getMonsterEmoji } from '@/lib/monster-emoji';
-import { Swords, Package, AlertCircle } from 'lucide-react';
+import { Swords, AlertCircle } from 'lucide-react';
 
 export default function EncounterPopup() {
   const { encounter, clearEncounter, startBattle, player } = useGameStore();
-  const [isStartingBattle, setIsStartingBattle] = useState(false);
-  
+  const [isStarting, setIsStarting] = useState(false);
+
   const { data: team } = useGetPlayerTeam(player?.id || '', {
     query: { enabled: !!player?.id },
   });
-  
+
   const startBattleMutation = useStartBattle();
-  
+
   if (!encounter.triggered || !encounter.species) return null;
-  
-  const elementColors = ELEMENT_COLORS[encounter.species.element];
-  const rarityColors = RARITY_COLORS[encounter.species.rarity];
-  
-  const handleFight = async () => {
-    if (!player || !team || team.length === 0) return;
-    
-    setIsStartingBattle(true);
+
+  const sp = encounter.species;
+  const elColors = getElementColors(sp.element);
+  const rarColors = getRarityColors(sp.rarity);
+  const qualityLabel = QUALITY_LABEL[sp.rarity] ?? sp.rarity;
+  const hasTeam = team && team.length > 0;
+
+  const handleBattle = async () => {
+    if (!player || !hasTeam) return;
+    setIsStarting(true);
     try {
       const battle = await startBattleMutation.mutateAsync({
         data: {
           playerId: player.id,
-          regionId: player.regionId || 'default',
-          speciesId: encounter.species!.id,
+          regionId: player.regionId || 'verdant-meadows',
+          speciesId: sp.id,
           wildLevel: encounter.wildLevel,
           shinyVariant: encounter.shinyVariant as any,
           activeMonsterCapturedId: team[0].id,
         },
       });
-      
       startBattle(battle.id, battle);
       clearEncounter();
-    } catch (error) {
-      console.error('Failed to start battle:', error);
+    } catch (err) {
+      console.error('Failed to start battle:', err);
     } finally {
-      setIsStartingBattle(false);
+      setIsStarting(false);
     }
   };
-  
-  const handleRunAway = () => {
-    clearEncounter();
-  };
-  
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center pointer-events-none">
-      <div 
-        className="glass-panel rounded-t-3xl p-6 w-full max-w-2xl mb-0 pointer-events-auto animate-slide-in-up shadow-2xl"
-        style={{
-          boxShadow: `0 -4px 32px ${rarityColors.glow}`,
-        }}
+      <div
+        className="glass-panel rounded-t-3xl p-6 w-full max-w-lg mb-0 pointer-events-auto animate-slide-in-up"
+        style={{ boxShadow: `0 -4px 40px ${rarColors.glow}, 0 -1px 0 ${elColors.primary}33` }}
       >
-        <div className="text-center space-y-4">
-          {/* Monster portrait — large emoji with element glow */}
-          <div className="flex justify-center">
-            <div
-              className="w-28 h-28 rounded-3xl flex items-center justify-center text-6xl"
-              style={{
-                background: `radial-gradient(circle at 40% 35%, ${elementColors.secondary}33, ${elementColors.primary}22)`,
-                border: `2px solid ${elementColors.primary}66`,
-                boxShadow: `0 0 24px ${elementColors.primary}55, inset 0 0 16px ${elementColors.primary}11`,
-                filter: encounter.shinyVariant ? 'drop-shadow(0 0 12px gold)' : undefined,
-              }}
-            >
-              <span style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.6))' }}>
-                {getMonsterEmoji(encounter.species.id, encounter.species.element)}
-              </span>
-            </div>
+        {/* Shiny badge */}
+        {encounter.shinyVariant && (
+          <div className="text-center text-xs font-bold tracking-widest uppercase mb-2"
+            style={{ color: '#ffd700', textShadow: '0 0 10px gold' }}>
+            ✨ {encounter.shinyVariant} Shiny!
           </div>
-          {encounter.shinyVariant && (
-            <div className="text-xs font-bold tracking-widest uppercase"
-              style={{ color: '#ffd700', textShadow: '0 0 8px gold' }}>
-              ✨ {encounter.shinyVariant} Shiny!
-            </div>
-          )}
-          
-          <div>
-            <h2 className="text-3xl font-bold" style={{ fontFamily: 'var(--app-font-sans)' }}>
-              {encounter.species.name}
-            </h2>
-            <p className="text-lg text-muted-foreground font-mono">
-              Level {encounter.wildLevel}
+        )}
+
+        <div className="flex items-center gap-5">
+          {/* Portrait */}
+          <div
+            className="w-24 h-24 shrink-0 rounded-2xl flex items-center justify-center text-5xl"
+            style={{
+              background: `radial-gradient(circle at 40% 35%, ${elColors.secondary}33, ${elColors.primary}22)`,
+              border: `2px solid ${elColors.primary}66`,
+              boxShadow: `0 0 20px ${elColors.primary}44`,
+              filter: encounter.shinyVariant ? 'drop-shadow(0 0 10px gold)' : undefined,
+            }}
+          >
+            <span style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.7))' }}>
+              {getMonsterEmoji(sp.id, sp.element)}
+            </span>
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest mb-0.5">
+              A wild myth appeared!
             </p>
-          </div>
-          
-          <div className="flex justify-center gap-2">
-            <Badge
-              style={{
-                backgroundColor: elementColors.primary,
-                color: '#000',
-              }}
-              className="font-semibold"
-            >
-              {encounter.species.element}
-            </Badge>
-            <Badge
-              style={{
-                backgroundColor: rarityColors.color,
-                color: '#fff',
-                boxShadow: `0 0 12px ${rarityColors.glow}`,
-              }}
-              className="font-semibold"
-            >
-              {encounter.species.rarity}
-            </Badge>
-          </div>
-          
-          {!team || team.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 text-yellow-400 bg-yellow-950/30 p-3 rounded-lg">
-              <AlertCircle size={20} />
-              <span className="text-sm font-medium">No myths in your team! Capture one first.</span>
+            <h2 className="text-2xl font-bold leading-tight truncate">{sp.name}</h2>
+            <p className="text-sm text-muted-foreground font-mono mb-2">Level {encounter.wildLevel}</p>
+            <div className="flex gap-2 flex-wrap">
+              <Badge style={{ backgroundColor: elColors.primary, color: '#000' }} className="font-semibold text-xs">
+                {sp.element}
+              </Badge>
+              <Badge style={{ backgroundColor: rarColors.color, color: rarColors.color === '#9CA3AF' ? '#000' : '#fff', boxShadow: `0 0 8px ${rarColors.glow}` }} className="font-semibold text-xs">
+                {qualityLabel}
+              </Badge>
             </div>
-          ) : null}
-          
-          <div className="grid grid-cols-3 gap-3 pt-2">
-            <Button
-              variant="default"
-              size="lg"
-              onClick={handleFight}
-              disabled={!team || team.length === 0 || isStartingBattle}
-              className="glow-cyan font-bold"
-              data-testid="button-fight"
-            >
-              <Swords size={20} />
-              Fight
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => {}}
-              disabled={!team || team.length === 0}
-              className="glow-violet font-bold"
-              data-testid="button-capture"
-            >
-              <Package size={20} />
-              Capture
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleRunAway}
-              className="font-bold"
-              data-testid="button-run-away"
-            >
-              Run Away
-            </Button>
           </div>
+        </div>
+
+        {/* No team warning */}
+        {!hasTeam && (
+          <div className="flex items-center gap-2 text-yellow-400 bg-yellow-950/30 px-3 py-2 rounded-lg mt-4 text-sm">
+            <AlertCircle size={16} />
+            <span>You need a myth in your team to battle! Catch one first.</span>
+          </div>
+        )}
+
+        {/* Hint */}
+        {hasTeam && (
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            Weaken it to raise capture chances — use <span className="text-cyan-400 font-semibold">Throw Orb</span> during battle to catch it!
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <Button
+            size="lg"
+            onClick={handleBattle}
+            disabled={!hasTeam || isStarting}
+            className="glow-cyan font-bold text-base"
+            data-testid="button-fight"
+          >
+            <Swords size={18} className="mr-1" />
+            {isStarting ? 'Loading…' : 'Battle!'}
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={clearEncounter}
+            className="font-bold text-base"
+            data-testid="button-run-away"
+          >
+            Run Away
+          </Button>
         </div>
       </div>
     </div>

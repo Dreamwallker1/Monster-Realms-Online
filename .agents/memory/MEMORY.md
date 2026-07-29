@@ -2,3 +2,4 @@
 - [Monster Realms spawn & movement](monster-realms-movement.md) — player default spawn was inside the pond; terrain must be seeded; Phaser captures DOM events so use window CustomEvent for D-pad
 - [Mythora energy regen](mythora-energy-regen.md) — energy regen added to GET /auth/me; uses updatedAt elapsed; 1 energy/20s; skips DB write if already full
 - [Mythora myth catalogue](mythora-myth-catalogue.md) — 100 myths (5 elements × 20); rarity field stores quality tier C/B/A/S; seed via POST /api/seed; emoji map in monster-emoji.ts
+- [Mythora Zod rarity enum](mythora-zod-rarity.md) — api-zod generated/api.ts must use ['C','B','A','S'] for rarity enum; old enum caused 500 crash on every encounter; re-run seed after any schema change + API restart

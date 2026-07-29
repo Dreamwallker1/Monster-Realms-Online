@@ -60,8 +60,14 @@ export function selectWildMonster(
   if (!regionMonsterIds.length) return null;
   const speciesMap = new Map(allSpecies.map((s) => [s.id, s]));
 
-  // Weight by rarity (common spawns more)
+  // Weight by quality tier (C spawns most, S is ultra-rare)
   const rarityWeight: Record<string, number> = {
+    // New quality tiers
+    C: 50,
+    B: 25,
+    A: 8,
+    S: 2,
+    // Legacy fallbacks
     Common: 40,
     Uncommon: 25,
     Rare: 15,
