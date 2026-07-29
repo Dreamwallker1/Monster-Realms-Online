@@ -12,6 +12,7 @@ import leaderboardRouter from "./leaderboard";
 import seedRouter from "./seed";
 import shopRouter from "./shop";
 import tournamentRouter from "./tournament";
+import pvpRouter from "./pvp";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(leaderboardRouter);
 router.use(seedRouter);
 router.use(shopRouter);
 router.use(tournamentRouter);
+router.use(pvpRouter);
 
 export default router;

@@ -12,6 +12,7 @@ import Leaderboard from '@/pages/leaderboard';
 import MythsTree from '@/pages/myths-tree';
 import Shop from '@/pages/shop';
 import Tournament from '@/pages/tournament';
+import PvP from '@/pages/pvp';
 import '@/lib/auth';
 
 const queryClient = new QueryClient({
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/myths-tree" component={MythsTree} />
       <Route path="/shop" component={Shop} />
       <Route path="/tournament" component={Tournament} />
+      <Route path="/pvp" component={PvP} />
       <Route component={NotFound} />
     </Switch>
   );

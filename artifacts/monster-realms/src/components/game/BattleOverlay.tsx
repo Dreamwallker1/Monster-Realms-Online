@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/store/game-store';
 import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey, useGetPlayerCollection } from '@workspace/api-client-react';
@@ -8,7 +8,51 @@ import { getCharacter } from '@/lib/characters';
 import type { CharacterConfig } from '@/lib/characters';
 import { MythSvgIcon } from '@/lib/myth-svgs';
 import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-chart';
-import { Swords, Zap, Package, Wind, RefreshCw, X } from 'lucide-react';
+import { Package, Wind, RefreshCw, X } from 'lucide-react';
+import SkillCinematic from '@/components/battle/SkillCinematic';
+
+// ─── Skill types ─────────────────────────────────────────────────────────────
+
+interface SkillData {
+  name: string;
+  type: 'normal' | 'skill1' | 'skill2' | 'ultimate' | 'passive';
+  element: string;
+  power: number;
+  accuracy: number;
+  description: string;
+}
+
+type ActionType = 'attack' | 'skill1' | 'skill2' | 'ultimate' | 'capture' | 'flee' | 'switch';
+
+const ACTION_TO_SKILL_TYPE: Record<string, SkillData['type']> = {
+  attack: 'normal',
+  skill1: 'skill1',
+  skill2: 'skill2',
+  ultimate: 'ultimate',
+};
+
+function getSkillForAction(action: string, skills: SkillData[]): SkillData {
+  const type = ACTION_TO_SKILL_TYPE[action];
+  if (type) {
+    const found = skills.find(s => s.type === type);
+    if (found) return found;
+  }
+  return { name: 'Attack', type: 'normal', element: 'Fire', power: 40, accuracy: 100, description: 'A basic attack.' };
+}
+
+function getDisplaySkills(species: { skills?: unknown }): SkillData[] {
+  const raw = (species?.skills ?? []) as SkillData[];
+  return raw.filter(s => s.type !== 'passive');
+}
+
+// ─── Skill button config ──────────────────────────────────────────────────────
+
+const SKILL_STYLE: Record<string, { grad: string; border: string; glow: string; textColor: string }> = {
+  normal:   { grad: 'linear-gradient(135deg,#0E7490,#0891B2)', border: '#22D3EE55', glow: 'rgba(34,211,238,0.35)', textColor: '#22D3EE' },
+  skill1:   { grad: 'linear-gradient(135deg,#6D28D9,#7C3AED)', border: '#A78BFA55', glow: 'rgba(167,139,250,0.35)', textColor: '#A78BFA' },
+  skill2:   { grad: 'linear-gradient(135deg,#065F46,#047857)', border: '#34D39955', glow: 'rgba(52,211,153,0.3)',  textColor: '#34D399' },
+  ultimate: { grad: 'linear-gradient(135deg,#92400E,#B45309)', border: '#F59E0B55', glow: 'rgba(245,158,11,0.4)', textColor: '#FDE68A' },
+};
 
 // ─── Region Environment Themes ─────────────────────────────────────────────────
 
@@ -324,6 +368,128 @@ function BattleTextBox({ text, actor }: { text: string; actor: 'player' | 'wild'
   );
 }
 
+// ─── Action Panel (skill buttons + utility row) ──────────────────────────────
+
+function ActionPanel({
+  playerMonster,
+  cinematic,
+  isPending,
+  wildHpPct,
+  handleSkillAction,
+  handleAction,
+  setShowSwitchPanel,
+}: {
+  playerMonster: { species?: { skills?: unknown; element?: string } } | null;
+  cinematic: unknown;
+  isPending: boolean;
+  wildHpPct: number;
+  handleSkillAction: (a: ActionType) => void;
+  handleAction: (a: 'capture' | 'flee') => void;
+  setShowSwitchPanel: (v: boolean) => void;
+}) {
+  const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
+  const skillDefs: { action: ActionType; type: SkillData['type'] }[] = [
+    { action: 'attack',   type: 'normal'   },
+    { action: 'skill1',   type: 'skill1'   },
+    { action: 'skill2',   type: 'skill2'   },
+    { action: 'ultimate', type: 'ultimate' },
+  ];
+  const available = skillDefs
+    .map(sa => {
+      const skill = playerSkills.find(s => s.type === sa.type);
+      return skill ? { ...sa, skill } : null;
+    })
+    .filter((x): x is { action: ActionType; type: SkillData['type']; skill: SkillData } => x !== null);
+
+  const isBlocked = !!cinematic || isPending;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Skill buttons — 2×2 grid */}
+      <div className="grid grid-cols-2 gap-2">
+        {available.length > 0 ? available.map(({ action, type, skill }) => {
+          const style = SKILL_STYLE[type] ?? SKILL_STYLE['normal']!;
+          const elColors = getElementColors(skill.element);
+          return (
+            <button
+              key={action}
+              onClick={() => handleSkillAction(action)}
+              disabled={isBlocked}
+              className="relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
+              style={{ background: style.grad, border: `1.5px solid ${style.border}`, boxShadow: `0 0 16px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.12)`, minHeight: 52, padding: '8px 10px' }}
+              data-testid={`button-${action}`}
+            >
+              <div className="flex items-center gap-1.5 w-full">
+                <span className="text-base leading-none">{ELEMENT_ICON[skill.element] ?? '✦'}</span>
+                <span className="text-[12px] font-black text-white truncate flex-1">{skill.name}</span>
+                <span className="text-[9px] font-mono shrink-0" style={{ color: style.textColor }}>PWR {skill.power}</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold"
+                  style={{ background: elColors.primary + '30', color: elColors.primary, border: `1px solid ${elColors.primary}44` }}>
+                  {skill.element}
+                </span>
+                <span className="text-[8px] text-white/30 uppercase font-mono">
+                  {type === 'normal' ? 'normal' : type === 'skill1' ? 'special' : type === 'skill2' ? 'power' : '★ ult'}
+                </span>
+              </div>
+              <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                style={{ background: skill.accuracy >= 90 ? '#22C55E' : skill.accuracy >= 75 ? '#EAB308' : '#EF4444' }} />
+            </button>
+          );
+        }) : (
+          <button
+            onClick={() => handleSkillAction('attack')}
+            disabled={isBlocked}
+            className="col-span-2 relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg,#0E7490,#0891B2)', border: '1.5px solid #22D3EE55', boxShadow: '0 0 18px rgba(34,211,238,0.35)', color: 'white', minHeight: 48 }}
+            data-testid="button-attack"
+          >
+            ⚔ Attack
+          </button>
+        )}
+      </div>
+
+      {/* Bottom row: Throw Orb + Switch + Flee */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => handleAction('capture')}
+          disabled={isPending}
+          className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,rgba(20,20,40,0.9),rgba(30,15,60,0.95))', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 0 12px rgba(245,158,11,0.2)', color: '#FDE68A', minHeight: 42 }}
+          data-testid="button-capture-battle"
+        >
+          <Package size={13} />
+          <span>Throw Orb</span>
+          {wildHpPct < 30 && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />}
+        </button>
+
+        <button
+          onClick={() => setShowSwitchPanel(true)}
+          disabled={isPending}
+          className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,rgba(10,35,30,0.9),rgba(5,25,20,0.95))', border: '1.5px solid rgba(52,211,153,0.3)', color: '#6EE7B7', minHeight: 42 }}
+          data-testid="button-switch-myth"
+        >
+          <RefreshCw size={13} />
+          <span>Switch</span>
+        </button>
+
+        <button
+          onClick={() => handleAction('flee')}
+          disabled={isPending}
+          className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,rgba(25,25,50,0.9),rgba(15,15,35,0.95))', border: '1.5px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)', minHeight: 42 }}
+          data-testid="button-flee"
+        >
+          <Wind size={14} />
+          <span>Flee</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Battle Overlay ─────────────────────────────────────────────────────────
 
 export default function BattleOverlay() {
@@ -335,6 +501,15 @@ export default function BattleOverlay() {
   const [captureMsg, setCaptureMsg]       = useState<string | null>(null);
   const [showSwitchPanel, setShowSwitchPanel] = useState(false);
   const [switchAnimKey, setSwitchAnimKey] = useState(0);
+
+  // ── Cinematic state ──────────────────────────────────────────────────────
+  const [cinematic, setCinematic] = useState<{
+    skillName: string; element: string; power: number;
+    attackerSide: 'player' | 'wild'; isCritical?: boolean; description?: string;
+    phase: 'player' | 'wild';
+  } | null>(null);
+  const pendingBattleResult = useRef<Parameters<typeof updateBattle>[0] | null>(null);
+  const pendingWildCinematic = useRef<{ skillName: string; element: string; power: number; isCritical?: boolean } | null>(null);
 
   const prevWildHp      = useRef<number | null>(null);
   const prevPlayerHp    = useRef<number | null>(null);
@@ -383,29 +558,101 @@ export default function BattleOverlay() {
     }
   }, [battleData]);
 
-  if (!battle.active || !battle.battle) return null;
+  // Derive battle data with safe defaults (must happen before early return so hooks below are always called)
+  const wildMonster  = battle.battle?.wildMonster ?? null;
+  const playerMonster = battle.battle?.playerMonster ?? null;
+  const log          = battle.battle?.log ?? [];
+  const status       = battle.battle?.status ?? 'active';
+  const isPending    = performAction.isPending;
+  const isOver       = status !== 'active';
 
-  const { wildMonster, playerMonster, log, status } = battle.battle;
-  const isPending = performAction.isPending;
-  const isOver    = status !== 'active';
-  const char      = getCharacter(characterType);
-  const regionId  = battle.battle.regionId ?? player?.regionId;
-  const theme     = getTheme(regionId);
+  // ── Cinematic complete handler ────────────────────────────────────────────
+  const onCinematicComplete = useCallback(() => {
+    const result = pendingBattleResult.current;
+    const wild = pendingWildCinematic.current;
 
-  const lastLog   = log.slice(-1)[0];
-  const logText   = lastLog?.description ?? (isOver ? getEndText(status) : 'What will you do?');
-  const logActor  = lastLog?.actor === 'player' ? 'player' : lastLog?.actor === 'wild' ? 'wild' : 'system';
+    if (cinematic?.phase === 'player') {
+      // Apply result, then maybe show wild cinematic
+      if (result) {
+        updateBattle(result);
+        if (battle.battleId) {
+          queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
+        }
+        pendingBattleResult.current = null;
+      }
+      if (wild && result?.status === 'active') {
+        pendingWildCinematic.current = null;
+        setCinematic({
+          skillName: wild.skillName,
+          element: wild.element,
+          power: wild.power,
+          isCritical: wild.isCritical,
+          attackerSide: 'wild',
+          phase: 'wild',
+        });
+      } else {
+        setCinematic(null);
+      }
+    } else {
+      // Wild cinematic done — clear
+      setCinematic(null);
+    }
+  }, [cinematic, battle.battleId, updateBattle, queryClient]);
 
-  const handleAction = async (action: 'attack' | 'skill1' | 'capture' | 'flee') => {
+  // ── Skill / attack action ─────────────────────────────────────────────────
+  const handleSkillAction = useCallback(async (action: ActionType) => {
+    if (!battle.battleId || isPending || isOver || cinematic) return;
+
+    const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
+    const skill = getSkillForAction(action, playerSkills);
+    const skillElement = skill.element ?? playerMonster?.species?.element ?? 'Fire';
+
+    // Show player cinematic immediately (optimistic)
+    setCinematic({
+      skillName: skill.name,
+      element: skillElement,
+      power: skill.power,
+      description: skill.description,
+      attackerSide: 'player',
+      phase: 'player',
+    });
+
+    try {
+      const updated = await performAction.mutateAsync({
+        battleId: battle.battleId,
+        data: { action: action as 'attack' | 'skill1' | 'skill2' | 'ultimate', orbType: undefined },
+      });
+
+      // Detect wild counterattack from log
+      const logEntries = (updated.log ?? []) as { actor: string; action: string; damageDealt: number | null; critical: boolean }[];
+      const wildEntry = logEntries.slice(-3).reverse().find(e => e.actor === 'wild');
+      if (wildEntry) {
+        const wildElement = updated.wildMonster?.species?.element ?? 'Fire';
+        pendingWildCinematic.current = {
+          skillName: wildEntry.action,
+          element: wildElement,
+          power: wildEntry.damageDealt ?? 40,
+          isCritical: wildEntry.critical,
+        };
+      }
+      pendingBattleResult.current = updated;
+    } catch (err) {
+      console.error('Battle action failed:', err);
+      pendingBattleResult.current = null;
+      pendingWildCinematic.current = null;
+    }
+  }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction]);
+
+  // ── Capture action (no cinematic, immediate) ──────────────────────────────
+  const handleAction = useCallback(async (action: 'capture' | 'flee') => {
     if (!battle.battleId || isPending || isOver) return;
     try {
       const updated = await performAction.mutateAsync({
         battleId: battle.battleId,
-        data: { action, orbType: action === 'capture' ? 'Basic' : null },
+        data: { action, orbType: action === 'capture' ? 'Basic' : undefined },
       });
       updateBattle(updated);
       queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
-
       if (action === 'capture') {
         const last = updated.log?.slice(-1)[0];
         if (last?.action === 'capture') {
@@ -416,7 +663,7 @@ export default function BattleOverlay() {
     } catch (err) {
       console.error('Battle action failed:', err);
     }
-  };
+  }, [battle.battleId, isPending, isOver, performAction, updateBattle, queryClient]);
 
   const handleSwitch = async (capturedId: string) => {
     if (!battle.battleId || isPending || isOver) return;
@@ -424,7 +671,7 @@ export default function BattleOverlay() {
     try {
       const updated = await performAction.mutateAsync({
         battleId: battle.battleId,
-        data: { action: 'switch', orbType: null, switchToMonsterId: capturedId },
+        data: { action: 'switch' as const, orbType: undefined, switchToMonsterId: capturedId },
       });
       updateBattle(updated);
       queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
@@ -432,6 +679,16 @@ export default function BattleOverlay() {
       console.error('Switch myth failed:', err);
     }
   };
+
+  // ── Early return guard (all hooks must be above this line) ────────────────
+  if (!battle.active || !battle.battle || !wildMonster || !playerMonster) return null;
+
+  const char      = getCharacter(characterType);
+  const regionId  = battle.battle.regionId ?? player?.regionId;
+  const theme     = getTheme(regionId);
+  const lastLog   = log.slice(-1)[0];
+  const logText   = lastLog?.description ?? (isOver ? getEndText(status) : 'What will you do?');
+  const logActor  = lastLog?.actor === 'player' ? 'player' : lastLog?.actor === 'wild' ? 'wild' : 'system';
 
   const wildHpPct   = (wildMonster.currentHp / wildMonster.maxHp) * 100;
   const wildColors  = getElementColors(wildMonster.species.element);
@@ -725,6 +982,20 @@ export default function BattleOverlay() {
           </div>
         )}
 
+        {/* ── Skill Cinematic overlay ───────────────────────────────────── */}
+        {cinematic && (
+          <SkillCinematic
+            key={`${cinematic.skillName}-${cinematic.phase}`}
+            skillName={cinematic.skillName}
+            skillDesc={cinematic.description}
+            element={cinematic.element}
+            power={cinematic.power}
+            attackerSide={cinematic.attackerSide}
+            isCritical={cinematic.isCritical}
+            onComplete={onCinematicComplete}
+          />
+        )}
+
         {/* Capture attempt feedback toast */}
         {captureMsg && !isOver && (
           <div
@@ -767,106 +1038,15 @@ export default function BattleOverlay() {
         }}
       >
         {!isOver ? (
-          <div className="flex flex-col gap-2">
-            {/* Top row: Attack + Skill */}
-            <div className="grid grid-cols-2 gap-2.5">
-            {/* Attack */}
-            <button
-              onClick={() => handleAction('attack')}
-              disabled={isPending}
-              className="relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, #0E7490, #0891B2)',
-                border: '1.5px solid #22D3EE55',
-                boxShadow: '0 0 18px rgba(34,211,238,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                color: 'white',
-                minHeight: 48,
-              }}
-              data-testid="button-attack"
-            >
-              <Swords size={16} />
-              <span>Attack</span>
-            </button>
-
-            {/* Skill */}
-            <button
-              onClick={() => handleAction('skill1')}
-              disabled={isPending}
-              className="relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, #6D28D9, #7C3AED)',
-                border: '1.5px solid #A78BFA55',
-                boxShadow: '0 0 18px rgba(167,139,250,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                color: 'white',
-                minHeight: 48,
-              }}
-              data-testid="button-skill"
-            >
-              <Zap size={16} />
-              <span>Skill</span>
-            </button>
-            </div>
-
-            {/* Bottom row: Throw Orb + Switch Myth + Flee */}
-            <div className="grid grid-cols-3 gap-2">
-            {/* Throw Orb */}
-            <button
-              onClick={() => handleAction('capture')}
-              disabled={isPending}
-              className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, #92400E, #B45309)',
-                border: '1.5px solid #F59E0B55',
-                boxShadow: '0 0 18px rgba(245,158,11,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                color: '#FDE68A',
-                minHeight: 44,
-              }}
-              data-testid="button-capture-battle"
-            >
-              <Package size={14} />
-              <span>Throw Orb</span>
-              {wildHpPct < 30 && (
-                <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </button>
-
-            {/* Switch Myth */}
-            <button
-              onClick={() => setShowSwitchPanel(true)}
-              disabled={isPending}
-              className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, #065F46, #047857)',
-                border: '1.5px solid #34D39955',
-                boxShadow: '0 0 14px rgba(52,211,153,0.25), inset 0 1px 0 rgba(255,255,255,0.12)',
-                color: '#6EE7B7',
-                minHeight: 44,
-              }}
-              data-testid="button-switch-myth"
-            >
-              <RefreshCw size={14} />
-              <span>Switch</span>
-            </button>
-
-            {/* Flee */}
-            <button
-              onClick={() => handleAction('flee')}
-              disabled={isPending}
-              className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, rgba(30,30,60,0.9), rgba(20,20,45,0.95))',
-                border: '1.5px solid rgba(255,255,255,0.12)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.6)',
-                minHeight: 44,
-              }}
-              data-testid="button-flee"
-            >
-              <Wind size={16} />
-              <span>Flee</span>
-            </button>
-            </div>
-          </div>
+          <ActionPanel
+            playerMonster={playerMonster}
+            cinematic={cinematic}
+            isPending={isPending}
+            wildHpPct={wildHpPct}
+            handleSkillAction={handleSkillAction}
+            handleAction={handleAction}
+            setShowSwitchPanel={setShowSwitchPanel}
+          />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <button
