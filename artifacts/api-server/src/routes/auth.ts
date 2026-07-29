@@ -54,21 +54,18 @@ async function grantStarterPack(playerId: string, element: string): Promise<Star
 
   const picks: { species: typeof monsterSpeciesTable.$inferSelect; level: number; slot: number }[] = [];
 
+  // Every new player gets one guaranteed S-tier as their featured starter
+  const specS = pickRandom(sTier);
+  if (specS) picks.push({ species: specS, level: 5, slot: 0 });
+
   const specA = pickRandom(aTier);
-  if (specA) picks.push({ species: specA, level: 5, slot: 0 });
+  if (specA) picks.push({ species: specA, level: 3, slot: 1 });
 
   const specB = pickRandom(bTier);
-  if (specB) picks.push({ species: specB, level: 3, slot: 1 });
+  if (specB) picks.push({ species: specB, level: 1, slot: 2 });
 
   const specC = pickRandom(cTierAll);
-  if (specC) picks.push({ species: specC, level: 1, slot: 2 });
-
-  // 1% S-tier surprise
-  const gotS = Math.random() < 0.01;
-  if (gotS) {
-    const specS = pickRandom(sTier);
-    if (specS) picks.push({ species: specS, level: 1, slot: 3 });
-  }
+  if (specC) picks.push({ species: specC, level: 1, slot: 3 });
 
   const results: StarterMythResult[] = [];
   for (const { species, level, slot } of picks) {
