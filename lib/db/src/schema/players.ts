@@ -40,7 +40,7 @@ export const playersTable = pgTable("players", {
 
   // World position
   posX: integer("pos_x").notNull().default(25),
-  posY: integer("pos_y").notNull().default(25),
+  posY: integer("pos_y").notNull().default(4),
   regionId: text("region_id").default("verdant-meadows"),
 
   createdAt: timestamp("created_at", { withTimezone: true })

@@ -1,12 +1,19 @@
 import Phaser from 'phaser';
-import { TileType, TILE_BASE_COLORS, generateTerrain, isPassable } from '@/lib/terrain';
+import {
+  TileType,
+  generateTerrain,
+  isPassable,
+  nearestPassable,
+  SPAWN_X, SPAWN_Y,
+  WORLD_W, WORLD_H,
+} from '@/lib/terrain';
 import { getCharacter, type CharacterConfig } from '@/lib/characters';
 import { MRO_MOVE_EVENT } from '@/lib/dpad-events';
 import type { ExploreInput } from '@workspace/api-client-react';
 
-const TILE_SIZE = 32;
-const WORLD_WIDTH = 50;
-const WORLD_HEIGHT = 50;
+const TILE_SIZE  = 32;
+const WORLD_WIDTH  = WORLD_W;
+const WORLD_HEIGHT = WORLD_H;
 
 // Module-level ref so DPad can call moveInDirection without forwardRef complexity
 let _activeScene: WorldScene | null = null;
@@ -26,8 +33,8 @@ export default class WorldScene extends Phaser.Scene {
   private fogGraphics?: Phaser.GameObjects.Graphics;
   private dayNightOverlay?: Phaser.GameObjects.Graphics;
   private playerContainer?: Phaser.GameObjects.Container;
-  private playerX = 25;
-  private playerY = 12; // start near park entrance
+  private playerX = SPAWN_X;
+  private playerY = SPAWN_Y;
   private characterType = 'kai';
   private exploredTiles: Set<string> = new Set();
   private otherPlayerContainers: Map<string, Phaser.GameObjects.Container> = new Map();
@@ -58,7 +65,15 @@ export default class WorldScene extends Phaser.Scene {
   create() {
     // Register this instance globally so DPad can call moveInDirection directly
     _activeScene = this;
+
+    // Deterministic terrain (seeded — always the same map)
     this.terrain = generateTerrain(WORLD_WIDTH, WORLD_HEIGHT);
+
+    // BFS spawn safety: if the server put us on an impassable tile, find the
+    // nearest passable one so movement is never blocked from the start.
+    const safe = nearestPassable(this.terrain, this.playerX, this.playerY);
+    this.playerX = safe.x;
+    this.playerY = safe.y;
 
     // --- Single graphics object for all terrain (much faster than 2500 objects) ---
     this.terrainGraphics = this.add.graphics();

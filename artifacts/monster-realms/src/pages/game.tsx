@@ -91,12 +91,11 @@ export default function Game() {
   }, [player?.id]);
 
   const handleMove = async (input: ExploreInput) => {
+    if (!player) return;
     try {
-      const result = await exploreTile.mutateAsync({ data: input });
+      const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
 
-      if (player) {
-        setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
-      }
+      setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
 
       markTileExplored(result.newPosX, result.newPosY);
 
@@ -104,7 +103,7 @@ export default function Game() {
         triggerEncounter(
           result.encounter.species,
           result.encounter.wildLevel,
-          result.encounter.shinyVariant,
+          result.encounter.shinyVariant ?? null,
         );
       }
 

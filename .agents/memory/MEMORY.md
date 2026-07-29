@@ -1,1 +1,2 @@
 - [Phaser 4 compatibility](phaser4-compatibility.md) — Graphics.setTint() gone; guard init() with ??; use one Graphics object for all tiles
+- [Monster Realms spawn & movement](monster-realms-movement.md) — player default spawn was inside the pond; terrain must be seeded; Phaser captures DOM events so use window CustomEvent for D-pad
