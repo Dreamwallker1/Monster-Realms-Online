@@ -1,0 +1,1263 @@
+# PROJECT: MONSTER REALMS ONLINE
+
+## IMPORTANT
+
+Create a complete online browser game inspired by classic monster collecting games, but it must be a 100% ORIGINAL intellectual property.
+
+DO NOT use Pokémon names, Pokémon artwork, Pokémon sounds, Pokémon designs, Poké Balls, Pokédex or any copyrighted assets.
+
+Everything must be original while preserving the fun of exploration, collecting and turn-based battles.
+
+The code should be clean, modular, scalable and production-ready.
+
+---
+
+# TECH STACK
+
+Frontend
+- React
+- Phaser 3
+- TypeScript
+
+Backend
+- Node.js
+- Express
+- Colyseus Multiplayer Server
+- PostgreSQL
+- Prisma ORM
+
+Authentication
+- JWT
+- Google Login
+- Guest Login
+
+Prepare architecture for:
+- Solana Wallet Adapter
+- Future Token
+- NFT support
+- Marketplace
+
+Keep everything modular.
+
+---
+
+# GRAPHICS
+
+Game World
+- 2D Pixel Art
+- Top Down Camera
+- Smooth Camera
+- Animated Tiles
+- Pixel Lighting
+
+Menus
+- Modern 3D Style
+- Animated Backgrounds
+- Blur Effects
+- Premium UI
+- Floating Panels
+- Particle Effects
+
+The menu should look modern while gameplay remains classic pixel RPG.
+
+---
+
+# GAMEPLAY
+
+Player creates a character.
+
+Player enters online world.
+
+Movement is NOT free movement.
+
+Movement is TILE BASED.
+
+Every press on
+
+↑
+↓
+
+←
+→
+
+moves exactly ONE TILE.
+
+Movement should feel like old handheld RPG games.
+
+---
+
+# ONLINE
+
+Players can always see each other.
+
+Players appear as tiny pixel characters.
+
+Players can:
+
+Walk
+
+Stand
+
+Emote
+
+Trade
+
+Invite Battle
+
+Invite Party
+
+Chat
+
+Monsters are NEVER visible inside the map.
+
+Only players are visible.
+
+Monster encounters are private.
+
+---
+
+# MAPS
+
+Create many regions.
+
+Examples
+
+Volcano Realm
+
+Power Plant
+
+Frozen Mountain
+
+Ancient Forest
+
+Ocean Ruins
+
+Desert
+
+Crystal Cave
+
+Poison Swamp
+
+Sky Islands
+
+Dark Marsh
+
+Thunder Valley
+
+Ancient Temple
+
+Lava Caves
+
+Each biome contains different original monsters.
+
+---
+
+# MONSTERS
+
+DO NOT USE POKEMON.
+
+Create original monsters.
+
+Examples
+
+Ember Drake
+
+Volt Lynx
+
+Stoneback
+
+Crystal Wolf
+
+Leafhorn
+
+Storm Raven
+
+Aquafin
+
+Night Stalker
+
+Shadow Moth
+
+Lava Horn
+
+Frost Bear
+
+Every monster has
+
+Name
+
+Level
+
+HP
+
+Attack
+
+Defense
+
+Speed
+
+Element
+
+Passive Skill
+
+Capture Difficulty
+
+Evolution
+
+Experience
+
+Personality
+
+Weight
+
+Height
+
+Lore
+
+Description
+
+Animation
+
+Sound
+
+---
+
+# ELEMENTS
+
+Fire
+
+Water
+
+Nature
+
+Electric
+
+Ice
+
+Earth
+
+Air
+
+Light
+
+Dark
+
+Metal
+
+Crystal
+
+Void
+
+---
+
+# ENCOUNTER SYSTEM
+
+Each movement has a chance to trigger an encounter.
+
+Monster never appears on map.
+
+Instead:
+
+Bottom UI slides upward.
+
+Large monster portrait appears.
+
+Message:
+
+"A wild Ember Drake appeared."
+
+Buttons
+
+Fight
+
+Capture
+
+Run Away
+
+Continue
+
+Only that player can see the encounter.
+
+No one else can.
+
+---
+
+# RADAR SYSTEM
+
+Bottom panel always contains Monster Radar.
+
+The radar can show
+
+North
+
+South
+
+East
+
+West
+
+North East
+
+North West
+
+South East
+
+South West
+
+If a monster is nearby
+
+Compass points toward possible direction.
+
+Player decides whether to search.
+
+This creates exploration.
+
+---
+
+# FOG OF WAR
+
+Players only see nearby tiles.
+
+Walking reveals new areas.
+
+Exploration matters.
+
+Entire world should not be visible.
+
+---
+
+# DISCOVERY
+
+Every new tile explored gives
+
+Explorer XP
+
+Coins
+
+Achievements
+
+Explorer Points
+
+Statistics
+
+Game tracks
+
+Tiles Walked
+
+Secrets Found
+
+Maps Completed
+
+Rare Discoveries
+
+---
+
+# EXPLORER LEVEL
+
+Separate from battle level.
+
+Ranks
+
+Novice
+
+Scout
+
+Explorer
+
+Hunter
+
+Veteran
+
+Master Explorer
+
+Legend Explorer
+
+Unlocks
+
+Maps
+
+NPCs
+
+Rare Monsters
+
+Secret Areas
+
+Events
+
+---
+
+# RARITY
+
+Common
+
+Uncommon
+
+Rare
+
+Epic
+
+Legendary
+
+Mythic
+
+Ancient
+
+Celestial
+
+Void
+
+Each rarity changes
+
+Spawn Rate
+
+Stats
+
+Market Price
+
+Capture Chance
+
+Evolution
+
+---
+
+# SHINY SYSTEM
+
+Every monster may also appear as
+
+Golden
+
+Crystal
+
+Shadow
+
+Galaxy
+
+Prismatic
+
+These are much rarer.
+
+Higher market value.
+
+Special visual effects.
+
+---
+
+# WEATHER
+
+Dynamic weather
+
+Rain
+
+Snow
+
+Thunderstorm
+
+Fog
+
+Heat Wave
+
+Meteor Shower
+
+Aurora
+
+Weather affects
+
+Monster Spawn
+
+Capture Chance
+
+Battle Bonuses
+
+Loot
+
+---
+
+# DAY NIGHT
+
+Real time.
+
+Morning
+
+Day
+
+Sunset
+
+Night
+
+Midnight
+
+Dawn
+
+Different monsters appear at different times.
+
+---
+
+# SECRET EVENTS
+
+Random chance while walking.
+
+Meteor
+
+Ancient Shrine
+
+Hidden Merchant
+
+Treasure Chest
+
+Mystery Egg
+
+Lost Backpack
+
+Ancient Portal
+
+Magic Tree
+
+World Event
+
+Secret Cave
+
+---
+
+# ENERGY SYSTEM
+
+Every player receives
+
+300 Energy daily.
+
+Movement
+
+1 Energy
+
+Battle
+
+2 Energy
+
+Boss
+
+5 Energy
+
+Regeneration
+
+1 Energy every 3 minutes.
+
+Maximum
+
+300
+
+Premium
+
+500
+
+Optional purchase
+
+Energy Crystal
+
+0.01 SOL
+
+Restores
+
+200 Energy
+
+Never Pay To Win.
+
+---
+
+# ECONOMY
+
+Main Currency
+
+SOL
+
+Future
+
+Own Token
+
+Everything should support blockchain later.
+
+---
+
+# CAPTURE ORBS
+
+Basic Orb
+
+0.02 SOL
+
+Common
+
+Uncommon
+
+Explorer Orb
+
+0.03 SOL
+
+Rare
+
+Hunter Orb
+
+0.04 SOL
+
+Epic
+
+Elite Orb
+
+0.05 SOL
+
+Legendary
+
+Master Orb
+
+0.06 SOL
+
+Mythic
+
+Celestial Orb
+
+0.07 SOL
+
+Ancient
+
+Infinity Orb
+
+0.08 SOL
+
+Void
+
+Capture Chances
+
+Common 95%
+
+Uncommon 80%
+
+Rare 60%
+
+Epic 35%
+
+Legendary 15%
+
+Mythic 8%
+
+Ancient 5%
+
+Void 3%
+
+---
+
+# FREE TO PLAY
+
+Starter Monster
+
+10 Basic Orbs
+
+Daily Missions
+
+Weekly Missions
+
+Login Rewards
+
+Achievements
+
+Tutorial Rewards
+
+No Paywall.
+
+---
+
+# TURN BASED BATTLE
+
+Classic turn system.
+
+Choose
+
+Attack
+
+Skill
+
+Item
+
+Capture
+
+Escape
+
+Every monster has
+
+Normal Attack
+
+Skill 1
+
+Skill 2
+
+Ultimate
+
+Passive
+
+Status Effects
+
+Critical Hits
+
+Combo Skills
+
+---
+
+# PVP
+
+Nearby Challenge
+
+Ranked Arena
+
+Guild Arena
+
+Season Ranking
+
+Leagues
+
+Bronze
+
+Silver
+
+Gold
+
+Platinum
+
+Diamond
+
+Master
+
+Grand Master
+
+Top 100
+
+---
+
+# PVE
+
+Wild Monsters
+
+Elite Monsters
+
+Mini Boss
+
+Dungeon Boss
+
+Raid Boss
+
+World Boss
+
+Guild Boss
+
+---
+
+# GUILDS
+
+Guild Creation
+
+0.05 SOL
+
+Guild Level
+
+Guild Missions
+
+Guild Boss
+
+Guild Wars
+
+Guild Territory
+
+Guild Ranking
+
+Guild Chat
+
+Guild Storage
+
+---
+
+# TRADING
+
+Players can trade
+
+Monsters
+
+Eggs
+
+Items
+
+Evolution Stones
+
+Materials
+
+Cosmetics
+
+Marketplace Tax
+
+5%
+
+---
+
+# BREEDING
+
+Compatible monsters produce Eggs.
+
+Egg quality depends on parents.
+
+Cooldown system.
+
+Rare combinations unlock hidden monsters.
+
+---
+
+# EVOLUTION
+
+Level
+
+Friendship
+
+Specific Weather
+
+Specific Map
+
+Night
+
+Day
+
+Item
+
+Quest
+
+PvP Wins
+
+Hidden Conditions
+
+---
+
+# COLLECTION
+
+Monster Encyclopedia.
+
+Track
+
+Seen
+
+Captured
+
+Shiny
+
+Perfect
+
+Evolved
+
+Special Forms
+
+Completion Rewards
+
+Titles
+
+Frames
+
+Exclusive Mounts
+
+Effects
+
+---
+
+# ACHIEVEMENTS
+
+Thousands.
+
+Examples
+
+Walk 10000 Tiles
+
+Capture 500 Monsters
+
+Win 100 PvP
+
+Find Legendary
+
+Explore Every Map
+
+Complete Collection
+
+---
+
+# COSMETICS
+
+Sell only
+
+Character Skins
+
+Hairstyles
+
+Clothes
+
+Mount Skins
+
+Walking Effects
+
+Battle Effects
+
+Emotes
+
+Titles
+
+Profile Frames
+
+Victory Animations
+
+No Power Selling.
+
+---
+
+# MOUNTS
+
+Wolf
+
+Tiger
+
+Bear
+
+Dragon
+
+Robot
+
+Phoenix
+
+Lizard
+
+Only cosmetic movement.
+
+No battle bonus.
+
+---
+
+# BATTLE PASS
+
+Every Season
+
+Free Track
+
+Premium Track
+
+Rewards
+
+Skins
+
+Titles
+
+Energy
+
+Currency
+
+Effects
+
+Mounts
+
+Animations
+
+---
+
+# SEASONS
+
+Every 3 months.
+
+New Monsters
+
+New Maps
+
+New Cosmetics
+
+Battle Pass
+
+Leaderboards Reset
+
+Exclusive Events
+
+---
+
+# WORLD BOSS
+
+Daily Spawn.
+
+Entire server notified.
+
+Everyone can participate.
+
+Rewards based on damage contribution.
+
+---
+
+# LIVE EVENTS
+
+Weekend XP
+
+Treasure Week
+
+Legendary Weekend
+
+Double Capture
+
+Halloween
+
+Winter Festival
+
+Summer Festival
+
+Anniversary Event
+
+---
+
+# CHAT
+
+Global
+
+Map
+
+Party
+
+Guild
+
+Private
+
+Trade
+
+---
+
+# PLAYER PROFILE
+
+Display
+
+Explorer Rank
+
+PvP Rank
+
+Guild
+
+Rarest Monster
+
+Collection %
+
+Tiles Explored
+
+Achievements
+
+First Discoveries
+
+Battle History
+
+---
+
+# FIRST DISCOVERY SYSTEM
+
+Every monster has a global Discovery ID.
+
+The first player on the server to discover a species permanently receives:
+
+First Discoverer Title
+
+Exclusive Badge
+
+Profile Trophy
+
+Server Announcement
+
+Example
+
+"PlayerX discovered Solar Wyrm for the first time."
+
+---
+
+# REPUTATION
+
+Every map has its own reputation.
+
+Unlock
+
+NPC Discounts
+
+Rare Quests
+
+Secret Shops
+
+Hidden Areas
+
+Exclusive Monsters
+
+---
+
+# UI
+
+Bottom UI always visible.
+
+Contains
+
+Compass
+
+Monster Radar
+
+Current Monster
+
+Current Team
+
+HP
+
+Energy
+
+Quest Tracker
+
+Inventory
+
+Notifications
+
+Mini Chat
+
+Money
+
+SOL Balance
+
+Explorer XP
+
+---
+
+# MONETIZATION
+
+Generate revenue only from
+
+Cosmetics
+
+Battle Pass
+
+Energy
+
+Character Customization
+
+Guild Creation
+
+Visual Effects
+
+Name Changes
+
+Mount Skins
+
+Profile Frames
+
+Never sell power.
+
+---
+
+# GAME LOOP
+
+Explore
+
+↓
+
+Find Monster
+
+↓
+
+Battle
+
+↓
+
+Capture
+
+↓
+
+Train
+
+↓
+
+Evolve
+
+↓
+
+Trade
+
+↓
+
+PvP
+
+↓
+
+Discover Rare Monsters
+
+↓
+
+Earn Titles
+
+↓
+
+Improve Collection
+
+↓
+
+Repeat
+
+The gameplay should constantly make players feel:
+
+"Just one more step."
+
+Every movement should feel exciting.
+
+---
+
+# PERFORMANCE
+
+Support
+
+Desktop
+
+Mobile Browser
+
+Tablet
+
+Responsive UI
+
+Fast Loading
+
+Optimized Networking
+
+Server Authoritative
+
+Anti Cheat
+
+---
+
+# FUTURE ROADMAP
+
+Architecture must easily support
+
+1000+ Monsters
+
+100+ Maps
+
+Guild Wars
+
+Marketplace
+
+Cross Server
+
+Own Blockchain Token
+
+NFT Cosmetics (Optional)
+
+Esports
+
+Streaming Integration
+
+Season Events
+
+Daily Events
+
+Weekly Rotations
+
+Without rewriting core systems.
+
+---
+
+# IMPORTANT GAME DESIGN PRINCIPLES
+
+1. Exploration should be more rewarding than grinding.
+2. Every step should feel meaningful.
+3. Rare discoveries should create excitement.
+4. Skill should always matter more than money.
+5. Monetization must never become Pay To Win.
+6. The game should encourage long-term retention through exploration, collection, social interaction and seasonal competition.
+7. Build the project using a clean folder structure, reusable components, scalable networking and maintainable code suitable for a commercial live-service game.

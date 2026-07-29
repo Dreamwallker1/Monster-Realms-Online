@@ -3,20 +3,37 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Monster Realms Online API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: players
+    description: Player profiles and stats
+  - name: monsters
+    description: Monster species encyclopedia
+  - name: collection
+    description: Player captured monsters
+  - name: battles
+    description: Battle system
+  - name: regions
+    description: World regions and maps
+  - name: exploration
+    description: Tile exploration and encounters
+  - name: inventory
+    description: Player inventory and items
+  - name: leaderboard
+    description: Rankings and leaderboards
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +41,590 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/guest:
+    post:
+      operationId: guestLogin
+      tags: [auth]
+      summary: Create a guest account and get a token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuestLoginInput"
+      responses:
+        "200":
+          description: Guest session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /auth/register:
+    post:
+      operationId: registerPlayer
+      tags: [auth]
+      summary: Register a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Username already taken
+  /auth/login:
+    post:
+      operationId: loginPlayer
+      tags: [auth]
+      summary: Log in with credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get the authenticated player
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "401":
+          description: Not authenticated
+
+  # PLAYERS
+  /players/{playerId}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get a player profile
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "404":
+          description: Player not found
+    patch:
+      operationId: updatePlayer
+      tags: [players]
+      summary: Update player profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerUpdate"
+      responses:
+        "200":
+          description: Updated player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+  /players/{playerId}/stats:
+    get:
+      operationId: getPlayerStats
+      tags: [players]
+      summary: Get detailed player statistics
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerStats"
+  /players/{playerId}/team:
+    get:
+      operationId: getPlayerTeam
+      tags: [players]
+      summary: Get the player's active team (up to 6 monsters)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active team
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapturedMonster"
+    put:
+      operationId: updatePlayerTeam
+      tags: [players]
+      summary: Set the player's active team
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamUpdate"
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapturedMonster"
+  /players/{playerId}/radar:
+    get:
+      operationId: getPlayerRadar
+      tags: [players]
+      summary: Get monster radar for the player's current position
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Radar result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RadarResult"
+
+  # MONSTERS (encyclopedia)
+  /monsters:
+    get:
+      operationId: listMonsterSpecies
+      tags: [monsters]
+      summary: List all monster species
+      parameters:
+        - name: element
+          in: query
+          schema:
+            type: string
+        - name: rarity
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Monster species list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonsterSpecies"
+  /monsters/{speciesId}:
+    get:
+      operationId: getMonsterSpecies
+      tags: [monsters]
+      summary: Get a monster species by ID
+      parameters:
+        - name: speciesId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Monster species
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonsterSpecies"
+        "404":
+          description: Not found
+
+  # COLLECTION
+  /players/{playerId}/collection:
+    get:
+      operationId: getPlayerCollection
+      tags: [collection]
+      summary: Get all captured monsters owned by a player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: element
+          in: query
+          schema:
+            type: string
+        - name: rarity
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Collection list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapturedMonster"
+    post:
+      operationId: captureMonster
+      tags: [collection]
+      summary: Add a captured monster to the player's collection
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptureInput"
+      responses:
+        "201":
+          description: Monster captured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapturedMonster"
+  /players/{playerId}/collection/{capturedId}:
+    get:
+      operationId: getCapturedMonster
+      tags: [collection]
+      summary: Get a single captured monster
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: capturedId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Captured monster details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapturedMonster"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCapturedMonster
+      tags: [collection]
+      summary: Update a captured monster (rename, heal, etc.)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: capturedId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapturedMonsterUpdate"
+      responses:
+        "200":
+          description: Updated captured monster
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapturedMonster"
+
+  # BATTLES
+  /battles:
+    post:
+      operationId: startBattle
+      tags: [battles]
+      summary: Start a wild monster battle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartBattleInput"
+      responses:
+        "201":
+          description: Battle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Battle"
+  /battles/{battleId}:
+    get:
+      operationId: getBattle
+      tags: [battles]
+      summary: Get current battle state
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: battleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Battle state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Battle"
+        "404":
+          description: Battle not found
+  /battles/{battleId}/action:
+    post:
+      operationId: performBattleAction
+      tags: [battles]
+      summary: Perform a battle action (attack, skill, capture, flee)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: battleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BattleActionInput"
+      responses:
+        "200":
+          description: Updated battle state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Battle"
+
+  # REGIONS
+  /regions:
+    get:
+      operationId: listRegions
+      tags: [regions]
+      summary: List all world regions
+      responses:
+        "200":
+          description: Regions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Region"
+  /regions/{regionId}:
+    get:
+      operationId: getRegion
+      tags: [regions]
+      summary: Get a region by ID
+      parameters:
+        - name: regionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Region
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Region"
+        "404":
+          description: Not found
+
+  # EXPLORATION
+  /players/{playerId}/explore:
+    post:
+      operationId: exploreTile
+      tags: [exploration]
+      summary: Move player one tile, possibly triggering an encounter
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExploreInput"
+      responses:
+        "200":
+          description: Explore result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExploreResult"
+
+  # INVENTORY
+  /players/{playerId}/inventory:
+    get:
+      operationId: getPlayerInventory
+      tags: [inventory]
+      summary: Get player's inventory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Inventory"
+  /players/{playerId}/inventory/use:
+    post:
+      operationId: useItem
+      tags: [inventory]
+      summary: Use an item from inventory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UseItemInput"
+      responses:
+        "200":
+          description: Item used result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UseItemResult"
+
+  # LEADERBOARD
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get global leaderboard
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [explorer, collection, pvp, tiles]
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 50
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Leaderboard"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +634,719 @@ components:
       required:
         - status
 
+    # AUTH
+    GuestLoginInput:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 20
+        avatarColor:
+          type: string
+      required:
+        - username
+
+    RegisterInput:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 20
+        password:
+          type: string
+          minLength: 6
+        email:
+          type: ["string", "null"]
+        avatarColor:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginInput:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        player:
+          $ref: "#/components/schemas/Player"
+      required:
+        - token
+        - player
+
+    # PLAYER
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        avatarColor:
+          type: string
+        isGuest:
+          type: boolean
+        explorerRank:
+          type: string
+        explorerXp:
+          type: number
+        explorerLevel:
+          type: number
+        tilesExplored:
+          type: number
+        energy:
+          type: number
+        maxEnergy:
+          type: number
+        coins:
+          type: number
+        monstersDiscovered:
+          type: number
+        monstersCaptured:
+          type: number
+        regionId:
+          type: ["string", "null"]
+        posX:
+          type: number
+        posY:
+          type: number
+        createdAt:
+          type: string
+      required:
+        - id
+        - username
+        - avatarColor
+        - isGuest
+        - explorerRank
+        - explorerXp
+        - explorerLevel
+        - tilesExplored
+        - energy
+        - maxEnergy
+        - coins
+        - monstersDiscovered
+        - monstersCaptured
+        - posX
+        - posY
+        - createdAt
+
+    PlayerUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 20
+        avatarColor:
+          type: string
+
+    PlayerStats:
+      type: object
+      properties:
+        playerId:
+          type: string
+        pvpWins:
+          type: number
+        pvpLosses:
+          type: number
+        monstersCaptured:
+          type: number
+        monstersDiscovered:
+          type: number
+        tilesExplored:
+          type: number
+        secretsFound:
+          type: number
+        battlesWon:
+          type: number
+        battlesLost:
+          type: number
+        totalPlayTime:
+          type: number
+        firstDiscoveries:
+          type: number
+      required:
+        - playerId
+        - pvpWins
+        - pvpLosses
+        - monstersCaptured
+        - monstersDiscovered
+        - tilesExplored
+        - secretsFound
+        - battlesWon
+        - battlesLost
+        - totalPlayTime
+        - firstDiscoveries
+
+    TeamUpdate:
+      type: object
+      properties:
+        capturedMonsterIds:
+          type: array
+          items:
+            type: string
+          maxItems: 6
+      required:
+        - capturedMonsterIds
+
+    RadarResult:
+      type: object
+      properties:
+        monstersNearby:
+          type: boolean
+        direction:
+          type: ["string", "null"]
+          enum: [N, S, E, W, NE, NW, SE, SW, null]
+        element:
+          type: ["string", "null"]
+        distance:
+          type: ["number", "null"]
+      required:
+        - monstersNearby
+
+    # MONSTERS
+    MonsterSkill:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [normal, skill1, skill2, ultimate, passive]
+        element:
+          type: string
+        power:
+          type: number
+        accuracy:
+          type: number
+        description:
+          type: string
+      required:
+        - name
+        - type
+        - element
+        - power
+        - accuracy
+        - description
+
+    MonsterSpecies:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        element:
+          type: string
+          enum: [Fire, Water, Nature, Electric, Ice, Earth, Air, Light, Dark, Metal, Crystal, Void]
+        rarity:
+          type: string
+          enum: [Common, Uncommon, Rare, Epic, Legendary, Mythic, Ancient, Celestial, Void]
+        baseHp:
+          type: number
+        baseAttack:
+          type: number
+        baseDefense:
+          type: number
+        baseSpeed:
+          type: number
+        description:
+          type: string
+        lore:
+          type: string
+        captureRate:
+          type: number
+        weight:
+          type: number
+        height:
+          type: number
+        personality:
+          type: string
+        evolutionFromId:
+          type: ["string", "null"]
+        evolutionToId:
+          type: ["string", "null"]
+        evolutionLevel:
+          type: ["number", "null"]
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonsterSkill"
+        regionIds:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - name
+        - element
+        - rarity
+        - baseHp
+        - baseAttack
+        - baseDefense
+        - baseSpeed
+        - description
+        - lore
+        - captureRate
+        - weight
+        - height
+        - personality
+        - skills
+        - regionIds
+
+    # COLLECTION
+    CapturedMonster:
+      type: object
+      properties:
+        id:
+          type: string
+        playerId:
+          type: string
+        speciesId:
+          type: string
+        species:
+          $ref: "#/components/schemas/MonsterSpecies"
+        nickname:
+          type: ["string", "null"]
+        level:
+          type: number
+        currentHp:
+          type: number
+        maxHp:
+          type: number
+        attack:
+          type: number
+        defense:
+          type: number
+        speed:
+          type: number
+        experience:
+          type: number
+        shinyVariant:
+          type: ["string", "null"]
+          enum: [Golden, Crystal, Shadow, Galaxy, Prismatic, null]
+        friendship:
+          type: number
+        personality:
+          type: string
+        inTeam:
+          type: boolean
+        teamSlot:
+          type: ["number", "null"]
+        capturedAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - speciesId
+        - species
+        - level
+        - currentHp
+        - maxHp
+        - attack
+        - defense
+        - speed
+        - experience
+        - friendship
+        - personality
+        - inTeam
+        - capturedAt
+
+    CaptureInput:
+      type: object
+      properties:
+        speciesId:
+          type: string
+        level:
+          type: number
+        shinyVariant:
+          type: ["string", "null"]
+          enum: [Golden, Crystal, Shadow, Galaxy, Prismatic, null]
+        orbType:
+          type: string
+          enum: [Basic, Explorer, Hunter, Elite, Master, Celestial, Infinity]
+      required:
+        - speciesId
+        - level
+        - orbType
+
+    CapturedMonsterUpdate:
+      type: object
+      properties:
+        nickname:
+          type: ["string", "null"]
+        currentHp:
+          type: number
+        experience:
+          type: number
+        friendship:
+          type: number
+
+    # BATTLES
+    BattleMonsterState:
+      type: object
+      properties:
+        speciesId:
+          type: string
+        capturedId:
+          type: ["string", "null"]
+        species:
+          $ref: "#/components/schemas/MonsterSpecies"
+        level:
+          type: number
+        currentHp:
+          type: number
+        maxHp:
+          type: number
+        attack:
+          type: number
+        defense:
+          type: number
+        speed:
+          type: number
+        shinyVariant:
+          type: ["string", "null"]
+        statusEffect:
+          type: ["string", "null"]
+      required:
+        - speciesId
+        - species
+        - level
+        - currentHp
+        - maxHp
+        - attack
+        - defense
+        - speed
+
+    BattleLogEntry:
+      type: object
+      properties:
+        turn:
+          type: number
+        actor:
+          type: string
+          enum: [player, wild]
+        action:
+          type: string
+        description:
+          type: string
+        damageDealt:
+          type: ["number", "null"]
+        critical:
+          type: boolean
+      required:
+        - turn
+        - actor
+        - action
+        - description
+        - critical
+
+    Battle:
+      type: object
+      properties:
+        id:
+          type: string
+        playerId:
+          type: string
+        status:
+          type: string
+          enum: [active, won, lost, fled, captured]
+        turn:
+          type: number
+        wildMonster:
+          $ref: "#/components/schemas/BattleMonsterState"
+        playerMonster:
+          $ref: "#/components/schemas/BattleMonsterState"
+        log:
+          type: array
+          items:
+            $ref: "#/components/schemas/BattleLogEntry"
+        expReward:
+          type: ["number", "null"]
+        coinReward:
+          type: ["number", "null"]
+        capturedMonsterId:
+          type: ["string", "null"]
+        regionId:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - status
+        - turn
+        - wildMonster
+        - playerMonster
+        - log
+        - regionId
+        - createdAt
+        - updatedAt
+
+    StartBattleInput:
+      type: object
+      properties:
+        playerId:
+          type: string
+        regionId:
+          type: string
+        speciesId:
+          type: string
+        wildLevel:
+          type: number
+        shinyVariant:
+          type: ["string", "null"]
+          enum: [Golden, Crystal, Shadow, Galaxy, Prismatic, null]
+        activeMonsterCapturedId:
+          type: string
+      required:
+        - playerId
+        - regionId
+        - speciesId
+        - wildLevel
+        - activeMonsterCapturedId
+
+    BattleActionInput:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [attack, skill1, skill2, ultimate, capture, flee]
+        orbType:
+          type: ["string", "null"]
+          enum: [Basic, Explorer, Hunter, Elite, Master, Celestial, Infinity, null]
+      required:
+        - action
+
+    # REGIONS
+    Region:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        biome:
+          type: string
+        description:
+          type: string
+        requiredExplorerLevel:
+          type: number
+        monsterCount:
+          type: number
+        width:
+          type: number
+        height:
+          type: number
+        monsters:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonsterSpecies"
+      required:
+        - id
+        - name
+        - biome
+        - description
+        - requiredExplorerLevel
+        - monsterCount
+        - width
+        - height
+        - monsters
+
+    # EXPLORATION
+    ExploreInput:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum: [up, down, left, right]
+        regionId:
+          type: string
+        posX:
+          type: number
+        posY:
+          type: number
+      required:
+        - direction
+        - regionId
+        - posX
+        - posY
+
+    EncounterDetails:
+      type: object
+      properties:
+        species:
+          $ref: "#/components/schemas/MonsterSpecies"
+        wildLevel:
+          type: number
+        shinyVariant:
+          type: ["string", "null"]
+          enum: [Golden, Crystal, Shadow, Galaxy, Prismatic, null]
+      required:
+        - species
+        - wildLevel
+
+    ExploreResult:
+      type: object
+      properties:
+        newPosX:
+          type: number
+        newPosY:
+          type: number
+        newTile:
+          type: boolean
+        encounterTriggered:
+          type: boolean
+        encounter:
+          oneOf:
+            - $ref: "#/components/schemas/EncounterDetails"
+            - type: "null"
+        explorerXpGained:
+          type: number
+        coinsGained:
+          type: number
+        energyCost:
+          type: number
+        remainingEnergy:
+          type: number
+        secretEvent:
+          type: ["string", "null"]
+      required:
+        - newPosX
+        - newPosY
+        - newTile
+        - encounterTriggered
+        - explorerXpGained
+        - coinsGained
+        - energyCost
+        - remainingEnergy
+
+    # INVENTORY
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [orb, energy, heal, evolution, key]
+        quantity:
+          type: number
+        description:
+          type: string
+        orbType:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - type
+        - quantity
+        - description
+
+    Inventory:
+      type: object
+      properties:
+        playerId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryItem"
+        coins:
+          type: number
+        totalOrbs:
+          type: number
+      required:
+        - playerId
+        - items
+        - coins
+        - totalOrbs
+
+    UseItemInput:
+      type: object
+      properties:
+        itemId:
+          type: string
+        targetCapturedMonsterId:
+          type: ["string", "null"]
+      required:
+        - itemId
+
+    UseItemResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        updatedMonster:
+          oneOf:
+            - $ref: "#/components/schemas/CapturedMonster"
+            - type: "null"
+        energyRestored:
+          type: ["number", "null"]
+      required:
+        - success
+        - message
+
+    # LEADERBOARD
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: number
+        playerId:
+          type: string
+        username:
+          type: string
+        avatarColor:
+          type: string
+        score:
+          type: number
+        explorerLevel:
+          type: ["number", "null"]
+        monstersCaptured:
+          type: ["number", "null"]
+        tilesExplored:
+          type: ["number", "null"]
+        pvpWins:
+          type: ["number", "null"]
+      required:
+        - rank
+        - playerId
+        - username
+        - avatarColor
+        - score
+
+    Leaderboard:
+      type: object
+      properties:
+        type:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+        updatedAt:
+          type: string
+      required:
+        - type
+        - entries
+        - updatedAt

@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Monster Realms Online"
+version = "1.0.0"
+id = "artifacts/monster-realms"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19187
+
+[services.development]
+run = "pnpm --filter @workspace/monster-realms run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/monster-realms", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/monster-realms/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19187"
+BASE_PATH = "/"
