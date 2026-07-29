@@ -2,6 +2,7 @@ import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initializeSocket } from "./lib/socket";
+import { seedOnStartup } from "./lib/seedOnStartup.js";
 
 const rawPort = process.env["PORT"];
 
@@ -26,4 +27,8 @@ httpServer.listen(port, (err?: Error) => {
     process.exit(1);
   }
   logger.info({ port }, "Server listening");
+  // Run seed check after the server is up so the port is open before we hit the DB.
+  seedOnStartup().catch((e) =>
+    logger.warn({ err: e }, "seedOnStartup threw unexpectedly"),
+  );
 });
