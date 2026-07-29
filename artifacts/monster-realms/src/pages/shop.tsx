@@ -224,7 +224,7 @@ export default function Shop() {
 
     setBuying(orbType);
     try {
-      const sig = await sendSolPayment(status.treasury, total);
+      const sig = await sendSolPayment(status.treasury, total, (status as any).rpcUrl);
       const r = await fetch('/api/shop/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },

@@ -10,8 +10,8 @@ import {
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 
-export const SOLANA_NETWORK = 'mainnet-beta';
-export const SOLANA_RPC     = 'https://api.mainnet-beta.solana.com';
+export const SOLANA_NETWORK = 'mainnet-beta'; // overridden at runtime by shop status
+export const DEFAULT_RPC    = 'https://api.mainnet-beta.solana.com';
 
 export function getPhantom() {
   const p = (window as any).phantom?.solana;
@@ -45,12 +45,13 @@ export function getConnectedWallet(): string | null {
 export async function sendSolPayment(
   toAddress: string,
   solAmount: number,
+  rpcUrl?: string,
 ): Promise<string> {
   const phantom = getPhantom();
   if (!phantom) throw new Error('Phantom not installed');
   if (!phantom.isConnected || !phantom.publicKey) throw new Error('Wallet not connected');
 
-  const connection = new Connection(SOLANA_RPC, 'confirmed');
+  const connection = new Connection(rpcUrl ?? DEFAULT_RPC, 'confirmed');
   const fromPubkey = new PublicKey(phantom.publicKey.toString());
   const toPubkey   = new PublicKey(toAddress);
   const lamports   = Math.round(solAmount * LAMPORTS_PER_SOL);

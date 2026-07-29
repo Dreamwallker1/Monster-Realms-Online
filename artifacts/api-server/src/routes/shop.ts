@@ -26,7 +26,9 @@ const VALID_ORBS = Object.keys(ORB_CONFIG) as OrbType[];
 const FREE_REFRESH_MS = 8 * 60 * 60 * 1000; // 8 hours
 
 // Solana connection
-const SOLANA_RPC = process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com";
+const SOLANA_NETWORK = process.env.SOLANA_NETWORK ?? "mainnet-beta";
+const SOLANA_RPC = process.env.SOLANA_RPC_URL
+  ?? (SOLANA_NETWORK === "devnet" ? "https://api.devnet.solana.com" : "https://api.mainnet-beta.solana.com");
 const TREASURY   = process.env.TREASURY_WALLET_ADDRESS ?? "";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -114,6 +116,8 @@ router.get("/shop/status", requireAuth, async (req, res): Promise<void> => {
     msUntilRefresh,
     solanaWallet: player.solanaWallet ?? null,
     treasury: TREASURY || null,
+    network: SOLANA_NETWORK,
+    rpcUrl: SOLANA_RPC,
     orbConfig: ORB_CONFIG,
   });
 });

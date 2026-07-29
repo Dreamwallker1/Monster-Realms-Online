@@ -18,3 +18,10 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+SOLANA_NETWORK = "dd"
+SOLANA_RPC_URL = "dd"
+TREASURY_WALLET_ADDRESS = "dd"
