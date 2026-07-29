@@ -45,7 +45,7 @@ export default class WorldScene extends Phaser.Scene {
     this.playerColor = data.playerColor;
     this.onMove = data.onMove;
     this.onRadarUpdate = data.onRadarUpdate;
-    this.exploredTiles = data.exploredTiles;
+    this.exploredTiles = data.exploredTiles ?? new Set();
   }
   
   create() {
