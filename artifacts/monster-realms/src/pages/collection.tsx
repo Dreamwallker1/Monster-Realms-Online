@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useGameStore } from '@/store/game-store';
 import { useGetPlayerCollection } from '@workspace/api-client-react';
+import type { CapturedMonster } from '@workspace/api-client-react';
 import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
 import { MythSvgIcon } from '@/lib/myth-svgs';
+import { MythDetailModal } from '@/components/MythDetailModal';
 import { ArrowLeft, Search } from 'lucide-react';
 
 export default function Collection() {
@@ -15,6 +17,7 @@ export default function Collection() {
   const [elementFilter, setElementFilter] = useState<string>('');
   const [rarityFilter, setRarityFilter] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [selectedMonster, setSelectedMonster] = useState<CapturedMonster | null>(null);
   
   const { data: collection, isLoading } = useGetPlayerCollection(player?.id || '', {
     params: {
@@ -123,11 +126,12 @@ export default function Collection() {
             return (
               <div
                 key={monster.id}
-                className="glass-panel p-4 rounded-2xl space-y-3 hover:scale-105 transition-transform cursor-pointer"
+                className="glass-panel p-4 rounded-2xl space-y-3 hover:scale-105 transition-transform cursor-pointer active:scale-100"
                 style={{
                   animationDelay: `${i * 50}ms`,
                 }}
                 data-testid={`monster-card-${monster.id}`}
+                onClick={() => setSelectedMonster(monster)}
               >
                 <div className="flex justify-center">
                   <MythSvgIcon
@@ -181,6 +185,13 @@ export default function Collection() {
           })}
         </div>
       )}
+
+      {/* Detail modal */}
+      <MythDetailModal
+        monster={selectedMonster}
+        playerId={player?.id || ''}
+        onClose={() => setSelectedMonster(null)}
+      />
     </div>
   );
 }
