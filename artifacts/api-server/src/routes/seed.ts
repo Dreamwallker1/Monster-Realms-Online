@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { monsterSpeciesTable, regionsTable } from "@workspace/db";
+import { monsterSpeciesTable, regionsTable, capturedMonstersTable, battlesTable } from "@workspace/db";
 import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 import { REGION_SEED_DATA } from "../lib/regionData.js";
 
@@ -13,7 +13,13 @@ router.post("/seed", async (_req, res): Promise<void> => {
     return;
   }
 
-  // Upsert monster species
+  // Wipe player data that references species IDs (captured monsters & battles)
+  // so we can safely replace all species without FK violations
+  await db.delete(battlesTable);
+  await db.delete(capturedMonstersTable);
+  await db.delete(monsterSpeciesTable);
+
+  // Insert all monster species fresh
   for (const monster of MONSTER_SEED_DATA) {
     await db
       .insert(monsterSpeciesTable)

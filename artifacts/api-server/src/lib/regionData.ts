@@ -10,9 +10,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "seed-sprite", "leaf-ferret", "vine-pup", "moss-crab", "petal-bee",
-      "root-mole", "fern-hatchling", "sprout-sprite",
-      "bloom-guardian", "grove-hawk",
+      // Nature C
+      "leaflet", "sprouti", "brambix", "cloverit", "fernkit",
+      // Nature B
+      "bloombo", "fernix", "grasspin",
+      // Nature A
+      "leafenix", "wildbud",
+      // Nature S
+      "verdantis",
     ],
   },
   {
@@ -24,9 +29,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "cinder-pup", "flame-wisp", "ash-lizard", "ember-crab", "scorch-moth",
-      "pyro-toad", "torch-kit", "blaze-sprite",
-      "magmar-wolf", "inferno-bat", "lava-serpent", "char-wyvern",
+      // Fire C
+      "sparkub", "flammi", "torchip", "kindleo", "firette",
+      // Fire B
+      "flareonix", "magmaroo", "lavabit", "pyrehorn",
+      // Fire A
+      "blazion", "volcanix", "fireclaw",
+      // Fire S
+      "pyrorax",
     ],
   },
   {
@@ -38,9 +48,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "cinder-pup", "ash-lizard", "torch-kit", "blaze-sprite",
-      "forge-golem", "scorched-mantis", "lava-serpent",
-      "volcanus", "pyro-titan", "magma-basilisk", "cinder-phoenix",
+      // Fire C
+      "sparkub", "torchip", "blazibit", "seatpur", "emberkit",
+      // Fire B
+      "flareonix", "cinderoar", "burnyx", "pyrehorn",
+      // Fire A
+      "blazion", "emberwolf", "fireclaw",
+      // Fire S
+      "infernix",
     ],
   },
   {
@@ -52,8 +67,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "tide-pup", "coral-sprite", "brook-turtle", "wave-imp", "reef-hatchling",
-      "surge-hound", "sea-golem", "aqua-guardian", "storm-crab",
+      // Water C
+      "puddleo", "droppi", "fintee", "splashy", "ripplowl", "tinwave",
+      // Water B
+      "shellion", "wavenix", "bubblio",
+      // Water A
+      "coralux", "tidalor",
+      // Water S
+      "aquarion",
     ],
   },
   {
@@ -65,10 +86,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "mist-jellyfish", "stream-otter", "puddle-toad",
-      "deep-ray", "abyssal-eel",
-      "tempest-leviathan", "ocean-titan", "tide-colossus", "abyss-wyrm",
-      "poseidon-serpent", "thalassa-deity",
+      // Water C
+      "puddleo", "fintee", "octazur", "tinwave", "driplet",
+      // Water B
+      "wavenix", "nereel", "glaciero", "kelpheon",
+      // Water A
+      "marinel", "hydralisk",
+      // Water S
+      "leviaqua",
     ],
   },
   {
@@ -80,9 +105,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "seed-sprite", "leaf-ferret", "vine-pup", "fern-hatchling",
-      "bloom-guardian", "thorn-wolf", "briar-golem", "spore-bat", "canopy-serpent",
-      "ancient-treant", "verdant-titan", "thorn-colossus", "gaia-wyrm",
+      // Nature C
+      "leaflet", "buddle", "mossy", "twiglet",
+      // Nature B
+      "vinegor", "thornbel", "seedleaf",
+      // Nature A
+      "mossfern", "rootora", "wildbud",
+      // Nature S
+      "florazar",
     ],
   },
   {
@@ -94,9 +124,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "spark-kit", "zap-moth", "volt-hatchling", "arc-sprite",
-      "static-crab", "buzz-bee", "jolt-lizard", "charge-pup",
-      "thunder-wolf", "storm-bat", "storm-serpent", "arc-golem", "lightning-hawk",
+      // Electric C
+      "zaplet", "zipbee", "boltin", "sparkit", "charglet", "voltspark",
+      // Electric B
+      "shockip", "elekio", "statichu",
+      // Electric A
+      "thundkit",
+      // Electric S
+      "voltiger",
     ],
   },
   {
@@ -108,10 +143,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 45,
     height: 45,
     monsterSpeciesIds: [
-      "volt-hatchling", "static-crab", "jolt-lizard",
-      "plasma-ray", "storm-serpent",
-      "storm-colossus", "galvanos", "tempest-titan", "arc-leviathan",
-      "zeus-wyrm", "thunder-deity",
+      // Electric C
+      "zaplet", "electrix", "wattspy",
+      // Electric B
+      "voltyk", "amphare", "joltoll", "statichu",
+      // Electric A
+      "sparko", "lumirae", "chargeon",
+      // Electric S
+      "zapdrix", "voltiger",
     ],
   },
   {
@@ -123,9 +162,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 50,
     height: 50,
     monsterSpeciesIds: [
-      "shadow-imp", "gloom-wisp", "dusk-ferret", "night-crab",
-      "umbra-moth", "murk-toad",
-      "void-stalker", "shadow-bat", "dusk-serpent", "gloom-golem", "eclipse-hawk",
+      // Dark C
+      "darkit", "inko", "shadeek", "nyxie", "scuppi", "shadowpup",
+      // Dark B
+      "grimclaw", "spectrix", "eclipseer", "murkrowl",
+      // Dark A
+      "shadowlurk", "duskhowl", "voidraven",
+      // Dark S
+      "umbraeon",
     ],
   },
   {
@@ -137,10 +181,14 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     width: 40,
     height: 40,
     monsterSpeciesIds: [
-      "dark-sprite", "shade-hatchling", "dusk-ferret",
-      "nightmare-specter",
-      "abyssal-wraith", "void-titan", "dark-colossus", "shadow-leviathan",
-      "erebus-entity", "void-deity",
+      // Dark C
+      "darkit", "gloombat", "wispurr",
+      // Dark B
+      "nightfang", "dreadimp", "eclipseer",
+      // Dark A
+      "maligno", "voidraven",
+      // Dark S
+      "noctiris",
     ],
   },
 ];
