@@ -375,6 +375,7 @@ export const BattleActionInputAction = {
   ultimate: 'ultimate',
   capture: 'capture',
   flee: 'flee',
+  switch: 'switch',
 } as const;
 
 /**
@@ -397,6 +398,7 @@ export interface BattleActionInput {
   action: BattleActionInputAction;
   /** @nullable */
   orbType?: BattleActionInputOrbType;
+  switchToMonsterId?: string;
 }
 
 export interface Region {

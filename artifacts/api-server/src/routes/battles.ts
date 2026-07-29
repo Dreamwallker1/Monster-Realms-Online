@@ -261,7 +261,126 @@ router.post(
     const skills = (wildSpecies.skills as { name: string; type: string; element: string; power: number; accuracy: number }[]);
     const playerSkills = (playerSpecies.skills as typeof skills);
 
-    if (action === "flee") {
+    if (action === "switch") {
+      const switchToId = body.data.switchToMonsterId;
+      if (!switchToId) {
+        res.status(400).json({ error: "switchToMonsterId is required for switch action" });
+        return;
+      }
+      const [switchTarget] = await db
+        .select()
+        .from(capturedMonstersTable)
+        .where(
+          and(
+            eq(capturedMonstersTable.id, switchToId),
+            eq(capturedMonstersTable.playerId, battle.playerId),
+          ),
+        );
+      if (!switchTarget) {
+        res.status(404).json({ error: "Switch target not found" });
+        return;
+      }
+      if (switchTarget.currentHp <= 0) {
+        res.status(400).json({ error: "That myth has fainted and cannot battle" });
+        return;
+      }
+      if (switchTarget.id === battle.playerCapturedId) {
+        res.status(400).json({ error: "That myth is already in battle" });
+        return;
+      }
+
+      // Save current player monster's HP before switching
+      await db
+        .update(capturedMonstersTable)
+        .set({ currentHp: playerHp })
+        .where(eq(capturedMonstersTable.id, playerCaptured.id));
+
+      log.push({
+        turn: battle.turn,
+        actor: "player",
+        action: "switch",
+        description: `Come back, ${playerCaptured.nickname ?? playerSpecies.name}! Go, ${switchTarget.nickname ?? (await db.select().from(monsterSpeciesTable).where(eq(monsterSpeciesTable.id, switchTarget.speciesId)).then(([s]) => s?.name ?? 'Unknown'))}!`,
+        damageDealt: null,
+        critical: false,
+      });
+
+      // Wild monster attacks the incoming myth
+      const wildNormalSkill = skills.find((s) => s.type === "normal");
+      const wildSkillPower = wildNormalSkill?.power ?? 40;
+      const wildSkillName = wildNormalSkill?.name ?? "Attack";
+      const wildSkillElement = wildNormalSkill?.element ?? wildSpecies.element;
+
+      const [switchTargetSpecies] = await db
+        .select()
+        .from(monsterSpeciesTable)
+        .where(eq(monsterSpeciesTable.id, switchTarget.speciesId));
+
+      if (!switchTargetSpecies) {
+        res.status(500).json({ error: "Switch target species not found" });
+        return;
+      }
+
+      const wCrit = rollCritical();
+      const wMult = getElementMultiplier(wildSkillElement, switchTargetSpecies.element);
+      const wDmg = calculateDamage(
+        battle.wildAttack,
+        switchTarget.defense,
+        wildSkillPower,
+        wMult,
+        wCrit,
+      );
+      const newSwitchHp = Math.max(0, switchTarget.currentHp - wDmg);
+
+      log.push({
+        turn: battle.turn,
+        actor: "wild",
+        action: wildSkillName,
+        description: `Wild ${wildSpecies.name} used ${wildSkillName} on ${switchTarget.nickname ?? switchTargetSpecies.name} dealing ${wDmg} damage!`,
+        damageDealt: wDmg,
+        critical: wCrit,
+      });
+
+      if (newSwitchHp <= 0) {
+        newStatus = "lost";
+        const [p] = await db
+          .select({ battlesLost: playersTable.battlesLost })
+          .from(playersTable)
+          .where(eq(playersTable.id, battle.playerId));
+        await db
+          .update(playersTable)
+          .set({ battlesLost: (p?.battlesLost ?? 0) + 1 })
+          .where(eq(playersTable.id, battle.playerId));
+      }
+
+      // Persist new monster's HP
+      await db
+        .update(capturedMonstersTable)
+        .set({ currentHp: newSwitchHp })
+        .where(eq(capturedMonstersTable.id, switchTarget.id));
+
+      const [updatedBattle] = await db
+        .update(battlesTable)
+        .set({
+          status: newStatus,
+          turn: battle.turn + 1,
+          playerCapturedId: switchTarget.id,
+          playerCurrentHp: newSwitchHp,
+          log,
+        })
+        .where(eq(battlesTable.id, battle.id))
+        .returning();
+
+      res.json(
+        PerformBattleActionResponse.parse(
+          formatBattle(
+            updatedBattle!,
+            wildSpecies,
+            { captured: switchTarget, species: switchTargetSpecies },
+          ),
+        ),
+      );
+      return;
+    } else if (action === "flee") {
       const fleeChance = playerCaptured.speed > battle.wildSpeed ? 0.9 : 0.5;
       if (Math.random() < fleeChance) {
         newStatus = "fled";

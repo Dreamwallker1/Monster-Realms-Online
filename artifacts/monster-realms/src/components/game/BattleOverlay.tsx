@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/store/game-store';
-import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey } from '@workspace/api-client-react';
+import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey, useGetPlayerCollection } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getElementColors, QUALITY_LABEL } from '@/lib/element-colors';
 import { getCharacter } from '@/lib/characters';
 import type { CharacterConfig } from '@/lib/characters';
 import { MythSvgIcon } from '@/lib/myth-svgs';
 import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-chart';
-import { Swords, Zap, Package, Wind } from 'lucide-react';
+import { Swords, Zap, Package, Wind, RefreshCw, X } from 'lucide-react';
 
 // ─── Region Environment Themes ─────────────────────────────────────────────────
 
@@ -330,12 +330,15 @@ export default function BattleOverlay() {
   const { battle, endBattle, updateBattle, characterType, player } = useGameStore();
   const queryClient = useQueryClient();
 
-  const [wildShake, setWildShake]     = useState(0);
-  const [playerShake, setPlayerShake] = useState(0);
-  const [captureMsg, setCaptureMsg]   = useState<string | null>(null);
+  const [wildShake, setWildShake]         = useState(0);
+  const [playerShake, setPlayerShake]     = useState(0);
+  const [captureMsg, setCaptureMsg]       = useState<string | null>(null);
+  const [showSwitchPanel, setShowSwitchPanel] = useState(false);
+  const [switchAnimKey, setSwitchAnimKey] = useState(0);
 
-  const prevWildHp   = useRef<number | null>(null);
-  const prevPlayerHp = useRef<number | null>(null);
+  const prevWildHp      = useRef<number | null>(null);
+  const prevPlayerHp    = useRef<number | null>(null);
+  const prevCapturedId  = useRef<string | null>(null);
 
   const { data: battleData } = useGetBattle(battle.battleId || '', {
     query: {
@@ -343,6 +346,10 @@ export default function BattleOverlay() {
       queryKey: getGetBattleQueryKey(battle.battleId || ''),
       refetchInterval: battle.active ? 1200 : false,
     },
+  });
+
+  const { data: teamCollection } = useGetPlayerCollection(player?.id ?? '', undefined, {
+    query: { enabled: !!player?.id && battle.active },
   });
 
   const performAction = usePerformBattleAction();
@@ -360,8 +367,15 @@ export default function BattleOverlay() {
     if (prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
       setPlayerShake((k) => k + 1);
     }
-    prevWildHp.current   = wd.currentHp;
-    prevPlayerHp.current = pd.currentHp;
+
+    // Detect myth switch for entrance animation
+    if (prevCapturedId.current !== null && pd.capturedId !== prevCapturedId.current) {
+      setSwitchAnimKey((k) => k + 1);
+    }
+
+    prevWildHp.current     = wd.currentHp;
+    prevPlayerHp.current   = pd.currentHp;
+    prevCapturedId.current = pd.capturedId ?? null;
 
     updateBattle(battleData);
     if (battleData.status !== 'active') {
@@ -401,6 +415,21 @@ export default function BattleOverlay() {
       }
     } catch (err) {
       console.error('Battle action failed:', err);
+    }
+  };
+
+  const handleSwitch = async (capturedId: string) => {
+    if (!battle.battleId || isPending || isOver) return;
+    setShowSwitchPanel(false);
+    try {
+      const updated = await performAction.mutateAsync({
+        battleId: battle.battleId,
+        data: { action: 'switch', orbType: null, switchToMonsterId: capturedId },
+      });
+      updateBattle(updated);
+      queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
+    } catch (err) {
+      console.error('Switch myth failed:', err);
     }
   };
 
@@ -522,6 +551,7 @@ export default function BattleOverlay() {
 
         {/* Player Myth — RIGHT FRONT */}
         <div
+          key={switchAnimKey}
           className="absolute flex flex-col items-center battle-entrance"
           style={{ bottom: '36%', right: '8%', animationDelay: '0.1s', zIndex: 2 }}
         >
@@ -536,6 +566,119 @@ export default function BattleOverlay() {
             shakeKey={playerShake}
           />
         </div>
+
+        {/* ── Switch Myth Panel Overlay ──────────────────────────────────── */}
+        {showSwitchPanel && !isOver && (
+          <div
+            className="absolute inset-0 flex flex-col"
+            style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)', zIndex: 20 }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <span className="text-sm font-bold text-white/90 tracking-wider uppercase">Switch Myth</span>
+              <button
+                onClick={() => setShowSwitchPanel(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                <X size={14} className="text-white/70" />
+              </button>
+            </div>
+            <p className="px-4 pb-3 text-[11px] text-white/40">Choose a myth to send out. Fainted myths cannot battle.</p>
+
+            {/* Team list */}
+            <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-2">
+              {(teamCollection ?? []).filter(m => m.inTeam).map(m => {
+                const isActive  = m.id === playerMonster.capturedId;
+                const isFainted = m.currentHp <= 0;
+                const elColors  = getElementColors(m.species.element);
+                const hpPct     = Math.max(0, Math.min(100, (m.currentHp / m.maxHp) * 100));
+                const barColor  = hpPct > 50 ? '#22C55E' : hpPct > 20 ? '#EAB308' : '#EF4444';
+                const displayName = m.nickname ?? m.species.name;
+
+                return (
+                  <button
+                    key={m.id}
+                    disabled={isActive || isFainted || isPending}
+                    onClick={() => handleSwitch(m.id)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.98]"
+                    style={{
+                      background: isActive
+                        ? `linear-gradient(135deg, ${elColors.primary}22, ${elColors.primary}11)`
+                        : isFainted
+                          ? 'rgba(255,255,255,0.03)'
+                          : 'rgba(255,255,255,0.07)',
+                      border: isActive
+                        ? `1.5px solid ${elColors.primary}55`
+                        : isFainted
+                          ? '1.5px solid rgba(255,255,255,0.06)'
+                          : '1.5px solid rgba(255,255,255,0.12)',
+                      opacity: isFainted ? 0.45 : 1,
+                      cursor: isActive || isFainted ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {/* Myth icon */}
+                    <div
+                      className="shrink-0 rounded-lg overflow-hidden flex items-center justify-center"
+                      style={{
+                        width: 44, height: 44,
+                        background: isFainted ? 'rgba(0,0,0,0.4)' : `${elColors.primary}18`,
+                        border: `1px solid ${elColors.primary}33`,
+                        filter: isFainted ? 'grayscale(1)' : undefined,
+                      }}
+                    >
+                      <MythSvgIcon mythId={m.species.id} element={m.species.element} rarity={m.species.rarity} size={36} />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-sm text-white/90 truncate">{displayName}</span>
+                        <span className="text-[10px] text-white/40 font-mono shrink-0">Lv.{m.level}</span>
+                        {isActive && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                            style={{ background: `${elColors.primary}33`, color: elColors.primary }}>
+                            Active
+                          </span>
+                        )}
+                        {isFainted && (
+                          <span className="text-[9px] font-bold text-red-400/70 shrink-0">Fainted</span>
+                        )}
+                      </div>
+                      {/* HP bar */}
+                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${hpPct}%`,
+                            background: isFainted ? '#555' : `linear-gradient(90deg, ${barColor}cc, ${barColor})`,
+                            transition: 'width 0.4s ease',
+                          }}
+                        />
+                      </div>
+                      <div className="mt-0.5 text-[9px] font-mono text-white/35">{m.currentHp}/{m.maxHp} HP</div>
+                    </div>
+
+                    {/* Element badge */}
+                    <div
+                      className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: `${elColors.primary}22`, color: elColors.primary, border: `1px solid ${elColors.primary}44` }}
+                    >
+                      {m.species.element}
+                    </div>
+                  </button>
+                );
+              })}
+
+              {(teamCollection ?? []).filter(m => m.inTeam).length === 0 && (
+                <div className="text-center text-white/40 text-sm py-8">
+                  No myths in your team.<br/>
+                  <span className="text-[11px]">Add myths to your team from the Collection.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── End-of-battle result overlay ────────────────────────────────── */}
         {isOver && (
@@ -624,7 +767,9 @@ export default function BattleOverlay() {
         }}
       >
         {!isOver ? (
-          <div className="grid grid-cols-2 gap-2.5 h-full">
+          <div className="flex flex-col gap-2">
+            {/* Top row: Attack + Skill */}
+            <div className="grid grid-cols-2 gap-2.5">
             {/* Attack */}
             <button
               onClick={() => handleAction('attack')}
@@ -635,7 +780,7 @@ export default function BattleOverlay() {
                 border: '1.5px solid #22D3EE55',
                 boxShadow: '0 0 18px rgba(34,211,238,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                 color: 'white',
-                minHeight: 52,
+                minHeight: 48,
               }}
               data-testid="button-attack"
             >
@@ -653,52 +798,74 @@ export default function BattleOverlay() {
                 border: '1.5px solid #A78BFA55',
                 boxShadow: '0 0 18px rgba(167,139,250,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                 color: 'white',
-                minHeight: 52,
+                minHeight: 48,
               }}
               data-testid="button-skill"
             >
               <Zap size={16} />
               <span>Skill</span>
             </button>
+            </div>
 
+            {/* Bottom row: Throw Orb + Switch Myth + Flee */}
+            <div className="grid grid-cols-3 gap-2">
             {/* Throw Orb */}
             <button
               onClick={() => handleAction('capture')}
               disabled={isPending}
-              className="relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
+              className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
               style={{
                 background: 'linear-gradient(135deg, #92400E, #B45309)',
                 border: '1.5px solid #F59E0B55',
                 boxShadow: '0 0 18px rgba(245,158,11,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                 color: '#FDE68A',
-                minHeight: 52,
+                minHeight: 44,
               }}
               data-testid="button-capture-battle"
             >
-              <Package size={16} />
+              <Package size={14} />
               <span>Throw Orb</span>
               {wildHpPct < 30 && (
                 <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
               )}
             </button>
 
+            {/* Switch Myth */}
+            <button
+              onClick={() => setShowSwitchPanel(true)}
+              disabled={isPending}
+              className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
+              style={{
+                background: 'linear-gradient(135deg, #065F46, #047857)',
+                border: '1.5px solid #34D39955',
+                boxShadow: '0 0 14px rgba(52,211,153,0.25), inset 0 1px 0 rgba(255,255,255,0.12)',
+                color: '#6EE7B7',
+                minHeight: 44,
+              }}
+              data-testid="button-switch-myth"
+            >
+              <RefreshCw size={14} />
+              <span>Switch</span>
+            </button>
+
             {/* Flee */}
             <button
               onClick={() => handleAction('flee')}
               disabled={isPending}
-              className="relative flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50"
+              className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
               style={{
                 background: 'linear-gradient(135deg, rgba(30,30,60,0.9), rgba(20,20,45,0.95))',
                 border: '1.5px solid rgba(255,255,255,0.12)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
                 color: 'rgba(255,255,255,0.6)',
-                minHeight: 52,
+                minHeight: 44,
               }}
               data-testid="button-flee"
             >
               <Wind size={16} />
               <span>Flee</span>
             </button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3">

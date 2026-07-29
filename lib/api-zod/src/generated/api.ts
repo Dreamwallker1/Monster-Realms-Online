@@ -942,8 +942,9 @@ export const PerformBattleActionParams = zod.object({
 })
 
 export const PerformBattleActionBody = zod.object({
-  "action": zod.enum(['attack', 'skill1', 'skill2', 'ultimate', 'capture', 'flee']),
-  "orbType": zod.union([zod.literal('Basic'),zod.literal('Explorer'),zod.literal('Hunter'),zod.literal('Elite'),zod.literal('Master'),zod.literal('Celestial'),zod.literal('Infinity'),zod.literal(null)]).nullish()
+  "action": zod.enum(['attack', 'skill1', 'skill2', 'ultimate', 'capture', 'flee', 'switch']),
+  "orbType": zod.union([zod.literal('Basic'),zod.literal('Explorer'),zod.literal('Hunter'),zod.literal('Elite'),zod.literal('Master'),zod.literal('Celestial'),zod.literal('Infinity'),zod.literal(null)]).nullish(),
+  "switchToMonsterId": zod.string().optional()
 })
 
 export const PerformBattleActionResponse = zod.object({
