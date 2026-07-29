@@ -435,4 +435,92 @@
     100% { transform: translateY(0); opacity: 1; }
   }
   .animate-slide-in-up { animation: slide-in-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+  /* ── Encounter Cinematic Animations ────────────────────────────────── */
+
+  @keyframes enc-flash {
+    0%   { opacity: 0; }
+    18%  { opacity: 0.85; }
+    100% { opacity: 0; }
+  }
+  .enc-flash { animation: enc-flash 0.55s ease-out forwards; pointer-events: none; }
+
+  @keyframes enc-backdrop {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .enc-backdrop { animation: enc-backdrop 0.35s ease-out forwards; }
+
+  @keyframes enc-card-rise {
+    0%   { opacity: 0; transform: translateY(60px) scale(0.94); }
+    60%  { opacity: 1; transform: translateY(-6px) scale(1.01); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .enc-card-rise { animation: enc-card-rise 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+
+  @keyframes enc-myth-burst {
+    0%   { opacity: 0; transform: scale(0.3) translateY(30px); }
+    50%  { opacity: 1; transform: scale(1.12) translateY(-8px); }
+    75%  { transform: scale(0.96) translateY(2px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .enc-myth-burst { animation: enc-myth-burst 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s both; }
+
+  @keyframes enc-label-drop {
+    0%   { opacity: 0; transform: translateY(-18px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .enc-label-drop { animation: enc-label-drop 0.4s ease-out 0.55s both; }
+
+  @keyframes enc-name-pop {
+    0%   { opacity: 0; transform: scale(0.7) translateY(12px); }
+    65%  { transform: scale(1.06) translateY(-3px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .enc-name-pop { animation: enc-name-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.7s both; }
+
+  @keyframes enc-badges-in {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .enc-badges-in { animation: enc-badges-in 0.35s ease-out 0.9s both; }
+
+  @keyframes enc-buttons-rise {
+    0%   { opacity: 0; transform: translateY(24px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .enc-buttons-rise { animation: enc-buttons-rise 0.4s ease-out 1.05s both; }
+
+  /* particle: float up and fade (fire embers, water bubbles, nature spores) */
+  @keyframes enc-p-rise {
+    0%   { transform: translateY(0) scale(1) rotate(0deg);   opacity: 0.9; }
+    80%  { opacity: 0.6; }
+    100% { transform: translateY(-130px) scale(0.1) rotate(40deg); opacity: 0; }
+  }
+  /* particle: burst outward from center (electric sparks) */
+  @keyframes enc-p-burst-0  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate( 90px,-40px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-1  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(-90px,-40px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-2  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate( 60px,-90px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-3  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(-60px,-90px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-4  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(100px,  10px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-5  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(-100px, 10px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-6  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate( 40px,-110px) scale(0);opacity:0} }
+  @keyframes enc-p-burst-7  { 0%{transform:translate(0,0) scale(1);opacity:1} 100%{transform:translate(-40px,-110px) scale(0);opacity:0} }
+  /* particle: wisp drift (dark) */
+  @keyframes enc-p-wisp {
+    0%   { transform: translate(0,0) scale(1) rotate(0deg);   opacity: 0.7; }
+    50%  { opacity: 0.5; }
+    100% { transform: translate(var(--wx,20px), var(--wy,-80px)) scale(0.2) rotate(200deg); opacity: 0; }
+  }
+  /* particle: leaf tumble */
+  @keyframes enc-p-leaf {
+    0%   { transform: translate(0,0) rotate(0deg) scale(1);   opacity: 0.9; }
+    100% { transform: translate(var(--lx,40px), -110px) rotate(var(--lr,180deg)) scale(0.3); opacity: 0; }
+  }
+  /* shiny sparkle orbit */
+  @keyframes enc-shiny-spin {
+    0%   { transform: rotate(0deg) translateX(110px) rotate(0deg); opacity: 1; }
+    100% { transform: rotate(360deg) translateX(110px) rotate(-360deg); opacity: 1; }
+  }
+  .enc-shiny-orbit { animation: enc-shiny-spin 2.5s linear infinite; }
 }
