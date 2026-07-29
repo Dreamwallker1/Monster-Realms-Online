@@ -7,6 +7,10 @@ const TILE_SIZE = 32;
 const WORLD_WIDTH = 50;
 const WORLD_HEIGHT = 50;
 
+// Module-level ref so DPad can call moveInDirection without forwardRef complexity
+let _activeScene: WorldScene | null = null;
+export function getActiveScene(): WorldScene | null { return _activeScene; }
+
 interface OtherPlayer {
   username: string;
   x: number;
@@ -51,6 +55,8 @@ export default class WorldScene extends Phaser.Scene {
   }
 
   create() {
+    // Register this instance globally so DPad can call moveInDirection directly
+    _activeScene = this;
     this.terrain = generateTerrain(WORLD_WIDTH, WORLD_HEIGHT);
 
     // --- Single graphics object for all terrain (much faster than 2500 objects) ---

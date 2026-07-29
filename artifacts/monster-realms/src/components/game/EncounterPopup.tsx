@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import MonsterPortrait from './MonsterPortrait';
 import { useGameStore } from '@/store/game-store';
 import { useStartBattle, useGetPlayerTeam } from '@workspace/api-client-react';
-import type { MonsterSpecies } from '@workspace/api-client-react';
 import { ELEMENT_COLORS, RARITY_COLORS } from '@/lib/element-colors';
+import { getMonsterEmoji } from '@/lib/monster-emoji';
 import { Swords, Package, AlertCircle } from 'lucide-react';
 
 export default function EncounterPopup() {
@@ -61,13 +60,28 @@ export default function EncounterPopup() {
         }}
       >
         <div className="text-center space-y-4">
+          {/* Monster portrait — large emoji with element glow */}
           <div className="flex justify-center">
-            <MonsterPortrait
-              element={encounter.species.element}
-              size="lg"
-              shinyVariant={encounter.shinyVariant}
-            />
+            <div
+              className="w-28 h-28 rounded-3xl flex items-center justify-center text-6xl"
+              style={{
+                background: `radial-gradient(circle at 40% 35%, ${elementColors.secondary}33, ${elementColors.primary}22)`,
+                border: `2px solid ${elementColors.primary}66`,
+                boxShadow: `0 0 24px ${elementColors.primary}55, inset 0 0 16px ${elementColors.primary}11`,
+                filter: encounter.shinyVariant ? 'drop-shadow(0 0 12px gold)' : undefined,
+              }}
+            >
+              <span style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.6))' }}>
+                {getMonsterEmoji(encounter.species.id, encounter.species.element)}
+              </span>
+            </div>
           </div>
+          {encounter.shinyVariant && (
+            <div className="text-xs font-bold tracking-widest uppercase"
+              style={{ color: '#ffd700', textShadow: '0 0 8px gold' }}>
+              ✨ {encounter.shinyVariant} Shiny!
+            </div>
+          )}
           
           <div>
             <h2 className="text-3xl font-bold" style={{ fontFamily: 'var(--app-font-sans)' }}>

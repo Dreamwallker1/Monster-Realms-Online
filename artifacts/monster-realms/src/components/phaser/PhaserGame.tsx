@@ -1,11 +1,7 @@
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import WorldScene from './WorldScene';
 import type { ExploreInput } from '@workspace/api-client-react';
-
-export interface PhaserGameHandle {
-  moveInDirection: (dx: number, dy: number) => void;
-}
 
 interface PhaserGameProps {
   playerX: number;
@@ -17,20 +13,18 @@ interface PhaserGameProps {
   otherPlayers: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>;
 }
 
-const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(function PhaserGame(
-  { playerX, playerY, characterType, onMove, onRadarUpdate, exploredTiles, otherPlayers },
-  ref,
-) {
+export default function PhaserGame({
+  playerX,
+  playerY,
+  characterType,
+  onMove,
+  onRadarUpdate,
+  exploredTiles,
+  otherPlayers,
+}: PhaserGameProps) {
   const gameRef      = useRef<Phaser.Game | null>(null);
   const sceneRef     = useRef<WorldScene | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Expose moveInDirection to parent (D-pad)
-  useImperativeHandle(ref, () => ({
-    moveInDirection(dx, dy) {
-      sceneRef.current?.moveInDirection(dx, dy);
-    },
-  }));
 
   // Boot game once
   useEffect(() => {
@@ -49,6 +43,7 @@ const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(function Phaser
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
+    // Wait for game ready, then restart scene with real player data
     game.events.once('ready', () => {
       const scene = game.scene.getScene('WorldScene') as WorldScene;
       sceneRef.current = scene;
@@ -87,6 +82,4 @@ const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(function Phaser
   return (
     <div ref={containerRef} className="fixed inset-0 z-0" style={{ width: '100%', height: '100%' }} />
   );
-});
-
-export default PhaserGame;
+}

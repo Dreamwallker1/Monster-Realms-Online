@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import PhaserGame, { type PhaserGameHandle } from '@/components/phaser/PhaserGame';
+import PhaserGame from '@/components/phaser/PhaserGame';
 import GameHUD from '@/components/game/GameHUD';
 import GameSidebar from '@/components/game/GameSidebar';
 import EncounterPopup from '@/components/game/EncounterPopup';
@@ -16,7 +16,6 @@ import { io, Socket } from 'socket.io-client';
 export default function Game() {
   const [, setLocation] = useLocation();
   const socketRef = useRef<Socket | null>(null);
-  const gameRef   = useRef<PhaserGameHandle | null>(null);
 
   const {
     player,
@@ -139,7 +138,6 @@ export default function Game() {
   return (
     <div className="relative w-full h-screen overflow-hidden">
       <PhaserGame
-        ref={gameRef}
         playerX={player.posX}
         playerY={player.posY}
         characterType={characterType}
@@ -162,7 +160,7 @@ export default function Game() {
         </Button>
       </div>
 
-      <DPad gameRef={gameRef} />
+      <DPad />
       <GameHUD />
       <GameSidebar />
       <EncounterPopup />
