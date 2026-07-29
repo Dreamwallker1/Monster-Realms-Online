@@ -42,7 +42,7 @@ export default function Collection() {
           <div>
             <h1 className="text-4xl font-bold">Collection</h1>
             <p className="text-muted-foreground font-mono">
-              {collection?.length || 0} monsters captured
+              {collection?.length || 0} myths captured
             </p>
           </div>
         </div>
@@ -114,8 +114,8 @@ export default function Collection() {
         </div>
       ) : !filteredCollection || filteredCollection.length === 0 ? (
         <div className="glass-panel p-12 rounded-2xl text-center">
-          <p className="text-xl text-muted-foreground">No monsters found</p>
-          <p className="text-sm text-muted-foreground mt-2">Explore the world to capture monsters!</p>
+          <p className="text-xl text-muted-foreground">No myths found</p>
+          <p className="text-sm text-muted-foreground mt-2">Explore the world to capture myths!</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

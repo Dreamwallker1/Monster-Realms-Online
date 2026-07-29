@@ -117,7 +117,7 @@ export default function EncounterPopup() {
           {!team || team.length === 0 ? (
             <div className="flex items-center justify-center gap-2 text-yellow-400 bg-yellow-950/30 p-3 rounded-lg">
               <AlertCircle size={20} />
-              <span className="text-sm font-medium">No monsters in your team! Capture one first.</span>
+              <span className="text-sm font-medium">No myths in your team! Capture one first.</span>
             </div>
           ) : null}
           

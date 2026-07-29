@@ -131,10 +131,10 @@ export default function Landing() {
               </div>
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Monster Realms
+              Mythora
             </h1>
             <p className="text-muted-foreground text-sm">
-              Head outside. Explore the park. Catch 'em all.
+              Discover. Bond. Become legendary.
             </p>
           </div>
 

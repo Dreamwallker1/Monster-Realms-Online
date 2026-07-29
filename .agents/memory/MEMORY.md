@@ -1,2 +1,4 @@
 - [Phaser 4 compatibility](phaser4-compatibility.md) — Graphics.setTint() gone; guard init() with ??; use one Graphics object for all tiles
 - [Monster Realms spawn & movement](monster-realms-movement.md) — player default spawn was inside the pond; terrain must be seeded; Phaser captures DOM events so use window CustomEvent for D-pad
+- [Mythora energy regen](mythora-energy-regen.md) — energy regen added to GET /auth/me; uses updatedAt elapsed; 1 energy/20s; skips DB write if already full
+- [Mythora myth catalogue](mythora-myth-catalogue.md) — 100 myths (5 elements × 20); rarity field stores quality tier C/B/A/S; seed via POST /api/seed; emoji map in monster-emoji.ts

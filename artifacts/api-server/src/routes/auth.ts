@@ -171,7 +171,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   );
 });
 
-// GET /auth/me
+// GET /auth/me — also ticks energy regen (1 energy per 20 seconds of inactivity)
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   const [player] = await db
     .select()
@@ -183,7 +183,23 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetMeResponse.parse(formatPlayer(player)));
+  // Regen energy based on elapsed time since last update
+  const elapsedMs = Date.now() - player.updatedAt.getTime();
+  const regenPerMs = 1 / (20 * 1000); // 1 energy per 20 seconds
+  const regenAmount = Math.floor(elapsedMs * regenPerMs);
+
+  let updatedPlayer = player;
+  if (regenAmount > 0 && player.energy < player.maxEnergy) {
+    const newEnergy = Math.min(player.maxEnergy, player.energy + regenAmount);
+    const [p] = await db
+      .update(playersTable)
+      .set({ energy: newEnergy })
+      .where(eq(playersTable.id, player.id))
+      .returning();
+    if (p) updatedPlayer = p;
+  }
+
+  res.json(GetMeResponse.parse(formatPlayer(updatedPlayer)));
 });
 
 function formatPlayer(p: typeof playersTable.$inferSelect) {
