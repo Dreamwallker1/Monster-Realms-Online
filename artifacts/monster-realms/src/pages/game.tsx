@@ -8,6 +8,7 @@ import EncounterPopup from '@/components/game/EncounterPopup';
 import BattleOverlay from '@/components/game/BattleOverlay';
 import DPad from '@/components/game/DPad';
 import RegionBanner from '@/components/game/RegionBanner';
+import MinimapOverlay from '@/components/game/MinimapOverlay';
 import { useGameStore } from '@/store/game-store';
 import { useGetMe, useExploreTile, type ExploreInput } from '@workspace/api-client-react';
 import { getToken } from '@/lib/auth';
@@ -172,6 +173,7 @@ export default function Game() {
       </div>
 
       <RegionBanner regionId={currentRegionId} isReady={!!me} />
+      <MinimapOverlay />
       <DPad />
       <GameHUD />
       <GameSidebar />
