@@ -543,12 +543,13 @@ router.post(
         const expReward = Math.round(wildSpecies.baseHp * battle.wildLevel * 0.5);
         const coinReward = Math.round(10 + battle.wildLevel * 2);
 
-        // Apply EXP to player monster
+        // Apply EXP to player monster and persist current HP
         const newExp = playerCaptured.experience + expReward;
         const newLevel = playerCaptured.level + Math.floor(newExp / xpForNextLevel(playerCaptured.level));
         await db
           .update(capturedMonstersTable)
           .set({
+            currentHp: playerHp,
             experience: newExp % xpForNextLevel(playerCaptured.level),
             level: Math.min(100, newLevel),
           })
