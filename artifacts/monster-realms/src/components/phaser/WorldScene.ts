@@ -17,6 +17,7 @@ export default class WorldScene extends Phaser.Scene {
   private terrain: TileType[][] = [];
   private tileGraphics: Phaser.GameObjects.Graphics[] = [];
   private fogGraphics?: Phaser.GameObjects.Graphics;
+  private dayNightOverlay?: Phaser.GameObjects.Graphics;
   private player?: Phaser.GameObjects.Container;
   private playerX: number = 25;
   private playerY: number = 25;
@@ -32,20 +33,22 @@ export default class WorldScene extends Phaser.Scene {
     super({ key: 'WorldScene' });
   }
   
-  init(data: { 
+  init(data?: Partial<{ 
     playerX: number; 
     playerY: number; 
     playerColor: string;
     onMove: (input: ExploreInput) => void;
     onRadarUpdate: () => void;
     exploredTiles: Set<string>;
-  }) {
-    this.playerX = data.playerX;
-    this.playerY = data.playerY;
-    this.playerColor = data.playerColor;
-    this.onMove = data.onMove;
-    this.onRadarUpdate = data.onRadarUpdate;
-    this.exploredTiles = data.exploredTiles ?? new Set();
+  }>) {
+    // Phaser calls init({}) on first boot before real props arrive via restart().
+    // Guard every field with ?? so class defaults survive an empty-data first run.
+    this.playerX      = data?.playerX      ?? this.playerX;
+    this.playerY      = data?.playerY      ?? this.playerY;
+    this.playerColor  = data?.playerColor  ?? this.playerColor;
+    this.onMove       = data?.onMove       ?? this.onMove;
+    this.onRadarUpdate = data?.onRadarUpdate ?? this.onRadarUpdate;
+    this.exploredTiles = data?.exploredTiles ?? this.exploredTiles ?? new Set();
   }
   
   create() {
@@ -66,8 +69,13 @@ export default class WorldScene extends Phaser.Scene {
       }
     }
     
+    // Day/night overlay — sits above tiles but below fog and player
+    this.dayNightOverlay = this.add.graphics();
+    this.dayNightOverlay.setDepth(1);
+
     // Create fog of war
     this.fogGraphics = this.add.graphics();
+    this.fogGraphics.setDepth(2);
     this.updateFogOfWar();
     
     // Create player sprite
@@ -90,16 +98,20 @@ export default class WorldScene extends Phaser.Scene {
   }
   
   update() {
-    // Update day/night cycle based on time
+    if (!this.dayNightOverlay) return;
+    // Day/night cycle — repaint a translucent overlay each frame
     const hour = new Date().getHours();
-    let tint = 0xffffff;
-    if (hour < 6 || hour > 20) {
-      tint = 0x4444aa; // Night
-    } else if (hour < 8 || hour > 18) {
-      tint = 0xaa8844; // Dawn/Dusk
+    this.dayNightOverlay.clear();
+    if (hour < 6 || hour >= 21) {
+      // Night — deep blue, 55% opacity
+      this.dayNightOverlay.fillStyle(0x0a0a44, 0.55);
+      this.dayNightOverlay.fillRect(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
+    } else if (hour < 8 || hour >= 18) {
+      // Dawn / Dusk — amber tint, 25% opacity
+      this.dayNightOverlay.fillStyle(0x884422, 0.25);
+      this.dayNightOverlay.fillRect(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
     }
-    
-    this.tileGraphics.forEach(g => g.setTint(tint));
+    // Daytime: clear overlay (no fill)
   }
   
   private handleKeyDown(key: string) {

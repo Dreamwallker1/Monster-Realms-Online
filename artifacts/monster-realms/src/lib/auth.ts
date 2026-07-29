@@ -14,8 +14,6 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-// Configure the API client to use our token
-setAuthTokenGetter(() => {
-  const token = getToken();
-  return token ? `Bearer ${token}` : '';
-});
+// Configure the API client to use our token.
+// custom-fetch prepends "Bearer " automatically — return the raw token only.
+setAuthTokenGetter(() => getToken());

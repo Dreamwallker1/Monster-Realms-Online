@@ -106,7 +106,10 @@ export default function Game() {
     // Radar updates can be polled here
   };
   
-  if (isLoading || !player) {
+  // Show loading only when there is no player yet (e.g. hard-refresh on /game).
+  // If the store already has a player (coming from the landing page), show the
+  // game immediately and let useGetMe refresh in the background.
+  if (!player && isLoading) {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center">
         <div className="text-center">
