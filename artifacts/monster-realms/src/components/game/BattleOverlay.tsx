@@ -450,55 +450,60 @@ export default function BattleOverlay() {
           />
         </div>
 
-        {/* ── Three combatants at ground level ─────────────────────────────── */}
+        {/* ── Combatants — depth-layered absolute positioning ──────────────── */}
+
+        {/* Character — CENTER BACK (smaller, higher = farther away) */}
         <div
-          className="absolute left-0 right-0 flex items-end justify-around px-4 sm:px-10"
-          style={{ bottom: '36%' }}
+          className="absolute battle-entrance battle-idle-bob"
+          style={{
+            bottom: '46%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            animationDelay: '0.2s',
+            zIndex: 1,
+          }}
         >
-          {/* Wild Myth — LEFT */}
-          <div className="flex flex-col items-center battle-entrance" style={{ animationDelay: '0.05s' }}>
-            <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center"
-              style={{ color: wildColors.primary, textShadow: `0 0 10px ${wildColors.glow}` }}
-            >
-              ⚔ Enemy
-            </div>
-            <MythSphere
-              speciesId={wildMonster.species.id}
-              element={wildMonster.species.element}
-              size={110}
-              shakeKey={wildShake}
-              side="left"
-            />
-          </div>
+          <CharacterFront char={char} size={78} />
+          <div style={{
+            width: 48, height: 8, borderRadius: '50%', marginTop: 2, marginLeft: 'auto', marginRight: 'auto',
+            background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 80%)',
+          }} />
+        </div>
 
-          {/* Character — CENTER */}
-          <div className="flex flex-col items-center battle-entrance" style={{ animationDelay: '0.2s' }}>
-            <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
-              Trainer
-            </div>
-            <div className="battle-idle-bob">
-              <CharacterFront char={char} size={110} />
-            </div>
-            {/* Trainer shadow */}
-            <div style={{
-              width: 70, height: 12, borderRadius: '50%', marginTop: 4,
-              background: 'radial-gradient(ellipse, rgba(0,0,0,0.45) 0%, transparent 80%)',
-            }} />
+        {/* Wild Myth — LEFT FRONT */}
+        <div
+          className="absolute flex flex-col items-center battle-entrance"
+          style={{ bottom: '36%', left: '8%', animationDelay: '0.05s', zIndex: 2 }}
+        >
+          <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center"
+            style={{ color: wildColors.primary, textShadow: `0 0 10px ${wildColors.glow}` }}
+          >
+            ⚔ Enemy
           </div>
+          <MythSphere
+            speciesId={wildMonster.species.id}
+            element={wildMonster.species.element}
+            size={110}
+            shakeKey={wildShake}
+            side="left"
+          />
+        </div>
 
-          {/* Player Myth — RIGHT */}
-          <div className="flex flex-col items-center battle-entrance" style={{ animationDelay: '0.1s' }}>
-            <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
-              Your Myth
-            </div>
-            <MythSphere
-              speciesId={playerMonster.species.id}
-              element={playerMonster.species.element}
-              size={100}
-              shakeKey={playerShake}
-              side="right"
-            />
+        {/* Player Myth — RIGHT FRONT */}
+        <div
+          className="absolute flex flex-col items-center battle-entrance"
+          style={{ bottom: '36%', right: '8%', animationDelay: '0.1s', zIndex: 2 }}
+        >
+          <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
+            Your Myth
           </div>
+          <MythSphere
+            speciesId={playerMonster.species.id}
+            element={playerMonster.species.element}
+            size={110}
+            shakeKey={playerShake}
+            side="right"
+          />
         </div>
 
         {/* ── End-of-battle result overlay ────────────────────────────────── */}
