@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/game-store';
 import { Link } from 'wouter';
-import { X, Grid3x3, BookOpen, User, Trophy, LogOut, Trees, ShoppingBag } from 'lucide-react';
+import { X, Grid3x3, BookOpen, User, Trophy, LogOut, Trees, ShoppingBag, Swords } from 'lucide-react';
 import { clearToken } from '@/lib/auth';
 
 export default function GameSidebar() {
@@ -110,6 +110,16 @@ export default function GameSidebar() {
           >
             <ShoppingBag size={20} className="text-violet-400" />
             <span className="font-semibold">Orb Shop</span>
+          </Link>
+
+          <Link
+            href="/tournament"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
+            onClick={() => setSidebarOpen(false)}
+            data-testid="link-tournament"
+          >
+            <Swords size={20} className="text-amber-400" />
+            <span className="font-semibold">⚔️ Arena</span>
           </Link>
         </nav>
         

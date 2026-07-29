@@ -11,6 +11,7 @@ import inventoryRouter from "./inventory";
 import leaderboardRouter from "./leaderboard";
 import seedRouter from "./seed";
 import shopRouter from "./shop";
+import tournamentRouter from "./tournament";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(inventoryRouter);
 router.use(leaderboardRouter);
 router.use(seedRouter);
 router.use(shopRouter);
+router.use(tournamentRouter);
 
 export default router;

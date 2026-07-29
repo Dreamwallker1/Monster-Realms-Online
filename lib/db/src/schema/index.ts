@@ -4,3 +4,4 @@ export * from "./capturedMonsters";
 export * from "./battles";
 export * from "./regions";
 export * from "./inventory";
+export * from "./tournaments";
