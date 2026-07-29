@@ -1,7 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import Phaser from 'phaser';
 import WorldScene from './WorldScene';
 import type { ExploreInput } from '@workspace/api-client-react';
+
+export interface PhaserGameHandle {
+  moveInDirection: (dx: number, dy: number) => void;
+}
 
 interface PhaserGameProps {
   playerX: number;
@@ -13,18 +17,20 @@ interface PhaserGameProps {
   otherPlayers: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>;
 }
 
-export default function PhaserGame({
-  playerX,
-  playerY,
-  characterType,
-  onMove,
-  onRadarUpdate,
-  exploredTiles,
-  otherPlayers,
-}: PhaserGameProps) {
-  const gameRef   = useRef<Phaser.Game | null>(null);
-  const sceneRef  = useRef<WorldScene | null>(null);
+const PhaserGame = forwardRef<PhaserGameHandle, PhaserGameProps>(function PhaserGame(
+  { playerX, playerY, characterType, onMove, onRadarUpdate, exploredTiles, otherPlayers },
+  ref,
+) {
+  const gameRef      = useRef<Phaser.Game | null>(null);
+  const sceneRef     = useRef<WorldScene | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Expose moveInDirection to parent (D-pad)
+  useImperativeHandle(ref, () => ({
+    moveInDirection(dx, dy) {
+      sceneRef.current?.moveInDirection(dx, dy);
+    },
+  }));
 
   // Boot game once
   useEffect(() => {
@@ -43,7 +49,6 @@ export default function PhaserGame({
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
-    // When Phaser is ready, restart the scene with real player data
     game.events.once('ready', () => {
       const scene = game.scene.getScene('WorldScene') as WorldScene;
       sceneRef.current = scene;
@@ -69,21 +74,19 @@ export default function PhaserGame({
     sceneRef.current?.updateOtherPlayers(otherPlayers);
   }, [otherPlayers]);
 
-  // Sync position from server (e.g. after explore API response)
+  // Sync position from server
   useEffect(() => {
     sceneRef.current?.updatePlayerPosition(playerX, playerY);
   }, [playerX, playerY]);
 
-  // Sync character type if it changes
+  // Sync character type
   useEffect(() => {
     sceneRef.current?.updateCharacterType(characterType);
   }, [characterType]);
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 z-0"
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div ref={containerRef} className="fixed inset-0 z-0" style={{ width: '100%', height: '100%' }} />
   );
-}
+});
+
+export default PhaserGame;

@@ -316,21 +316,19 @@ export default class WorldScene extends Phaser.Scene {
 
   // ─── Movement ─────────────────────────────────────────────────────────────
 
-  private handleKeyDown(key: string) {
-    let direction: 'up' | 'down' | 'left' | 'right' | null = null;
-    let newX = this.playerX;
-    let newY = this.playerY;
+  /** Called from keyboard handler and from the React D-pad overlay */
+  public moveInDirection(dx: number, dy: number) {
+    const newX = this.playerX + dx;
+    const newY = this.playerY + dy;
 
-    switch (key.toLowerCase()) {
-      case 'arrowup':    case 'w': direction = 'up';    newY--; break;
-      case 'arrowdown':  case 's': direction = 'down';  newY++; break;
-      case 'arrowleft':  case 'a': direction = 'left';  newX--; break;
-      case 'arrowright': case 'd': direction = 'right'; newX++; break;
-    }
-
-    if (!direction) return;
     if (newX < 0 || newX >= WORLD_WIDTH || newY < 0 || newY >= WORLD_HEIGHT) return;
+
+    // For diagonals, both target tile AND the two corner tiles must be passable
     if (!isPassable(this.terrain[newY]?.[newX] ?? TileType.Tree)) return;
+    if (dx !== 0 && dy !== 0) {
+      if (!isPassable(this.terrain[this.playerY]?.[newX] ?? TileType.Tree)) return;
+      if (!isPassable(this.terrain[newY]?.[this.playerX] ?? TileType.Tree)) return;
+    }
 
     this.playerX = newX;
     this.playerY = newY;
@@ -339,12 +337,35 @@ export default class WorldScene extends Phaser.Scene {
       targets: this.playerContainer,
       x: this.playerX * TILE_SIZE + TILE_SIZE / 2,
       y: this.playerY * TILE_SIZE + TILE_SIZE / 2,
-      duration: 130,
+      duration: 120,
       ease: 'Sine.easeInOut',
     });
 
-    this.onMove?.({ direction, regionId: 'verdant-meadows', posX: this.playerX, posY: this.playerY });
+    // Map dx/dy → API direction (cardinal only for API; diagonals handled locally)
+    const apiDir = this.toApiDirection(dx, dy);
+    this.onMove?.({ direction: apiDir ?? 'up', regionId: 'verdant-meadows', posX: this.playerX, posY: this.playerY });
     this.revealNearbyTiles();
+  }
+
+  private toApiDirection(dx: number, dy: number): 'up' | 'down' | 'left' | 'right' | null {
+    if (dx === 0 && dy === -1) return 'up';
+    if (dx === 0 && dy === 1)  return 'down';
+    if (dx === -1 && dy === 0) return 'left';
+    if (dx === 1 && dy === 0)  return 'right';
+    return null; // diagonal — local only; we still pass posX/posY to server
+  }
+
+  private handleKeyDown(key: string) {
+    // Cardinal
+    if (key === 'ArrowUp'    || key === 'w' || key === 'W' || key === '8') { this.moveInDirection(0, -1);  return; }
+    if (key === 'ArrowDown'  || key === 's' || key === 'S' || key === '2') { this.moveInDirection(0,  1);  return; }
+    if (key === 'ArrowLeft'  || key === 'a' || key === 'A' || key === '4') { this.moveInDirection(-1, 0);  return; }
+    if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === '6') { this.moveInDirection(1,  0);  return; }
+    // Diagonal
+    if (key === 'q' || key === 'Q' || key === '7') { this.moveInDirection(-1, -1); return; }
+    if (key === 'e' || key === 'E' || key === '9') { this.moveInDirection(1,  -1); return; }
+    if (key === 'z' || key === 'Z' || key === '1') { this.moveInDirection(-1,  1); return; }
+    if (key === 'c' || key === 'C' || key === '3') { this.moveInDirection(1,   1); return; }
   }
 
   // ─── Fog of war ───────────────────────────────────────────────────────────
