@@ -293,5 +293,102 @@ function formatPlayer(p: typeof playersTable.$inferSelect) {
   };
 }
 
+// POST /auth/gm-login — instant Game Master account (max level, max everything)
+router.post("/auth/gm-login", async (_req, res): Promise<void> => {
+  const GM_USERNAME = "GameMaster";
+  const GM_COLOR   = "#ffd700"; // gold
+
+  // ── 1. Upsert the GM player with maxed stats ─────────────────────────────
+  let [player] = await db.select().from(playersTable).where(eq(playersTable.username, GM_USERNAME));
+
+  const maxStats = {
+    explorerLevel:      50,
+    explorerXp:         999999,
+    explorerRank:       "Mythic Master",
+    tilesExplored:      9999,
+    energy:             999,
+    maxEnergy:          999,
+    coins:              1000000,
+    monstersDiscovered: 100,
+    monstersCaptured:   100,
+    pvpWins:            999,
+    battlesWon:         999,
+    secretsFound:       99,
+    firstDiscoveries:   50,
+  };
+
+  if (player) {
+    const [updated] = await db
+      .update(playersTable)
+      .set(maxStats)
+      .where(eq(playersTable.id, player.id))
+      .returning();
+    if (updated) player = updated;
+  } else {
+    const passwordHash = await hashPassword("gm_master_secret_" + Date.now());
+    const [inserted] = await db
+      .insert(playersTable)
+      .values({ username: GM_USERNAME, passwordHash, isGuest: false, avatarColor: GM_COLOR, ...maxStats })
+      .returning();
+    if (!inserted) { res.status(500).json({ error: "Failed to create GM player" }); return; }
+    player = inserted;
+  }
+
+  // ── 2. Reset inventory — 999 of everything ───────────────────────────────
+  await db.delete(inventoryItemsTable).where(eq(inventoryItemsTable.playerId, player.id));
+  await db.insert(inventoryItemsTable).values([
+    { playerId: player.id, name: "Void Orb",      type: "orb",  quantity: 999, description: "A legendary orb that can capture any myth.",     orbType: "Void"   },
+    { playerId: player.id, name: "Aether Orb",    type: "orb",  quantity: 999, description: "Rare elemental orb that bends reality.",          orbType: "Aether" },
+    { playerId: player.id, name: "Luna Orb",       type: "orb",  quantity: 999, description: "Moonlit energy for Uncommon myth capture.",       orbType: "Luna"   },
+    { playerId: player.id, name: "Prism Orb",      type: "orb",  quantity: 999, description: "A shimmering orb that captures Common myths.",    orbType: "Prism"  },
+    { playerId: player.id, name: "Healing Herb",   type: "heal", quantity: 999, description: "Restores 30 HP to one monster.",                  orbType: null     },
+  ]);
+
+  // ── 3. Build GM team — best S-tier from each element ────────────────────
+  await db.delete(capturedMonstersTable).where(eq(capturedMonstersTable.playerId, player.id));
+
+  const ELEMENTS = ["Fire", "Water", "Nature", "Electric", "Dark"];
+  const sTierSpecies = await db
+    .select()
+    .from(monsterSpeciesTable)
+    .where(eq(monsterSpeciesTable.rarity, "S"));
+
+  // Pick one per element (cycle if fewer than 6)
+  const picks: typeof sTierSpecies = [];
+  for (const el of ELEMENTS) {
+    const match = sTierSpecies.find(s => s.element === el);
+    if (match) picks.push(match);
+    if (picks.length >= 6) break;
+  }
+  // Fill remaining slots from any S-tier
+  let idx = 0;
+  while (picks.length < 6 && sTierSpecies.length > 0) {
+    picks.push(sTierSpecies[idx % sTierSpecies.length]!);
+    idx++;
+  }
+
+  const GM_LEVEL = 50;
+  const teamInserts = picks.slice(0, 6).map((species, slot) => {
+    const stats = calcStats(species, GM_LEVEL);
+    return {
+      playerId:  player.id,
+      speciesId: species.id,
+      level:     GM_LEVEL,
+      currentHp: stats.hp,
+      maxHp:     stats.hp,
+      attack:    stats.attack,
+      defense:   stats.defense,
+      speed:     stats.speed,
+      inTeam:    true,
+      teamSlot:  slot,
+    };
+  });
+  if (teamInserts.length > 0) await db.insert(capturedMonstersTable).values(teamInserts);
+
+  // ── 4. Return token + player ─────────────────────────────────────────────
+  const token = generateToken(player.id);
+  res.json({ token, player: formatPlayer(player) });
+});
+
 export { formatPlayer };
 export default router;

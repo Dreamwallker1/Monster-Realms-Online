@@ -10,7 +10,7 @@ import { useGameStore } from '@/store/game-store';
 import { CHARACTERS } from '@/lib/characters';
 import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
 import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
-import { Sparkles, ArrowRight, ArrowLeft, User, Package } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, User, Package, Crown } from 'lucide-react';
 
 // ─── SVG character preview ────────────────────────────────────────────────────
 
@@ -81,6 +81,7 @@ export default function Landing() {
   const [starterPack, setStarterPack] = useState<StarterMyth[]>([]);
   const [boxOpened, setBoxOpened] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [gmLoading, setGmLoading] = useState(false);
 
   const guestLogin = useGuestLogin();
   const register = useRegisterPlayer();
@@ -131,6 +132,23 @@ export default function Landing() {
       }
     } catch (error) {
       console.error('Registration failed:', error);
+    }
+  };
+
+  const handleGmLogin = async () => {
+    setGmLoading(true);
+    try {
+      const r = await fetch('/api/auth/gm-login', { method: 'POST' });
+      if (!r.ok) throw new Error('GM login failed');
+      const data = await r.json();
+      setToken(data.token);
+      setPlayer(data.player);
+      setCharacterType(CHARACTERS[0]!.id);
+      setLocation('/game');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGmLoading(false);
     }
   };
 
@@ -188,6 +206,20 @@ export default function Landing() {
                 onClick={() => { setStep('register'); setIsRegistering(true); }}
               >
                 Already have an account? Sign in
+              </button>
+            </div>
+
+            {/* ── Game Master shortcut ── */}
+            <div className="pt-2 border-t border-white/10">
+              <button
+                onClick={handleGmLogin}
+                disabled={gmLoading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/50 transition-all duration-200 group disabled:opacity-50"
+              >
+                <Crown size={15} className="text-yellow-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-semibold text-yellow-300/80 group-hover:text-yellow-300">
+                  {gmLoading ? 'Entering GM mode…' : 'Game Master — skip to max'}
+                </span>
               </button>
             </div>
           </div>
