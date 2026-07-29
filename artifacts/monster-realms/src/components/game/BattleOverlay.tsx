@@ -4,9 +4,10 @@ import { useGameStore } from '@/store/game-store';
 import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getElementColors, QUALITY_LABEL } from '@/lib/element-colors';
-import { getMonsterEmoji } from '@/lib/monster-emoji';
 import { getCharacter } from '@/lib/characters';
 import type { CharacterConfig } from '@/lib/characters';
+import { MythSvgIcon } from '@/lib/myth-svgs';
+import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-chart';
 import { Swords, Zap, Package, Wind } from 'lucide-react';
 
 // ─── Region Environment Themes ─────────────────────────────────────────────────
@@ -193,16 +194,15 @@ function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: nu
   );
 }
 
-// ─── Myth Sphere sprite ─────────────────────────────────────────────────────────
+// ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
-function MythSphere({
-  speciesId, element, size = 110, shakeKey, side,
+function MythSprite({
+  speciesId, element, rarity = 'C', size = 110, shakeKey,
 }: {
-  speciesId: string; element: string; size?: number;
-  shakeKey: number; side: 'left' | 'right';
+  speciesId: string; element: string; rarity?: string;
+  size?: number; shakeKey: number;
 }) {
-  const colors = getElementColors(element);
-  const emoji  = getMonsterEmoji(speciesId, element);
+  const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
 
   useEffect(() => {
@@ -211,37 +211,17 @@ function MythSphere({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Sphere */}
       <div
         key={animKey}
-        className={`relative flex items-center justify-center rounded-full battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
-        style={{
-          width: size, height: size,
-          background: `radial-gradient(circle at 38% 32%, ${colors.secondary}88 0%, ${colors.primary}55 45%, ${colors.primary}22 100%)`,
-          border: `3px solid ${colors.primary}99`,
-          boxShadow: `0 0 30px ${colors.glow}, 0 0 60px ${colors.glow}, inset 0 -6px 12px ${colors.primary}33, inset 0 3px 8px rgba(255,255,255,0.2)`,
-          fontSize: size * 0.42,
-          lineHeight: 1,
-        }}
+        className={`battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
+        style={{ filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined }}
       >
-        {/* Shine spot */}
-        <div
-          className="absolute"
-          style={{
-            top: '14%', left: '22%', width: '30%', height: '20%',
-            borderRadius: '50%',
-            background: 'radial-gradient(ellipse, rgba(255,255,255,0.55) 0%, transparent 100%)',
-          }}
-        />
-        {/* Emoji */}
-        <span style={{ filter: 'drop-shadow(0 3px 8px rgba(0,0,0,0.8)) drop-shadow(0 0 12px rgba(0,0,0,0.4))' }}>
-          {emoji}
-        </span>
+        <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
       </div>
-      {/* Platform oval shadow */}
+      {/* Ground shadow */}
       <div style={{
-        width: size * 0.75, height: 14, borderRadius: '50%', marginTop: 6,
-        background: 'radial-gradient(ellipse, rgba(0,0,0,0.55) 0%, transparent 80%)',
+        width: size * 0.65, height: 12, borderRadius: '50%', marginTop: 4,
+        background: 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
       }} />
     </div>
   );
@@ -490,11 +470,11 @@ export default function BattleOverlay() {
 
         {/* ── Combatants — depth-layered absolute positioning ──────────────── */}
 
-        {/* Character — CENTER BACK (smaller, higher = farther away) */}
+        {/* Character — CENTER BACK (smaller, feet on ground) */}
         <div
           className="absolute battle-entrance battle-idle-bob"
           style={{
-            bottom: '46%',
+            bottom: '42%',
             left: '50%',
             transform: 'translateX(-50%)',
             animationDelay: '0.2s',
@@ -513,17 +493,30 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance"
           style={{ bottom: '36%', left: '8%', animationDelay: '0.05s', zIndex: 2 }}
         >
+          {/* Type matchup badge */}
+          {(() => {
+            const mult = getTypeMultiplier(playerMonster.species.element, wildMonster.species.element);
+            const txt  = getMatchupText(mult);
+            if (!txt) return null;
+            const color = mult >= 2 ? '#22C55E' : mult >= 1.5 ? '#86EFAC' : mult === 0 ? '#94A3B8' : '#FCA5A5';
+            return (
+              <div className="text-[9px] font-bold mb-1 px-2 py-0.5 rounded-full"
+                style={{ background: color + '22', color, border: `1px solid ${color}44` }}>
+                {txt}
+              </div>
+            );
+          })()}
           <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center"
             style={{ color: wildColors.primary, textShadow: `0 0 10px ${wildColors.glow}` }}
           >
             ⚔ Enemy
           </div>
-          <MythSphere
+          <MythSprite
             speciesId={wildMonster.species.id}
             element={wildMonster.species.element}
+            rarity={wildMonster.species.rarity}
             size={110}
             shakeKey={wildShake}
-            side="left"
           />
         </div>
 
@@ -535,12 +528,12 @@ export default function BattleOverlay() {
           <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
             Your Myth
           </div>
-          <MythSphere
+          <MythSprite
             speciesId={playerMonster.species.id}
             element={playerMonster.species.element}
+            rarity={playerMonster.species.rarity}
             size={110}
             shakeKey={playerShake}
-            side="right"
           />
         </div>
 
@@ -552,7 +545,9 @@ export default function BattleOverlay() {
             <div className="text-center space-y-4 capture-success px-6">
               {status === 'captured' && (
                 <>
-                  <div className="text-6xl mb-2">{getMonsterEmoji(wildMonster.species.id, wildMonster.species.element)}</div>
+                  <div className="flex justify-center mb-2">
+                    <MythSvgIcon mythId={wildMonster.species.id} element={wildMonster.species.element} rarity={wildMonster.species.rarity} size={72}/>
+                  </div>
                   <p className="text-2xl font-bold" style={{ color: '#34D399', textShadow: '0 0 20px #34D399' }}>
                     Captured!
                   </p>

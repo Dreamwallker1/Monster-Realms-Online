@@ -9,6 +9,7 @@ import Collection from '@/pages/collection';
 import Encyclopedia from '@/pages/encyclopedia';
 import Profile from '@/pages/profile';
 import Leaderboard from '@/pages/leaderboard';
+import MythsTree from '@/pages/myths-tree';
 import '@/lib/auth';
 
 const queryClient = new QueryClient({
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/encyclopedia" component={Encyclopedia} />
       <Route path="/profile" component={Profile} />
       <Route path="/leaderboard" component={Leaderboard} />
+      <Route path="/myths-tree" component={MythsTree} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/game-store';
 import { Link } from 'wouter';
-import { X, Grid3x3, BookOpen, User, Trophy, LogOut } from 'lucide-react';
+import { X, Grid3x3, BookOpen, User, Trophy, LogOut, Trees } from 'lucide-react';
 import { clearToken } from '@/lib/auth';
 
 export default function GameSidebar() {
@@ -90,6 +90,16 @@ export default function GameSidebar() {
           >
             <Trophy size={20} />
             <span className="font-semibold">Leaderboard</span>
+          </Link>
+
+          <Link
+            href="/myths-tree"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
+            onClick={() => setSidebarOpen(false)}
+            data-testid="link-myths-tree"
+          >
+            <Trees size={20} className="text-emerald-400" />
+            <span className="font-semibold">Myths Tree</span>
           </Link>
         </nav>
         

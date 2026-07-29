@@ -1,19 +1,15 @@
 import type { MonsterSpecies } from "@workspace/db";
 
 // Element effectiveness chart: attacker -> defender -> multiplier
+// 5-element ring: Fire → Nature → Electric → Water → Fire
+// Dark: disrupts fire+nature, weak to water+electric, immune to itself
 const ELEMENT_CHART: Record<string, Record<string, number>> = {
-  Fire: { Nature: 2, Ice: 2, Metal: 1.5, Water: 0.5, Earth: 0.5, Fire: 0.5 },
-  Water: { Fire: 2, Earth: 2, Dark: 1.5, Nature: 0.5, Water: 0.5, Electric: 0.5 },
-  Nature: { Water: 2, Earth: 2, Dark: 1.5, Fire: 0.5, Nature: 0.5, Ice: 0.5 },
-  Electric: { Water: 2, Air: 2, Metal: 1.5, Earth: 0.5, Electric: 0.5 },
-  Ice: { Nature: 2, Air: 2, Crystal: 1.5, Fire: 0.5, Water: 0.5, Ice: 0.5 },
-  Earth: { Fire: 2, Electric: 2, Metal: 1.5, Nature: 0.5, Earth: 0.5 },
-  Air: { Nature: 2, Dark: 2, Earth: 1.5, Electric: 0.5, Air: 0.5 },
-  Light: { Dark: 2.5, Void: 2, Air: 1.5, Light: 0 },
-  Dark: { Light: 2.5, Crystal: 2, Water: 1.5, Dark: 0 },
-  Metal: { Ice: 2, Crystal: 2, Air: 1.5, Fire: 0.5, Metal: 0.5 },
-  Crystal: { Light: 2, Earth: 2, Metal: 1.5, Dark: 0.5, Crystal: 0.5 },
-  Void: { Light: 2, Crystal: 2, Nature: 1.5, Void: 0 },
+  //             vs Fire  vs Water  vs Nature  vs Electric  vs Dark
+  Fire:     { Fire: 0.5, Water: 0.5, Nature: 2.0, Electric: 1.0, Dark: 0.5 },
+  Water:    { Fire: 2.0, Water: 0.5, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
+  Nature:   { Fire: 0.5, Water: 1.0, Nature: 0.5, Electric: 2.0, Dark: 0.5 },
+  Electric: { Fire: 0.5, Water: 2.0, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
+  Dark:     { Fire: 1.5, Water: 0.5, Nature: 1.5, Electric: 0.5, Dark: 0.0 },
 };
 
 export function getElementMultiplier(
