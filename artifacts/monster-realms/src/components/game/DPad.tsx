@@ -1,12 +1,10 @@
-import { getActiveScene } from '@/components/phaser/WorldScene';
+import { dispatchMove } from '@/lib/dpad-events';
 
-// 8 directions: [label, dx, dy, grid col (1-based), grid row (1-based)]
 const DIRS = [
   { label: '↖', dx: -1, dy: -1, col: 1, row: 1 },
   { label: '↑',  dx:  0, dy: -1, col: 2, row: 1 },
   { label: '↗', dx:  1, dy: -1, col: 3, row: 1 },
   { label: '←',  dx: -1, dy:  0, col: 1, row: 2 },
-  // col 2 row 2 = centre dot (rendered separately)
   { label: '→',  dx:  1, dy:  0, col: 3, row: 2 },
   { label: '↙', dx: -1, dy:  1, col: 1, row: 3 },
   { label: '↓',  dx:  0, dy:  1, col: 2, row: 3 },
@@ -14,15 +12,9 @@ const DIRS = [
 ] as const;
 
 export default function DPad() {
-  function move(dx: number, dy: number, e: React.PointerEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    getActiveScene()?.moveInDirection(dx, dy);
-  }
-
   return (
     <div
-      className="fixed left-5 z-30 select-none touch-none"
+      className="fixed left-5 z-30 select-none"
       style={{ bottom: 100, width: 138, height: 138 }}
     >
       <div
@@ -40,7 +32,7 @@ export default function DPad() {
           return (
             <button
               key={label}
-              onPointerDown={(e) => move(dx, dy, e)}
+              onClick={() => dispatchMove(dx, dy)}
               style={{ gridColumn: col, gridRow: row }}
               className={[
                 'flex items-center justify-center rounded-xl text-xl font-bold leading-none',

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { TileType, TILE_BASE_COLORS, generateTerrain, isPassable } from '@/lib/terrain';
 import { getCharacter, type CharacterConfig } from '@/lib/characters';
+import { MRO_MOVE_EVENT } from '@/lib/dpad-events';
 import type { ExploreInput } from '@workspace/api-client-react';
 
 const TILE_SIZE = 32;
@@ -85,9 +86,20 @@ export default class WorldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.playerContainer, true, 0.1, 0.1);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
 
-    // --- Input ---
+    // --- Keyboard input ---
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
       this.handleKeyDown(event.key);
+    });
+
+    // --- D-pad input via custom window event (bypasses Phaser capture-phase) ---
+    const onDpadMove = (e: Event) => {
+      const { dx, dy } = (e as CustomEvent<{ dx: number; dy: number }>).detail;
+      this.moveInDirection(dx, dy);
+    };
+    window.addEventListener(MRO_MOVE_EVENT, onDpadMove);
+    // Remove listener when scene shuts down / restarts to avoid duplicates
+    this.events.once('shutdown', () => {
+      window.removeEventListener(MRO_MOVE_EVENT, onDpadMove);
     });
 
     this.revealNearbyTiles();
