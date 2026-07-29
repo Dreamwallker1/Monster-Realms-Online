@@ -7,6 +7,7 @@ import GameSidebar from '@/components/game/GameSidebar';
 import EncounterPopup from '@/components/game/EncounterPopup';
 import BattleOverlay from '@/components/game/BattleOverlay';
 import DPad from '@/components/game/DPad';
+import RegionBanner from '@/components/game/RegionBanner';
 import { useGameStore } from '@/store/game-store';
 import { useGetMe, useExploreTile, type ExploreInput } from '@workspace/api-client-react';
 import { getToken } from '@/lib/auth';
@@ -27,6 +28,8 @@ export default function Game() {
     triggerEncounter,
     otherPlayers,
     setOtherPlayers,
+    currentRegionId,
+    setCurrentRegionId,
   } = useGameStore();
 
   const { data: me, isLoading } = useGetMe({
@@ -47,6 +50,10 @@ export default function Game() {
     if (me) {
       setPlayer(me);
       markTileExplored(me.posX, me.posY);
+      // Seed region from server position on initial load
+      if (me.regionId) {
+        setCurrentRegionId(me.regionId);
+      }
     }
   }, [me]);
 
@@ -96,6 +103,11 @@ export default function Game() {
       const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
 
       setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
+
+      // Update current region whenever the player crosses a zone boundary
+      if (input.regionId && input.regionId !== currentRegionId) {
+        setCurrentRegionId(input.regionId);
+      }
 
       markTileExplored(result.newPosX, result.newPosY);
 
@@ -159,6 +171,7 @@ export default function Game() {
         </Button>
       </div>
 
+      <RegionBanner regionId={currentRegionId} isReady={!!me} />
       <DPad />
       <GameHUD />
       <GameSidebar />

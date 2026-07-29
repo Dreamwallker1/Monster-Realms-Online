@@ -523,4 +523,11 @@
     100% { transform: rotate(360deg) translateX(110px) rotate(-360deg); opacity: 1; }
   }
   .enc-shiny-orbit { animation: enc-shiny-spin 2.5s linear infinite; }
+
+  /* Region entry banner slide-in */
+  @keyframes regionBannerIn {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(0.92); }
+    60%  { opacity: 1; transform: translateX(-50%) translateY(4px)  scale(1.02); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); }
+  }
 }

@@ -44,6 +44,10 @@ interface GameState {
   markTileExplored: (x: number, y: number) => void;
   resetExplored: () => void;
 
+  // Current region the player is standing in
+  currentRegionId: string;
+  setCurrentRegionId: (regionId: string) => void;
+
   // Other players positions (from socket)
   otherPlayers: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>;
   setOtherPlayers: (players: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>) => void;
@@ -92,6 +96,9 @@ export const useGameStore = create<GameState>()(
           return { exploredTiles: next };
         }),
       resetExplored: () => set({ exploredTiles: new Set() }),
+
+      currentRegionId: 'verdant-meadows',
+      setCurrentRegionId: (regionId) => set({ currentRegionId: regionId }),
 
       otherPlayers: new Map(),
       setOtherPlayers: (players) => set({ otherPlayers: players }),
