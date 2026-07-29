@@ -170,6 +170,26 @@ export function generateTerrain(
   return terrain;
 }
 
+// ─── Region map ───────────────────────────────────────────────────────────────
+// The 50×50 world is divided into six named zones so the explore API receives
+// the correct regionId based on where the player actually stands.
+//
+//   Y  0–19  (top):          verdant-meadows  (starter zone)
+//   Y 20–34, X  0–24 (left): ocean-ruins      (water zone)
+//   Y 20–34, X 25–49 (right):volcanic-rift    (fire zone)
+//   Y 35–49, X  0–16 (BL):   shadow-marsh     (dark zone)
+//   Y 35–49, X 17–33 (BC):   ancient-forest   (forest zone)
+//   Y 35–49, X 34–49 (BR):   thunder-valley   (electric zone)
+
+export function getRegionIdForPosition(x: number, y: number): string {
+  if (y <= 19) return 'verdant-meadows';
+  if (y <= 34) return x <= 24 ? 'ocean-ruins' : 'volcanic-rift';
+  // y >= 35
+  if (x <= 16) return 'shadow-marsh';
+  if (x <= 33) return 'ancient-forest';
+  return 'thunder-valley';
+}
+
 /** BFS: find nearest passable tile to (startX, startY) */
 export function nearestPassable(
   terrain: TileType[][],

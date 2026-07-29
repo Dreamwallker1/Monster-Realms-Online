@@ -23,6 +23,7 @@ type RegionTheme = {
 };
 
 const REGION_THEMES: Record<string, RegionTheme> = {
+  // ── Starter zone ─────────────────────────────────────────────────────────
   'verdant-meadows': {
     skyGrad:    'linear-gradient(180deg, #1565C0 0%, #1E88E5 25%, #64B5F6 55%, #B3E5FC 80%, #C8E6C9 100%)',
     groundGrad: 'linear-gradient(180deg, #8BC34A 0%, #558B2F 55%, #33691E 100%)',
@@ -31,7 +32,8 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     hasRocks:   false, rockColor: '#388E3C',
     ambientColor: '#22C55E',
   },
-  'volcanic-peaks': {
+  // ── Fire zones ────────────────────────────────────────────────────────────
+  'volcanic-rift': {
     skyGrad:    'linear-gradient(180deg, #000000 0%, #1A0000 40%, #3E0000 70%, #6D2200 100%)',
     groundGrad: 'linear-gradient(180deg, #D84315 0%, #A00000 55%, #700000 100%)',
     groundLine: '#D84315',
@@ -39,7 +41,33 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     hasRocks:   true,  rockColor: '#5D4037',
     ambientColor: '#EF4444',
   },
-  'mystic-forest': {
+  'scorched-wastes': {
+    skyGrad:    'linear-gradient(180deg, #1A0800 0%, #3D1200 40%, #6B2200 70%, #8B3A00 100%)',
+    groundGrad: 'linear-gradient(180deg, #BF360C 0%, #7B1F00 55%, #4A1500 100%)',
+    groundLine: '#BF360C',
+    hasTrees:   false, treeColor: '#3E2723',
+    hasRocks:   true,  rockColor: '#4E342E',
+    ambientColor: '#FB923C',
+  },
+  // ── Water zones ───────────────────────────────────────────────────────────
+  'ocean-ruins': {
+    skyGrad:    'linear-gradient(180deg, #0277BD 0%, #0288D1 35%, #03A9F4 65%, #B3E5FC 100%)',
+    groundGrad: 'linear-gradient(180deg, #006994 0%, #01579B 55%, #0D47A1 100%)',
+    groundLine: '#006994',
+    hasTrees:   false, treeColor: '#0277BD',
+    hasRocks:   true,  rockColor: '#01579B',
+    ambientColor: '#38BDF8',
+  },
+  'deep-current': {
+    skyGrad:    'linear-gradient(180deg, #000D1A 0%, #001F3D 40%, #003366 70%, #004080 100%)',
+    groundGrad: 'linear-gradient(180deg, #004D6E 0%, #003355 55%, #001A33 100%)',
+    groundLine: '#004D6E',
+    hasTrees:   false, treeColor: '#003355',
+    hasRocks:   true,  rockColor: '#005577',
+    ambientColor: '#0EA5E9',
+  },
+  // ── Nature zones ──────────────────────────────────────────────────────────
+  'ancient-forest': {
     skyGrad:    'linear-gradient(180deg, #051505 0%, #0D2A0D 35%, #1B3A1B 70%, #2D4A2D 100%)',
     groundGrad: 'linear-gradient(180deg, #388E3C 0%, #1B5E20 55%, #0A3D0A 100%)',
     groundLine: '#388E3C',
@@ -47,29 +75,39 @@ const REGION_THEMES: Record<string, RegionTheme> = {
     hasRocks:   false, rockColor: '#1B5E20',
     ambientColor: '#4ADE80',
   },
-  'crystal-caves': {
+  // ── Electric zones ────────────────────────────────────────────────────────
+  'thunder-valley': {
+    skyGrad:    'linear-gradient(180deg, #0A0A1A 0%, #12124A 35%, #1A1A7A 65%, #2A2A6A 100%)',
+    groundGrad: 'linear-gradient(180deg, #4A4A00 0%, #333300 55%, #1A1A00 100%)',
+    groundLine: '#4A4A00',
+    hasTrees:   false, treeColor: '#333300',
+    hasRocks:   true,  rockColor: '#555500',
+    ambientColor: '#FACC15',
+  },
+  'storm-peaks': {
+    skyGrad:    'linear-gradient(180deg, #050510 0%, #0D0D2B 35%, #151545 65%, #1E1E5E 100%)',
+    groundGrad: 'linear-gradient(180deg, #3A3A00 0%, #282800 55%, #151500 100%)',
+    groundLine: '#3A3A00',
+    hasTrees:   false, treeColor: '#282800',
+    hasRocks:   true,  rockColor: '#4A4A00',
+    ambientColor: '#FDE047',
+  },
+  // ── Dark zones ────────────────────────────────────────────────────────────
+  'shadow-marsh': {
     skyGrad:    'linear-gradient(180deg, #0D0D2B 0%, #1A237E 45%, #283593 75%, #3949AB 100%)',
-    groundGrad: 'linear-gradient(180deg, #7B1FA2 0%, #512DA8 55%, #311B92 100%)',
-    groundLine: '#7B1FA2',
-    hasTrees:   false, treeColor: '#4A148C',
-    hasRocks:   true,  rockColor: '#7B1FA2',
+    groundGrad: 'linear-gradient(180deg, #1A0033 0%, #120022 55%, #0A0014 100%)',
+    groundLine: '#1A0033',
+    hasTrees:   true,  treeColor: '#0D001A',
+    hasRocks:   false, rockColor: '#1A0033',
+    ambientColor: '#A78BFA',
+  },
+  'void-realm': {
+    skyGrad:    'linear-gradient(180deg, #000000 0%, #050008 35%, #0A000F 65%, #0F0015 100%)',
+    groundGrad: 'linear-gradient(180deg, #150020 0%, #0D0015 55%, #06000A 100%)',
+    groundLine: '#150020',
+    hasTrees:   false, treeColor: '#0A0014',
+    hasRocks:   true,  rockColor: '#200030',
     ambientColor: '#C084FC',
-  },
-  'ocean-bay': {
-    skyGrad:    'linear-gradient(180deg, #0277BD 0%, #0288D1 35%, #03A9F4 65%, #B3E5FC 100%)',
-    groundGrad: 'linear-gradient(180deg, #006994 0%, #01579B 55%, #0D47A1 100%)',
-    groundLine: '#006994',
-    hasTrees:   false, treeColor: '#0277BD',
-    hasRocks:   false, rockColor: '#01579B',
-    ambientColor: '#38BDF8',
-  },
-  'urban-district': {
-    skyGrad:    'linear-gradient(180deg, #1C1C2E 0%, #2D2D44 40%, #3D3D5C 70%, #4A4A70 100%)',
-    groundGrad: 'linear-gradient(180deg, #4A5568 0%, #2D3748 55%, #1A202C 100%)',
-    groundLine: '#4A5568',
-    hasTrees:   false, treeColor: '#2D3748',
-    hasRocks:   true,  rockColor: '#2D3748',
-    ambientColor: '#94A3B8',
   },
 };
 

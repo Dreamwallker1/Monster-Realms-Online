@@ -4,6 +4,7 @@ import {
   generateTerrain,
   isPassable,
   nearestPassable,
+  getRegionIdForPosition,
   SPAWN_X, SPAWN_Y,
   WORLD_W, WORLD_H,
 } from '@/lib/terrain';
@@ -376,7 +377,8 @@ export default class WorldScene extends Phaser.Scene {
 
     // Map dx/dy → API direction (cardinal only for API; diagonals handled locally)
     const apiDir = this.toApiDirection(dx, dy);
-    this.onMove?.({ direction: apiDir ?? 'up', regionId: 'verdant-meadows', posX: this.playerX, posY: this.playerY });
+    const regionId = getRegionIdForPosition(this.playerX, this.playerY);
+    this.onMove?.({ direction: apiDir ?? 'up', regionId, posX: this.playerX, posY: this.playerY });
     this.revealNearbyTiles();
   }
 
