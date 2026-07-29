@@ -540,7 +540,7 @@ export default function BattleOverlay() {
         {/* ── End-of-battle result overlay ────────────────────────────────── */}
         {isOver && (
           <div className="absolute inset-0 flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
+            style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 10 }}
           >
             <div className="text-center space-y-4 capture-success px-6">
               {status === 'captured' && (
