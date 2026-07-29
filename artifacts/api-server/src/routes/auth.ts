@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { playersTable, inventoryItemsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { playersTable, inventoryItemsTable, capturedMonstersTable, monsterSpeciesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { generateToken, hashPassword, verifyPassword } from "../lib/auth.js";
 import {
   GuestLoginBody,
@@ -14,6 +14,92 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth.js";
 
+// ─── Starter pack helper ────────────────────────────────────────────────────
+
+type StarterMythResult = {
+  capturedId: string;
+  speciesId: string;
+  speciesName: string;
+  element: string;
+  rarity: string;
+  level: number;
+};
+
+function calcStats(species: typeof monsterSpeciesTable.$inferSelect, level: number) {
+  const scale = 1 + (level - 1) * 0.1;
+  return {
+    hp: Math.round(species.baseHp * scale),
+    attack: Math.round(species.baseAttack * scale),
+    defense: Math.round(species.baseDefense * scale),
+    speed: Math.round(species.baseSpeed * scale),
+  };
+}
+
+function pickRandom<T>(arr: T[]): T | undefined {
+  if (!arr.length) return undefined;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function grantStarterPack(playerId: string, element: string): Promise<StarterMythResult[]> {
+  const VALID_ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'];
+  const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Nature';
+
+  // Fetch candidate myths
+  const [aTier, bTier, cTierAll, sTier] = await Promise.all([
+    db.select().from(monsterSpeciesTable).where(and(eq(monsterSpeciesTable.element, chosenElement), eq(monsterSpeciesTable.rarity, 'A'))),
+    db.select().from(monsterSpeciesTable).where(and(eq(monsterSpeciesTable.element, chosenElement), eq(monsterSpeciesTable.rarity, 'B'))),
+    db.select().from(monsterSpeciesTable).where(eq(monsterSpeciesTable.rarity, 'C')),
+    db.select().from(monsterSpeciesTable).where(and(eq(monsterSpeciesTable.element, chosenElement), eq(monsterSpeciesTable.rarity, 'S'))),
+  ]);
+
+  const picks: { species: typeof monsterSpeciesTable.$inferSelect; level: number; slot: number }[] = [];
+
+  const specA = pickRandom(aTier);
+  if (specA) picks.push({ species: specA, level: 5, slot: 0 });
+
+  const specB = pickRandom(bTier);
+  if (specB) picks.push({ species: specB, level: 3, slot: 1 });
+
+  const specC = pickRandom(cTierAll);
+  if (specC) picks.push({ species: specC, level: 1, slot: 2 });
+
+  // 1% S-tier surprise
+  const gotS = Math.random() < 0.01;
+  if (gotS) {
+    const specS = pickRandom(sTier);
+    if (specS) picks.push({ species: specS, level: 1, slot: 3 });
+  }
+
+  const results: StarterMythResult[] = [];
+  for (const { species, level, slot } of picks) {
+    const stats = calcStats(species, level);
+    const [captured] = await db.insert(capturedMonstersTable).values({
+      playerId,
+      speciesId: species.id,
+      level,
+      currentHp: stats.hp,
+      maxHp: stats.hp,
+      attack: stats.attack,
+      defense: stats.defense,
+      speed: stats.speed,
+      inTeam: true,
+      teamSlot: slot,
+    }).returning();
+    if (captured) {
+      results.push({
+        capturedId: captured.id,
+        speciesId: species.id,
+        speciesName: species.name,
+        element: species.element,
+        rarity: species.rarity,
+        level,
+      });
+    }
+  }
+
+  return results;
+}
+
 const router: IRouter = Router();
 
 // POST /auth/guest
@@ -23,7 +109,7 @@ router.post("/auth/guest", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { username, avatarColor } = parsed.data;
+  const { username, avatarColor, starterElement } = parsed.data;
 
   // Check if username taken
   const existing = await db
@@ -46,24 +132,27 @@ router.post("/auth/guest", async (req, res): Promise<void> => {
     })
     .returning();
 
-  // Give starter orbs
-  await db.insert(inventoryItemsTable).values([
-    {
-      playerId: player.id,
-      name: "Basic Orb",
-      type: "orb",
-      quantity: 10,
-      description: "A basic capture orb. Works best on Common monsters.",
-      orbType: "Basic",
-    },
-    {
-      playerId: player.id,
-      name: "Healing Herb",
-      type: "heal",
-      quantity: 3,
-      description: "Restores 30 HP to one monster.",
-      orbType: null,
-    },
+  // Give starter orbs + starter pack myths
+  const [starterPack] = await Promise.all([
+    starterElement ? grantStarterPack(player.id, starterElement) : Promise.resolve([]),
+    db.insert(inventoryItemsTable).values([
+      {
+        playerId: player.id,
+        name: "Basic Orb",
+        type: "orb",
+        quantity: 10,
+        description: "A basic capture orb. Works best on Common monsters.",
+        orbType: "Basic",
+      },
+      {
+        playerId: player.id,
+        name: "Healing Herb",
+        type: "heal",
+        quantity: 3,
+        description: "Restores 30 HP to one monster.",
+        orbType: null,
+      },
+    ]),
   ]);
 
   const token = generateToken(player.id);
@@ -71,6 +160,7 @@ router.post("/auth/guest", async (req, res): Promise<void> => {
     GuestLoginResponse.parse({
       token,
       player: formatPlayer(player),
+      starterPack: starterPack ?? [],
     }),
   );
 });
@@ -82,7 +172,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { username, password, avatarColor } = parsed.data;
+  const { username, password, avatarColor, starterElement } = parsed.data;
 
   const existing = await db
     .select({ id: playersTable.id })
@@ -104,23 +194,26 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     })
     .returning();
 
-  await db.insert(inventoryItemsTable).values([
-    {
-      playerId: player.id,
-      name: "Basic Orb",
-      type: "orb",
-      quantity: 10,
-      description: "A basic capture orb.",
-      orbType: "Basic",
-    },
-    {
-      playerId: player.id,
-      name: "Healing Herb",
-      type: "heal",
-      quantity: 3,
-      description: "Restores 30 HP to one monster.",
-      orbType: null,
-    },
+  const [starterPack] = await Promise.all([
+    starterElement ? grantStarterPack(player.id, starterElement) : Promise.resolve([]),
+    db.insert(inventoryItemsTable).values([
+      {
+        playerId: player.id,
+        name: "Basic Orb",
+        type: "orb",
+        quantity: 10,
+        description: "A basic capture orb.",
+        orbType: "Basic",
+      },
+      {
+        playerId: player.id,
+        name: "Healing Herb",
+        type: "heal",
+        quantity: 3,
+        description: "Restores 30 HP to one monster.",
+        orbType: null,
+      },
+    ]),
   ]);
 
   const token = generateToken(player.id);
@@ -128,6 +221,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     RegisterPlayerResponse.parse({
       token,
       player: formatPlayer(player),
+      starterPack: starterPack ?? [],
     }),
   );
 });

@@ -24,9 +24,19 @@ export const guestLoginBodyUsernameMax = 20;
 
 
 
+export const StarterPackMythSchema = zod.object({
+  "capturedId": zod.string(),
+  "speciesId": zod.string(),
+  "speciesName": zod.string(),
+  "element": zod.string(),
+  "rarity": zod.enum(['C', 'B', 'A', 'S']),
+  "level": zod.number(),
+});
+
 export const GuestLoginBody = zod.object({
   "username": zod.string().min(guestLoginBodyUsernameMin).max(guestLoginBodyUsernameMax),
-  "avatarColor": zod.string().optional()
+  "avatarColor": zod.string().optional(),
+  "starterElement": zod.string().optional()
 })
 
 export const GuestLoginResponse = zod.object({
@@ -49,7 +59,8 @@ export const GuestLoginResponse = zod.object({
   "posX": zod.number(),
   "posY": zod.number(),
   "createdAt": zod.string()
-})
+}),
+  "starterPack": zod.array(StarterPackMythSchema).optional()
 })
 
 
@@ -67,7 +78,8 @@ export const RegisterPlayerBody = zod.object({
   "username": zod.string().min(registerPlayerBodyUsernameMin).max(registerPlayerBodyUsernameMax),
   "password": zod.string().min(registerPlayerBodyPasswordMin),
   "email": zod.string().nullish(),
-  "avatarColor": zod.string().optional()
+  "avatarColor": zod.string().optional(),
+  "starterElement": zod.string().optional()
 })
 
 export const RegisterPlayerResponse = zod.object({
@@ -90,7 +102,8 @@ export const RegisterPlayerResponse = zod.object({
   "posX": zod.number(),
   "posY": zod.number(),
   "createdAt": zod.string()
-})
+}),
+  "starterPack": zod.array(StarterPackMythSchema).optional()
 })
 
 

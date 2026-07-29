@@ -3,77 +3,71 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useGuestLogin, useRegisterPlayer } from '@workspace/api-client-react';
 import { setToken } from '@/lib/auth';
 import { useGameStore } from '@/store/game-store';
 import { CHARACTERS } from '@/lib/characters';
-import { Sparkles, ArrowRight, ArrowLeft, User } from 'lucide-react';
+import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
+import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
+import { Sparkles, ArrowRight, ArrowLeft, User, Package } from 'lucide-react';
 
 // ─── SVG character preview ────────────────────────────────────────────────────
 
 function CharacterSVG({ char, size = 80 }: { char: typeof CHARACTERS[0]; size?: number }) {
-  const s = size;
-  const cx = s / 2;
-  // All positions relative to center-x, proportional to size
-  const sc = s / 80; // scale factor
-
   return (
-    <svg width={s} height={s} viewBox={`0 0 80 80`} xmlns="http://www.w3.org/2000/svg">
-      {/* Shadow */}
+    <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="40" cy="72" rx="12" ry="4" fill="black" opacity="0.2" />
-
-      {/* Legs */}
       <rect x="27" y="55" width="9" height="14" rx="3" fill={char.pantsHex} />
       <rect x="44" y="55" width="9" height="14" rx="3" fill={char.pantsHex} />
-
-      {/* Shoes */}
       <rect x="25" y="67" width="12" height="5" rx="2" fill="#1a1a2e" />
       <rect x="43" y="67" width="12" height="5" rx="2" fill="#1a1a2e" />
-
-      {/* Body */}
       <rect x="26" y="36" width="28" height="22" rx="4" fill={char.outfitHex} />
-
-      {/* Arms */}
       <rect x="14" y="36" width="12" height="17" rx="4" fill={char.outfitHex} />
       <rect x="54" y="36" width="12" height="17" rx="4" fill={char.outfitHex} />
-
-      {/* Hands */}
       <circle cx="20" cy="56" r="5" fill={char.skinHex} />
       <circle cx="60" cy="56" r="5" fill={char.skinHex} />
-
-      {/* Neck */}
       <rect x="36" y="29" width="8" height="10" fill={char.skinHex} />
-
-      {/* Head */}
       <circle cx="40" cy="22" r="16" fill={char.skinHex} />
-
-      {/* Hair */}
       <ellipse cx="40" cy="10" rx="16" ry="8" fill={char.hairHex} />
       <rect x="24" y="10" width="32" height="10" fill={char.hairHex} />
       <circle cx="26" cy="16" r="6" fill={char.hairHex} />
       <circle cx="54" cy="16" r="6" fill={char.hairHex} />
-
-      {/* Eyes */}
       <circle cx="34" cy="22" r="3.5" fill="white" />
       <circle cx="46" cy="22" r="3.5" fill="white" />
       <circle cx="35" cy="23" r="2" fill="#1a1a2e" />
       <circle cx="47" cy="23" r="2" fill="#1a1a2e" />
       <circle cx="36" cy="22" r="0.8" fill="white" />
       <circle cx="48" cy="22" r="0.8" fill="white" />
-
-      {/* Eyebrows */}
       <rect x="31" y="17" width="7" height="2" rx="1" fill={char.hairHex} />
       <rect x="42" y="17" width="7" height="2" rx="1" fill={char.hairHex} />
-
-      {/* Mouth */}
       <path d="M36 29 Q40 32 44 29" stroke="#c07068" strokeWidth="1.5" fill="none" strokeLinecap="round" />
     </svg>
   );
 }
 
-// ─── Step types ───────────────────────────────────────────────────────────────
+// ─── Element data ──────────────────────────────────────────────────────────────
 
-type Step = 'name' | 'character' | 'register';
+const ELEMENTS = [
+  { id: 'Fire',     emoji: '🔥', flavor: 'Fierce & unstoppable' },
+  { id: 'Water',    emoji: '💧', flavor: 'Fluid & enduring' },
+  { id: 'Nature',   emoji: '🌿', flavor: 'Patient & resilient' },
+  { id: 'Electric', emoji: '⚡', flavor: 'Fast & unpredictable' },
+  { id: 'Dark',     emoji: '🌑', flavor: 'Mysterious & cunning' },
+];
+
+// ─── Step types ────────────────────────────────────────────────────────────────
+
+type StarterMyth = {
+  capturedId: string;
+  speciesId: string;
+  speciesName: string;
+  element: string;
+  rarity: string;
+  level: number;
+};
+
+type Step = 'name' | 'character' | 'element' | 'starter-box' | 'register';
 
 export default function Landing() {
   const [, setLocation] = useLocation();
@@ -83,6 +77,9 @@ export default function Landing() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]!);
+  const [selectedElement, setSelectedElement] = useState<string>('');
+  const [starterPack, setStarterPack] = useState<StarterMyth[]>([]);
+  const [boxOpened, setBoxOpened] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
 
   const guestLogin = useGuestLogin();
@@ -91,12 +88,22 @@ export default function Landing() {
   const handleGuestPlay = async () => {
     try {
       const response = await guestLogin.mutateAsync({
-        data: { username: username.trim(), avatarColor: selectedChar.avatarColor },
+        data: {
+          username: username.trim(),
+          avatarColor: selectedChar.avatarColor,
+          starterElement: selectedElement || undefined,
+        },
       });
       setToken(response.token);
       setPlayer(response.player);
       setCharacterType(selectedChar.id);
-      setLocation('/game');
+      if (response.starterPack && response.starterPack.length > 0) {
+        setStarterPack(response.starterPack as StarterMyth[]);
+        setBoxOpened(false);
+        setStep('starter-box');
+      } else {
+        setLocation('/game');
+      }
     } catch (error) {
       console.error('Guest login failed:', error);
     }
@@ -105,12 +112,23 @@ export default function Landing() {
   const handleRegister = async () => {
     try {
       const response = await register.mutateAsync({
-        data: { username: username.trim(), password, avatarColor: selectedChar.avatarColor },
+        data: {
+          username: username.trim(),
+          password,
+          avatarColor: selectedChar.avatarColor,
+          starterElement: selectedElement || undefined,
+        },
       });
       setToken(response.token);
       setPlayer(response.player);
       setCharacterType(selectedChar.id);
-      setLocation('/game');
+      if (response.starterPack && response.starterPack.length > 0) {
+        setStarterPack(response.starterPack as StarterMyth[]);
+        setBoxOpened(false);
+        setStep('starter-box');
+      } else {
+        setLocation('/game');
+      }
     } catch (error) {
       console.error('Registration failed:', error);
     }
@@ -118,7 +136,7 @@ export default function Landing() {
 
   const canProceedFromName = username.trim().length >= 2;
 
-  // ─── Step: Enter username ───────────────────────────────────────────────
+  // ─── Step: Enter username ───────────────────────────────────────────────────
   if (step === 'name') {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
@@ -133,9 +151,7 @@ export default function Landing() {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Mythora
             </h1>
-            <p className="text-muted-foreground text-sm">
-              Discover. Bond. Become legendary.
-            </p>
+            <p className="text-muted-foreground text-sm">Discover. Bond. Become legendary.</p>
           </div>
 
           <div className="space-y-4">
@@ -180,7 +196,7 @@ export default function Landing() {
     );
   }
 
-  // ─── Step: Character selection ──────────────────────────────────────────
+  // ─── Step: Character selection ──────────────────────────────────────────────
   if (step === 'character') {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
@@ -191,7 +207,6 @@ export default function Landing() {
             <p className="text-muted-foreground text-sm">Who's heading to the park today?</p>
           </div>
 
-          {/* Character grid */}
           <div className="grid grid-cols-3 gap-3">
             {CHARACTERS.map((char) => {
               const isSelected = selectedChar.id === char.id;
@@ -199,13 +214,11 @@ export default function Landing() {
                 <button
                   key={char.id}
                   onClick={() => setSelectedChar(char)}
-                  className={`
-                    relative flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200
-                    ${isSelected
+                  className={`relative flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200 ${
+                    isSelected
                       ? 'border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/30'
-                      : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10 hover:scale-102'
-                    }
-                  `}
+                      : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                  }`}
                   data-testid={`character-${char.id}`}
                 >
                   {isSelected && (
@@ -223,9 +236,8 @@ export default function Landing() {
             })}
           </div>
 
-          {/* Selected character big preview */}
           <div className="flex items-center gap-6 p-4 rounded-2xl bg-white/5 border border-white/10">
-            <CharacterSVG char={selectedChar} size={96} />
+            <CharacterSVG char={selectedChar} size={80} />
             <div className="flex-1 space-y-1">
               <p className="text-xl font-bold text-primary">{selectedChar.name}</p>
               <p className="text-muted-foreground text-sm">{selectedChar.description}</p>
@@ -235,31 +247,107 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              className="flex items-center gap-2"
-              onClick={() => setStep('name')}
-            >
+            <Button variant="outline" size="lg" className="flex items-center gap-2" onClick={() => setStep('name')}>
               <ArrowLeft size={16} /> Back
             </Button>
             <Button
               variant="default"
               size="lg"
               className="flex-1 glow-cyan font-bold"
-              onClick={handleGuestPlay}
-              disabled={guestLogin.isPending}
-              data-testid="button-guest-login"
+              onClick={() => setStep('element')}
+              data-testid="button-next-element"
             >
-              {guestLogin.isPending ? 'Entering park...' : '🏃 Play as Guest'}
+              Choose Element <ArrowRight size={18} />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Step: Element selection ────────────────────────────────────────────────
+  if (step === 'element') {
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
+        <ParticleBackground />
+        <div className="glass-panel p-6 rounded-3xl w-full max-w-xl shadow-2xl relative z-10 space-y-6">
+          <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold text-primary">Choose Your Element</h2>
+            <p className="text-muted-foreground text-sm">
+              Your starter box will contain myths from this element
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {ELEMENTS.map((el) => {
+              const colors = ELEMENT_COLORS[el.id]!;
+              const isSelected = selectedElement === el.id;
+              return (
+                <button
+                  key={el.id}
+                  onClick={() => setSelectedElement(el.id)}
+                  className="relative flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 text-left"
+                  style={{
+                    borderColor: isSelected ? colors.primary : 'rgba(255,255,255,0.1)',
+                    background: isSelected
+                      ? `linear-gradient(135deg, ${colors.primary}22, ${colors.secondary}11)`
+                      : 'rgba(255,255,255,0.03)',
+                    boxShadow: isSelected ? `0 0 20px ${colors.glow}` : 'none',
+                  }}
+                  data-testid={`element-${el.id}`}
+                >
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${colors.primary}33, ${colors.secondary}22)`, border: `1px solid ${colors.primary}44` }}
+                  >
+                    {el.emoji}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-white text-lg">{el.id}</p>
+                    <p className="text-sm text-white/60">{el.flavor}</p>
+                  </div>
+                  {isSelected && (
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                      style={{ background: colors.primary }}
+                    >
+                      ✓
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-3">
+            <Button variant="outline" size="lg" className="flex items-center gap-2" onClick={() => setStep('character')}>
+              <ArrowLeft size={16} /> Back
+            </Button>
+            <Button
+              variant="default"
+              size="lg"
+              className="flex-1 glow-cyan font-bold flex items-center justify-center gap-2"
+              onClick={handleGuestPlay}
+              disabled={!selectedElement || guestLogin.isPending}
+              data-testid="button-guest-play-element"
+            >
+              {guestLogin.isPending ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin">✦</span> Opening your box...
+                </span>
+              ) : (
+                <>
+                  <Package size={18} /> Play as Guest
+                </>
+              )}
             </Button>
             <Button
               variant="outline"
               size="lg"
               className="flex-1"
               onClick={() => setStep('register')}
+              disabled={!selectedElement}
             >
               Create Account
             </Button>
@@ -275,7 +363,143 @@ export default function Landing() {
     );
   }
 
-  // ─── Step: Register / Login ─────────────────────────────────────────────
+  // ─── Step: Starter box reveal ───────────────────────────────────────────────
+  if (step === 'starter-box') {
+    const elColors = selectedElement ? ELEMENT_COLORS[selectedElement] : null;
+    const hasLegendary = starterPack.some((m) => m.rarity === 'S');
+
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
+        <ParticleBackground />
+        <div className="glass-panel p-6 rounded-3xl w-full max-w-lg shadow-2xl relative z-10 space-y-6">
+          {!boxOpened ? (
+            /* ── Closed box ── */
+            <div className="flex flex-col items-center gap-6 py-4">
+              <div className="text-center space-y-1">
+                <h2 className="text-2xl font-bold text-primary">Your Starter Box</h2>
+                <p className="text-muted-foreground text-sm">
+                  A gift for every new explorer — tap to reveal your myths!
+                </p>
+              </div>
+
+              <button
+                onClick={() => setBoxOpened(true)}
+                className="relative group cursor-pointer"
+                data-testid="button-open-box"
+              >
+                {/* Box glow ring */}
+                <div
+                  className="absolute inset-0 rounded-full blur-2xl opacity-60 animate-pulse scale-110"
+                  style={{ background: elColors ? `radial-gradient(circle, ${elColors.glow}, transparent)` : 'radial-gradient(circle, rgba(99,102,241,0.5), transparent)' }}
+                />
+                {/* Box emoji */}
+                <div
+                  className="relative w-36 h-36 rounded-3xl flex items-center justify-center text-7xl transition-transform duration-200 group-hover:scale-110 group-active:scale-95"
+                  style={{
+                    background: elColors
+                      ? `linear-gradient(135deg, ${elColors.primary}33, ${elColors.secondary}22)`
+                      : 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(79,70,229,0.1))',
+                    border: `2px solid ${elColors?.primary ?? 'rgba(99,102,241,0.4)'}`,
+                    boxShadow: `0 0 30px ${elColors?.glow ?? 'rgba(99,102,241,0.3)'}`,
+                  }}
+                >
+                  🎁
+                </div>
+              </button>
+
+              <p className="text-white/40 text-xs animate-pulse">Tap the box to open</p>
+            </div>
+          ) : (
+            /* ── Opened — myth cards ── */
+            <>
+              <div className="text-center space-y-1">
+                <h2 className="text-2xl font-bold text-primary">
+                  {hasLegendary ? '🌟 Incredible!' : '✨ Welcome, Explorer!'}
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  {hasLegendary
+                    ? 'A Legendary myth revealed itself to you!'
+                    : 'Your journey begins with these myths'}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {starterPack.map((myth, idx) => {
+                  const elC = ELEMENT_COLORS[myth.element] ?? { primary: '#6B7280', secondary: '#9CA3AF', glow: 'rgba(107,114,128,0.3)' };
+                  const rarC = RARITY_COLORS[myth.rarity] ?? { color: '#9CA3AF', glow: 'rgba(156,163,175,0.3)', label: myth.rarity };
+                  const isLegendary = myth.rarity === 'S';
+                  const emoji = getMonsterEmoji(myth.speciesId, myth.element);
+
+                  return (
+                    <div
+                      key={myth.capturedId}
+                      className="flex items-center gap-4 p-4 rounded-2xl border transition-all"
+                      style={{
+                        animationDelay: `${idx * 120}ms`,
+                        borderColor: isLegendary ? rarC.color : elC.primary + '66',
+                        background: isLegendary
+                          ? `linear-gradient(135deg, ${rarC.color}22, ${elC.primary}11)`
+                          : `linear-gradient(135deg, ${elC.primary}18, ${elC.secondary}0a)`,
+                        boxShadow: isLegendary ? `0 0 20px ${rarC.glow}` : `0 0 10px ${elC.glow}`,
+                      }}
+                    >
+                      {/* Emoji portrait */}
+                      <div
+                        className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl flex-shrink-0"
+                        style={{
+                          background: `linear-gradient(135deg, ${elC.primary}33, ${elC.secondary}22)`,
+                          border: `1px solid ${elC.primary}55`,
+                        }}
+                      >
+                        {emoji}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white text-sm truncate">{myth.speciesName}</p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge
+                            className="text-[10px] px-1.5 py-0 h-4"
+                            style={{ background: elC.primary + '33', color: elC.primary, border: `1px solid ${elC.primary}55` }}
+                          >
+                            {ELEMENT_EMOJI[myth.element]} {myth.element}
+                          </Badge>
+                          <Badge
+                            className="text-[10px] px-1.5 py-0 h-4"
+                            style={{ background: rarC.color + '22', color: rarC.color, border: `1px solid ${rarC.color}55` }}
+                          >
+                            {myth.rarity} · {QUALITY_LABEL[myth.rarity] ?? myth.rarity}
+                          </Badge>
+                          <span className="text-[10px] text-white/40">Lv.{myth.level}</span>
+                        </div>
+                      </div>
+
+                      {/* Legendary crown */}
+                      {isLegendary && (
+                        <span className="text-2xl flex-shrink-0 animate-pulse">👑</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full glow-cyan font-bold flex items-center justify-center gap-2"
+                onClick={() => setLocation('/game')}
+                data-testid="button-begin-journey"
+              >
+                <Sparkles size={18} /> Begin Your Journey
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Step: Register / Login ─────────────────────────────────────────────────
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
       <ParticleBackground />
@@ -324,7 +548,7 @@ export default function Landing() {
           </Button>
 
           <div className="flex gap-3">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep('character')}>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(selectedElement ? 'element' : 'character')}>
               <ArrowLeft size={14} className="mr-1" /> Back
             </Button>
             <button
