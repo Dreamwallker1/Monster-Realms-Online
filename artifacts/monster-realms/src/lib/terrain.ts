@@ -16,6 +16,64 @@ export const TILE_BASE_COLORS: Record<TileType, number> = {
   [TileType.Building]: 0x4a5568,
 };
 
+/** Per-region colour palette used by WorldScene to visually distinguish zones. */
+export interface RegionPalette {
+  /** Three grass shades (normal, dark, light) */
+  grass: [number, number, number];
+  /** Canopy and ground for tree tiles */
+  treeShadow: number;
+  treeCanopy: [number, number, number];
+  /** Grass base colour for flower tiles */
+  flowerGrass: number;
+  /** Accent tint for the region border edge (drawn at region boundary tiles) */
+  borderTint: number;
+}
+
+export const REGION_PALETTE: Record<string, RegionPalette> = {
+  'verdant-meadows': {
+    grass:       [0x3d9240, 0x2e7a32, 0x369138],
+    treeShadow:  0x1a5020,
+    treeCanopy:  [0x1e6e24, 0x288030, 0x34a040],
+    flowerGrass: 0x48a84a,
+    borderTint:  0x6edd70,
+  },
+  'ocean-ruins': {
+    grass:       [0x2a7a6a, 0x1a5a52, 0x238070],
+    treeShadow:  0x0e3d40,
+    treeCanopy:  [0x1a5e6a, 0x247880, 0x2e8a92],
+    flowerGrass: 0x2e8878,
+    borderTint:  0x40c8cc,
+  },
+  'volcanic-rift': {
+    grass:       [0x7a3a1a, 0x602c12, 0x8a4422],
+    treeShadow:  0x3a1808,
+    treeCanopy:  [0x5a2e10, 0x6e3818, 0x7a4422],
+    flowerGrass: 0x6e3010,
+    borderTint:  0xff6620,
+  },
+  'shadow-marsh': {
+    grass:       [0x2e2850, 0x221e3e, 0x3a3260],
+    treeShadow:  0x160e28,
+    treeCanopy:  [0x2e1e48, 0x3a2858, 0x1e1438],
+    flowerGrass: 0x2a2248,
+    borderTint:  0x9060cc,
+  },
+  'ancient-forest': {
+    grass:       [0x1a4e2a, 0x10391c, 0x226030],
+    treeShadow:  0x0c2a12,
+    treeCanopy:  [0x144820, 0x1e5e2c, 0x28783a],
+    flowerGrass: 0x185424,
+    borderTint:  0x44cc66,
+  },
+  'thunder-valley': {
+    grass:       [0x6a7a20, 0x526010, 0x7a8e28],
+    treeShadow:  0x303e08,
+    treeCanopy:  [0x4a5e10, 0x5e7418, 0x728a24],
+    flowerGrass: 0x607020,
+    borderTint:  0xeeee30,
+  },
+};
+
 export function isPassable(tileType: TileType): boolean {
   return (
     tileType !== TileType.Tree &&

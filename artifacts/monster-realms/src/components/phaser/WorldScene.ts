@@ -5,6 +5,8 @@ import {
   isPassable,
   nearestPassable,
   getRegionIdForPosition,
+  REGION_PALETTE,
+  type RegionPalette,
   SPAWN_X, SPAWN_Y,
   WORLD_W, WORLD_H,
 } from '@/lib/terrain';
@@ -124,6 +126,11 @@ export default class WorldScene extends Phaser.Scene {
 
   // ─── Terrain drawing ──────────────────────────────────────────────────────
 
+  private getPalette(x: number, y: number): RegionPalette {
+    const regionId = getRegionIdForPosition(x, y);
+    return REGION_PALETTE[regionId] ?? REGION_PALETTE['verdant-meadows']!;
+  }
+
   private drawTerrain() {
     if (!this.terrainGraphics) return;
     const g = this.terrainGraphics;
@@ -134,39 +141,74 @@ export default class WorldScene extends Phaser.Scene {
         const tile = this.terrain[y]?.[x] ?? TileType.Grass;
         const px = x * TILE_SIZE;
         const py = y * TILE_SIZE;
+        const palette = this.getPalette(x, y);
 
         switch (tile) {
           case TileType.Grass:
-            this.drawGrassTile(g, px, py, x, y);
+            this.drawGrassTile(g, px, py, x, y, palette);
             break;
           case TileType.Path:
             this.drawPathTile(g, px, py);
             break;
           case TileType.Tree:
-            this.drawTreeTile(g, px, py);
+            this.drawTreeTile(g, px, py, palette);
             break;
           case TileType.Pond:
             this.drawPondTile(g, px, py);
             break;
           case TileType.Flower:
-            this.drawFlowerTile(g, px, py, x, y);
+            this.drawFlowerTile(g, px, py, x, y, palette);
             break;
           case TileType.Building:
             this.drawBuildingTile(g, px, py, x);
             break;
         }
+
+        // Draw a faint region border tint on the first tile of each new zone
+        this.maybeDrawRegionBorder(g, px, py, x, y, palette);
       }
     }
   }
 
-  private drawGrassTile(g: Phaser.GameObjects.Graphics, px: number, py: number, tx: number, ty: number) {
-    // Slight color variation for natural look
-    const shade = ((tx + ty) % 3 === 0) ? 0x3d9240 : ((tx * ty) % 5 === 0) ? 0x2e7a32 : 0x369138;
+  /**
+   * Draws a subtle coloured strip on tiles that sit at a region boundary
+   * so the player can see where zones change.
+   */
+  private maybeDrawRegionBorder(
+    g: Phaser.GameObjects.Graphics,
+    px: number, py: number,
+    tx: number, ty: number,
+    palette: RegionPalette,
+  ) {
+    // Check if any cardinal neighbour is in a different region
+    const myId = getRegionIdForPosition(tx, ty);
+    const neighbours = [
+      [tx, ty - 1], [tx, ty + 1], [tx - 1, ty], [tx + 1, ty],
+    ] as [number, number][];
+    const isEdge = neighbours.some(([nx, ny]) => {
+      if (nx < 0 || nx >= WORLD_WIDTH || ny < 0 || ny >= WORLD_HEIGHT) return false;
+      return getRegionIdForPosition(nx, ny) !== myId;
+    });
+    if (!isEdge) return;
+
+    g.fillStyle(palette.borderTint, 0.35);
+    g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+  }
+
+  private drawGrassTile(
+    g: Phaser.GameObjects.Graphics,
+    px: number, py: number,
+    tx: number, ty: number,
+    palette: RegionPalette,
+  ) {
+    // Slight color variation for natural look using region-aware shades
+    const [c0, c1, c2] = palette.grass;
+    const shade = ((tx + ty) % 3 === 0) ? c0 : ((tx * ty) % 5 === 0) ? c1 : c2;
     g.fillStyle(shade, 1);
     g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
     // Tiny darker specks for grass texture
     if ((tx + ty * 3) % 7 === 0) {
-      g.fillStyle(0x2a6e2e, 0.6);
+      g.fillStyle(c1, 0.6);
       g.fillRect(px + 6, py + 10, 3, 2);
       g.fillRect(px + 18, py + 6, 2, 3);
       g.fillRect(px + 24, py + 20, 3, 2);
@@ -189,22 +231,23 @@ export default class WorldScene extends Phaser.Scene {
     g.fillRect(px, py, 1, TILE_SIZE);
   }
 
-  private drawTreeTile(g: Phaser.GameObjects.Graphics, px: number, py: number) {
+  private drawTreeTile(g: Phaser.GameObjects.Graphics, px: number, py: number, palette: RegionPalette) {
     // Ground base (shadowed grass)
-    g.fillStyle(0x1a5020, 1);
+    g.fillStyle(palette.treeShadow, 1);
     g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
     // Tree trunk
     g.fillStyle(0x7a5230, 1);
     g.fillRect(px + 13, py + 18, 6, 10);
-    // Tree canopy — layered circles
-    g.fillStyle(0x1e6e24, 1);
+    // Tree canopy — layered circles using region colours
+    const [cc0, cc1, cc2] = palette.treeCanopy;
+    g.fillStyle(cc0, 1);
     g.fillCircle(px + 16, py + 14, 13);
-    g.fillStyle(0x288030, 1);
+    g.fillStyle(cc1, 1);
     g.fillCircle(px + 14, py + 12, 9);
-    g.fillStyle(0x34a040, 0.7);
+    g.fillStyle(cc2, 0.7);
     g.fillCircle(px + 18, py + 10, 6);
     // Highlight dot
-    g.fillStyle(0x5acc60, 0.4);
+    g.fillStyle(cc2, 0.4);
     g.fillCircle(px + 13, py + 8, 3);
   }
 
@@ -225,9 +268,14 @@ export default class WorldScene extends Phaser.Scene {
     g.fillRect(px + 20, py + 16, 3, 2);
   }
 
-  private drawFlowerTile(g: Phaser.GameObjects.Graphics, px: number, py: number, tx: number, ty: number) {
-    // Grass base
-    g.fillStyle(0x48a84a, 1);
+  private drawFlowerTile(
+    g: Phaser.GameObjects.Graphics,
+    px: number, py: number,
+    tx: number, ty: number,
+    palette: RegionPalette,
+  ) {
+    // Grass base — region-tinted
+    g.fillStyle(palette.flowerGrass, 1);
     g.fillRect(px, py, TILE_SIZE, TILE_SIZE);
     // Flower colors — vary by position
     const flowerColors = [0xff6b8a, 0xffcc44, 0xff8c44, 0xcc66ff, 0xff4466, 0xffee55];
@@ -236,7 +284,7 @@ export default class WorldScene extends Phaser.Scene {
     const positions = [[8, 8], [22, 14], [10, 22], [24, 24]] as const;
     for (const [fx, fy] of positions) {
       // Stem
-      g.fillStyle(0x2a8030, 1);
+      g.fillStyle(palette.grass[1], 1);
       g.fillRect(px + fx + 1, py + fy + 4, 2, 5);
       // Petals
       g.fillStyle(col, 1);
