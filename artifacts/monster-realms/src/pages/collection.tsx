@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import MonsterPortrait from '@/components/game/MonsterPortrait';
 import { useGameStore } from '@/store/game-store';
 import { useGetPlayerCollection } from '@workspace/api-client-react';
 import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
+import { MythSvgIcon } from '@/lib/myth-svgs';
 import { ArrowLeft, Search } from 'lucide-react';
 
 export default function Collection() {
@@ -130,10 +130,11 @@ export default function Collection() {
                 data-testid={`monster-card-${monster.id}`}
               >
                 <div className="flex justify-center">
-                  <MonsterPortrait
+                  <MythSvgIcon
+                    mythId={monster.species.id}
                     element={monster.species.element}
-                    size="md"
-                    shinyVariant={monster.shinyVariant}
+                    rarity={monster.species.rarity}
+                    size={96}
                   />
                 </div>
                 
