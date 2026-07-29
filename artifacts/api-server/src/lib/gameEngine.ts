@@ -123,13 +123,17 @@ export function calculateCaptureChance(
   shinyVariant: string | null,
 ): boolean {
   const orbBonus: Record<string, number> = {
+    // New tiered orbs
+    Prism: 1.0,    // C — base capture rate
+    Luna: 1.6,     // B — uncommon, better odds
+    Aether: 2.5,   // A — rare, high bonus
+    Void: 4.0,     // S — legendary, near-guaranteed
+    // Legacy fallbacks
     Basic: 1,
     Explorer: 1.3,
     Hunter: 1.7,
     Elite: 2.2,
     Master: 3,
-    Celestial: 4,
-    Infinity: 6,
   };
   const hpFactor = (maxHp - currentHp * 0.5) / maxHp; // lower HP → easier capture
   const baseChance = (captureRate / 100) * (orbBonus[orbType] ?? 1) * hpFactor;

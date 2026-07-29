@@ -10,6 +10,7 @@ import regionsRouter from "./regions";
 import inventoryRouter from "./inventory";
 import leaderboardRouter from "./leaderboard";
 import seedRouter from "./seed";
+import shopRouter from "./shop";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(regionsRouter);
 router.use(inventoryRouter);
 router.use(leaderboardRouter);
 router.use(seedRouter);
+router.use(shopRouter);
 
 export default router;

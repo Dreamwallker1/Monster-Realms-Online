@@ -5,6 +5,7 @@ import {
   capturedMonstersTable,
   monsterSpeciesTable,
   playersTable,
+  inventoryItemsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth.js";
@@ -283,7 +284,27 @@ router.post(
         });
       }
     } else if (action === "capture") {
-      const orbType = body.data.orbType ?? "Basic";
+      const orbType = body.data.orbType ?? "Prism";
+      // Deduct one orb from inventory
+      const [orbRow] = await db
+        .select()
+        .from(inventoryItemsTable)
+        .where(
+          and(
+            eq(inventoryItemsTable.playerId, battle.playerId),
+            eq(inventoryItemsTable.type, "orb"),
+            eq(inventoryItemsTable.orbType, orbType),
+          ),
+        );
+      if (!orbRow || orbRow.quantity <= 0) {
+        res.status(400).json({ error: `No ${orbType} Orbs remaining` });
+        return;
+      }
+      await db
+        .update(inventoryItemsTable)
+        .set({ quantity: orbRow.quantity - 1 })
+        .where(eq(inventoryItemsTable.id, orbRow.id));
+
       const success = calculateCaptureChance(
         orbType,
         wildHp,

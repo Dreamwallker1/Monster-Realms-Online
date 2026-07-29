@@ -43,6 +43,10 @@ export const playersTable = pgTable("players", {
   posY: integer("pos_y").notNull().default(4),
   regionId: text("region_id").default("verdant-meadows"),
 
+  // Wallet & shop
+  solanaWallet: text("solana_wallet"),
+  lastOrbRefresh: timestamp("last_orb_refresh", { withTimezone: true }),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

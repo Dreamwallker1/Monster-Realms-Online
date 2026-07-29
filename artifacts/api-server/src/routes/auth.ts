@@ -133,22 +133,11 @@ router.post("/auth/guest", async (req, res): Promise<void> => {
   const [starterPack] = await Promise.all([
     starterElement ? grantStarterPack(player.id, starterElement) : Promise.resolve([]),
     db.insert(inventoryItemsTable).values([
-      {
-        playerId: player.id,
-        name: "Basic Orb",
-        type: "orb",
-        quantity: 10,
-        description: "A basic capture orb. Works best on Common monsters.",
-        orbType: "Basic",
-      },
-      {
-        playerId: player.id,
-        name: "Healing Herb",
-        type: "heal",
-        quantity: 3,
-        description: "Restores 30 HP to one monster.",
-        orbType: null,
-      },
+      { playerId: player.id, name: "Prism Orb",  type: "orb", quantity: 5, description: "A shimmering orb that captures Common myths.",      orbType: "Prism"  },
+      { playerId: player.id, name: "Luna Orb",   type: "orb", quantity: 3, description: "Moonlit energy for Uncommon myth capture.",           orbType: "Luna"   },
+      { playerId: player.id, name: "Aether Orb", type: "orb", quantity: 2, description: "Rare elemental orb that bends reality.",              orbType: "Aether" },
+      { playerId: player.id, name: "Void Orb",   type: "orb", quantity: 1, description: "A legendary orb that can capture any myth.",          orbType: "Void"   },
+      { playerId: player.id, name: "Healing Herb", type: "heal", quantity: 3, description: "Restores 30 HP to one monster.", orbType: null },
     ]),
   ]);
 
@@ -194,22 +183,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const [starterPack] = await Promise.all([
     starterElement ? grantStarterPack(player.id, starterElement) : Promise.resolve([]),
     db.insert(inventoryItemsTable).values([
-      {
-        playerId: player.id,
-        name: "Basic Orb",
-        type: "orb",
-        quantity: 10,
-        description: "A basic capture orb.",
-        orbType: "Basic",
-      },
-      {
-        playerId: player.id,
-        name: "Healing Herb",
-        type: "heal",
-        quantity: 3,
-        description: "Restores 30 HP to one monster.",
-        orbType: null,
-      },
+      { playerId: player.id, name: "Prism Orb",  type: "orb", quantity: 5, description: "A shimmering orb that captures Common myths.",   orbType: "Prism"  },
+      { playerId: player.id, name: "Luna Orb",   type: "orb", quantity: 3, description: "Moonlit energy for Uncommon myth capture.",        orbType: "Luna"   },
+      { playerId: player.id, name: "Aether Orb", type: "orb", quantity: 2, description: "Rare elemental orb that bends reality.",           orbType: "Aether" },
+      { playerId: player.id, name: "Void Orb",   type: "orb", quantity: 1, description: "A legendary orb that can capture any myth.",       orbType: "Void"   },
+      { playerId: player.id, name: "Healing Herb", type: "heal", quantity: 3, description: "Restores 30 HP to one monster.", orbType: null },
     ]),
   ]);
 
