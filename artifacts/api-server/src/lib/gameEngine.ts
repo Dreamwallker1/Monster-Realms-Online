@@ -103,17 +103,42 @@ export function rollShinyVariant(): string | null {
   return null;
 }
 
+/**
+ * Rarity HP multipliers.  Raw baseHp values in the catalogue are intentionally
+ * small "unit" numbers; the multiplier here turns them into real battle HP so
+ * battles last a satisfying number of rounds:
+ *
+ *   C Lv.1  ≈ 200 HP  → ~5-8 rounds per side
+ *   B Lv.1  ≈ 390 HP  → ~8-12 rounds per side
+ *   A Lv.1  ≈ 585 HP  → ~10-15 rounds per side
+ *   S Lv.1  ≈ 1000 HP → ~15-22 rounds per side (epic battles)
+ *
+ * Attack / defense / speed are NOT multiplied so damage values stay readable.
+ */
+const RARITY_HP_MULT: Record<string, number> = {
+  C: 5,
+  B: 6,
+  A: 7.5,
+  S: 10,
+};
+
 export function calculateWildStats(
   species: MonsterSpecies,
   level: number,
 ): { hp: number; attack: number; defense: number; speed: number } {
-  const scale = 1 + (level - 1) * 0.1;
+  const hpMult = RARITY_HP_MULT[species.rarity] ?? 5;
+  const scale  = 1 + (level - 1) * 0.1;
   return {
-    hp: Math.round(species.baseHp * scale),
-    attack: Math.round(species.baseAttack * scale),
+    hp:      Math.round(species.baseHp * hpMult * scale),
+    attack:  Math.round(species.baseAttack  * scale),
     defense: Math.round(species.baseDefense * scale),
-    speed: Math.round(species.baseSpeed * scale),
+    speed:   Math.round(species.baseSpeed   * scale),
   };
+}
+
+/** Exposed so auth.ts and any future service can apply the same scaling. */
+export function rarityHpMult(rarity: string): number {
+  return RARITY_HP_MULT[rarity] ?? 5;
 }
 
 const ORB_BONUS: Record<string, number> = {

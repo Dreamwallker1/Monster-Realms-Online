@@ -13,6 +13,7 @@ import {
   GetMeResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth.js";
+import { rarityHpMult } from "../lib/gameEngine.js";
 
 // ─── Starter pack helper ────────────────────────────────────────────────────
 
@@ -26,12 +27,13 @@ type StarterMythResult = {
 };
 
 function calcStats(species: typeof monsterSpeciesTable.$inferSelect, level: number) {
-  const scale = 1 + (level - 1) * 0.1;
+  const hpMult = rarityHpMult(species.rarity);
+  const scale  = 1 + (level - 1) * 0.1;
   return {
-    hp: Math.round(species.baseHp * scale),
-    attack: Math.round(species.baseAttack * scale),
+    hp:      Math.round(species.baseHp * hpMult * scale),
+    attack:  Math.round(species.baseAttack  * scale),
     defense: Math.round(species.baseDefense * scale),
-    speed: Math.round(species.baseSpeed * scale),
+    speed:   Math.round(species.baseSpeed   * scale),
   };
 }
 
@@ -40,32 +42,60 @@ function pickRandom<T>(arr: T[]): T | undefined {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/**
+ * Weighted rarity roll for starter pack slots.
+ *
+ * Slot 0 (featured):  3% S, 17% A, 35% B, 45% C
+ * Slot 1:             0% S, 15% A, 45% B, 40% C
+ * Slot 2 & 3:         0% S,  0% A, 35% B, 65% C
+ *
+ * S tier used to be guaranteed for every new player — now it is a rare prize
+ * (~3 in 100 players) that requires real dedication to obtain in normal play.
+ */
+function rollStarterRarity(slot: number): 'C' | 'B' | 'A' | 'S' {
+  const r = Math.random();
+  if (slot === 0) {
+    if (r < 0.03)  return 'S';
+    if (r < 0.20)  return 'A';
+    if (r < 0.55)  return 'B';
+    return 'C';
+  }
+  if (slot === 1) {
+    if (r < 0.15)  return 'A';
+    if (r < 0.60)  return 'B';
+    return 'C';
+  }
+  // slots 2 & 3
+  return r < 0.35 ? 'B' : 'C';
+}
+
 async function grantStarterPack(playerId: string, element: string): Promise<StarterMythResult[]> {
   const VALID_ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'];
   const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Nature';
 
-  // Fetch candidate myths
-  const [aTier, bTier, cTierAll, sTier] = await Promise.all([
-    db.select().from(monsterSpeciesTable).where(and(eq(monsterSpeciesTable.element, chosenElement), eq(monsterSpeciesTable.rarity, 'A'))),
-    db.select().from(monsterSpeciesTable).where(and(eq(monsterSpeciesTable.element, chosenElement), eq(monsterSpeciesTable.rarity, 'B'))),
-    db.select().from(monsterSpeciesTable).where(eq(monsterSpeciesTable.rarity, 'C')),
-    db.select().from(monsterSpeciesTable).where(and(eq(monsterSpeciesTable.element, chosenElement), eq(monsterSpeciesTable.rarity, 'S'))),
-  ]);
+  // Fetch all species for the chosen element (one query instead of four)
+  const allByElement = await db.select().from(monsterSpeciesTable)
+    .where(eq(monsterSpeciesTable.element, chosenElement));
+
+  // Also grab C-tier from all elements for slot 3 filler
+  const allC = await db.select().from(monsterSpeciesTable)
+    .where(eq(monsterSpeciesTable.rarity, 'C'));
+
+  const STARTER_LEVELS: Record<string, number> = { S: 5, A: 3, B: 2, C: 1 };
 
   const picks: { species: typeof monsterSpeciesTable.$inferSelect; level: number; slot: number }[] = [];
 
-  // Every new player gets one guaranteed S-tier as their featured starter
-  const specS = pickRandom(sTier);
-  if (specS) picks.push({ species: specS, level: 5, slot: 0 });
-
-  const specA = pickRandom(aTier);
-  if (specA) picks.push({ species: specA, level: 3, slot: 1 });
-
-  const specB = pickRandom(bTier);
-  if (specB) picks.push({ species: specB, level: 1, slot: 2 });
-
-  const specC = pickRandom(cTierAll);
-  if (specC) picks.push({ species: specC, level: 1, slot: 3 });
+  for (let slot = 0; slot < 4; slot++) {
+    const rarity = rollStarterRarity(slot);
+    // Prefer same-element pool; fall back to any-element for C on slot 3
+    const pool = allByElement.filter(s => s.rarity === rarity);
+    const fallback = allC.filter(s => s.element !== chosenElement); // off-element C for slot 3
+    const source = pool.length ? pool : (slot === 3 ? fallback : allByElement);
+    const species = pickRandom(source);
+    if (species) {
+      picks.push({ species, level: STARTER_LEVELS[rarity] ?? 1, slot });
+    }
+  }
 
   const results: StarterMythResult[] = [];
   for (const { species, level, slot } of picks) {
@@ -75,20 +105,20 @@ async function grantStarterPack(playerId: string, element: string): Promise<Star
       speciesId: species.id,
       level,
       currentHp: stats.hp,
-      maxHp: stats.hp,
-      attack: stats.attack,
-      defense: stats.defense,
-      speed: stats.speed,
+      maxHp:     stats.hp,
+      attack:    stats.attack,
+      defense:   stats.defense,
+      speed:     stats.speed,
       inTeam: true,
       teamSlot: slot,
     }).returning();
     if (captured) {
       results.push({
         capturedId: captured.id,
-        speciesId: species.id,
+        speciesId:  species.id,
         speciesName: species.name,
-        element: species.element,
-        rarity: species.rarity,
+        element:    species.element,
+        rarity:     species.rarity,
         level,
       });
     }
