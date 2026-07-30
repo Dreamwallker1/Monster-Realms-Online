@@ -557,6 +557,17 @@ export default function BattleOverlay() {
   const [switchAnimKey, setSwitchAnimKey] = useState(0);
   const [orbCinematic, setOrbCinematic]   = useState<{ orbType: string; targetRarity: string } | null>(null);
 
+  // ── Battle atmosphere & timing state ─────────────────────────────────────
+  const [roundTimer, setRoundTimer]       = useState(10);
+  const [playerLungeKey, setPlayerLungeKey] = useState(0);
+  const [wildLungeKey, setWildLungeKey]     = useState(0);
+  const [damageFloats, setDamageFloats]   = useState<Array<{
+    id: number; dmg: number; side: 'wild' | 'player'; crit: boolean;
+  }>>([]);
+  const [showRoundBanner, setShowRoundBanner] = useState(false);
+  const prevRoundRef = useRef<number>(1);
+  const floatIdRef   = useRef(0);
+
   // ── Entrance animation state ──────────────────────────────────────────────
   const [showPlayerEntrance, setShowPlayerEntrance] = useState(false);
   const [showWildEntrance, setShowWildEntrance]     = useState(false);
@@ -636,6 +647,14 @@ export default function BattleOverlay() {
 
     if (prevWildHp.current !== null && wd.currentHp < prevWildHp.current) {
       setWildShake((k) => k + 1);
+      // Floating damage number on the wild myth
+      const wildDmg = prevWildHp.current - wd.currentHp;
+      const wildCrit = (battleData.log ?? []).slice(-3).some(
+        (e: { actor: string; critical: boolean }) => e.actor === 'player' && e.critical,
+      );
+      const wfid = ++floatIdRef.current;
+      setDamageFloats(f => [...f, { id: wfid, dmg: wildDmg, side: 'wild', crit: wildCrit }]);
+      setTimeout(() => setDamageFloats(f => f.filter(x => x.id !== wfid)), 1400);
       if (wd.currentHp === 0 && prevWildHp.current > 0) {
         setFaintCinematic({
           side: 'wild',
@@ -647,6 +666,14 @@ export default function BattleOverlay() {
     }
     if (prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
       setPlayerShake((k) => k + 1);
+      // Floating damage number on the player myth
+      const playerDmg = prevPlayerHp.current - pd.currentHp;
+      const playerCrit = (battleData.log ?? []).slice(-3).some(
+        (e: { actor: string; critical: boolean }) => e.actor === 'wild' && e.critical,
+      );
+      const pfid = ++floatIdRef.current;
+      setDamageFloats(f => [...f, { id: pfid, dmg: playerDmg, side: 'player', crit: playerCrit }]);
+      setTimeout(() => setDamageFloats(f => f.filter(x => x.id !== pfid)), 1400);
       if (pd.currentHp === 0 && prevPlayerHp.current > 0) {
         setFaintCinematic({
           side: 'player',
@@ -701,6 +728,39 @@ export default function BattleOverlay() {
       // after 4000ms). onFaintComplete clears it once the animation finishes.
     }
   }, [isOver]);
+
+  // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
+  useEffect(() => {
+    if (!cinematic) return;
+    if (cinematic.attackerSide === 'player') {
+      setPlayerLungeKey(k => k + 1);
+    } else {
+      setWildLungeKey(k => k + 1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cinematic]);
+
+  // ── Round timer reset + banner when round increments ─────────────────────
+  useEffect(() => {
+    const currentRound = battle.battle?.round ?? 1;
+    if (currentRound === prevRoundRef.current) return;
+    prevRoundRef.current = currentRound;
+    setRoundTimer(10);
+    if (currentRound > 1) {
+      setShowRoundBanner(true);
+      const t = setTimeout(() => setShowRoundBanner(false), 1150);
+      return () => clearTimeout(t);
+    }
+  }, [battle.battle?.round]);
+
+  // ── Countdown tick while player has their turn ────────────────────────────
+  useEffect(() => {
+    if (isOver || cinematic !== null || performAction.isPending || showOrbPicker || showSwitchPanel) return;
+    const id = setInterval(() => {
+      setRoundTimer(t => Math.max(0, t - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isOver, cinematic, performAction.isPending, showOrbPicker, showSwitchPanel]);
 
   // Stable callbacks for entrance cinematics — avoids restarting the timeout
   // inside MythEntranceCinematic on every parent re-render.
@@ -968,15 +1028,15 @@ export default function BattleOverlay() {
           )}
         </div>
 
-        {/* ── Round counter — top centre ──────────────────────────────────── */}
+        {/* ── Round counter + countdown — top centre ──────────────────────── */}
         <div
-          className="absolute top-4 left-1/2 -translate-x-1/2 battle-slide-up flex flex-col items-center"
+          className="absolute top-3 left-1/2 -translate-x-1/2 battle-slide-up flex flex-col items-center gap-0.5"
           style={{ animationDelay: '0.2s', zIndex: 5 }}
         >
           <div
             className="px-4 py-1.5 rounded-full text-[11px] font-black tracking-widest uppercase"
             style={{
-              background: 'rgba(0,0,0,0.7)',
+              background: 'rgba(0,0,0,0.72)',
               border: '1.5px solid rgba(255,255,255,0.18)',
               color: 'rgba(255,255,255,0.85)',
               backdropFilter: 'blur(8px)',
@@ -986,6 +1046,28 @@ export default function BattleOverlay() {
           >
             ROUND {battle.battle?.round ?? 1}
           </div>
+          {/* Countdown timer — hidden while cinematic/action is in progress */}
+          {!isOver && (
+            <div
+              className={[
+                'text-[22px] font-black tabular-nums leading-none',
+                roundTimer <= 3 && !cinematic && !performAction.isPending
+                  ? 'text-red-400 timer-urgent'
+                  : roundTimer <= 5 && !cinematic && !performAction.isPending
+                    ? 'text-yellow-400'
+                    : 'text-white/55',
+              ].join(' ')}
+              style={{
+                textShadow:
+                  roundTimer <= 3 && !cinematic && !performAction.isPending
+                    ? '0 0 18px rgba(239,68,68,0.9)'
+                    : 'none',
+                transition: 'color 0.3s, text-shadow 0.3s',
+              }}
+            >
+              {cinematic || performAction.isPending ? '—' : roundTimer}
+            </div>
+          )}
         </div>
 
         {/* Player myth HP plate — upper right */}
@@ -1026,32 +1108,38 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance"
           style={{ bottom: '36%', left: '8%', animationDelay: '0.05s', zIndex: 2 }}
         >
-          {/* Type matchup badge */}
-          {(() => {
-            const mult = getTypeMultiplier(playerMonster.species.element, wildMonster.species.element);
-            const txt  = getMatchupText(mult);
-            if (!txt) return null;
-            const color = mult >= 2 ? '#22C55E' : mult >= 1.5 ? '#86EFAC' : mult === 0 ? '#94A3B8' : '#FCA5A5';
-            return (
-              <div className="text-[9px] font-bold mb-1 px-2 py-0.5 rounded-full"
-                style={{ background: color + '22', color, border: `1px solid ${color}44` }}>
-                {txt}
-              </div>
-            );
-          })()}
-          <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center"
-            style={{ color: wildColors.primary, textShadow: `0 0 10px ${wildColors.glow}` }}
+          {/* Inner lunge wrapper — re-keyed on each wild attack to replay animation */}
+          <div
+            key={`wlunge-${wildLungeKey}`}
+            className={`flex flex-col items-center ${wildLungeKey > 0 ? 'myth-lunge-right' : ''}`}
           >
-            ⚔ Enemy
+            {/* Type matchup badge */}
+            {(() => {
+              const mult = getTypeMultiplier(playerMonster.species.element, wildMonster.species.element);
+              const txt  = getMatchupText(mult);
+              if (!txt) return null;
+              const color = mult >= 2 ? '#22C55E' : mult >= 1.5 ? '#86EFAC' : mult === 0 ? '#94A3B8' : '#FCA5A5';
+              return (
+                <div className="text-[9px] font-bold mb-1 px-2 py-0.5 rounded-full"
+                  style={{ background: color + '22', color, border: `1px solid ${color}44` }}>
+                  {txt}
+                </div>
+              );
+            })()}
+            <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center"
+              style={{ color: wildColors.primary, textShadow: `0 0 10px ${wildColors.glow}` }}
+            >
+              ⚔ Enemy
+            </div>
+            <MythSprite
+              speciesId={wildMonster.species.id}
+              element={wildMonster.species.element}
+              rarity={wildMonster.species.rarity}
+              size={110}
+              shakeKey={wildShake}
+              isFainting={faintCinematic?.side === 'wild'}
+            />
           </div>
-          <MythSprite
-            speciesId={wildMonster.species.id}
-            element={wildMonster.species.element}
-            rarity={wildMonster.species.rarity}
-            size={110}
-            shakeKey={wildShake}
-            isFainting={faintCinematic?.side === 'wild'}
-          />
         </div>
 
         {/* Player Myth — RIGHT FRONT */}
@@ -1060,17 +1148,23 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance"
           style={{ bottom: '36%', right: '8%', animationDelay: '0.1s', zIndex: 2 }}
         >
-          <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
-            Your Myth
+          {/* Inner lunge wrapper — re-keyed on each player attack to replay animation */}
+          <div
+            key={`plunge-${playerLungeKey}`}
+            className={`flex flex-col items-center ${playerLungeKey > 0 ? 'myth-lunge-left' : ''}`}
+          >
+            <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
+              Your Myth
+            </div>
+            <MythSprite
+              speciesId={playerMonster.species.id}
+              element={playerMonster.species.element}
+              rarity={playerMonster.species.rarity}
+              size={110}
+              shakeKey={playerShake}
+              isFainting={faintCinematic?.side === 'player'}
+            />
           </div>
-          <MythSprite
-            speciesId={playerMonster.species.id}
-            element={playerMonster.species.element}
-            rarity={playerMonster.species.rarity}
-            size={110}
-            shakeKey={playerShake}
-            isFainting={faintCinematic?.side === 'player'}
-          />
         </div>
 
         {/* ── Myth entrance cinematics (non-blocking cosmetic overlay) ── */}
@@ -1091,6 +1185,57 @@ export default function BattleOverlay() {
             side="player"
             onComplete={onPlayerEntranceComplete}
           />
+        )}
+
+        {/* ── Floating damage numbers ─────────────────────────────────── */}
+        {damageFloats.map(f => (
+          <div
+            key={f.id}
+            className="absolute dmg-float"
+            style={{
+              ...(f.side === 'wild' ? { left: '16%' } : { right: '16%' }),
+              bottom: '52%',
+              zIndex: 12,
+              fontSize: f.crit ? 21 : 16,
+              fontWeight: 900,
+              fontFamily: 'monospace',
+              color: f.crit ? '#FBBF24' : '#fff',
+              textShadow: f.crit
+                ? '0 0 14px #F59E0B, 0 2px 6px rgba(0,0,0,0.95)'
+                : '0 0 6px rgba(255,255,255,0.35), 0 2px 4px rgba(0,0,0,0.9)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {f.crit && <span style={{ fontSize: 10, marginRight: 3, letterSpacing: '0.05em' }}>CRIT!</span>}
+            −{f.dmg}
+          </div>
+        ))}
+
+        {/* ── Round start banner (rounds 2+) ───────────────────────────── */}
+        {showRoundBanner && (
+          <div
+            className="absolute inset-0 flex items-center justify-center round-banner-flash"
+            style={{ zIndex: 14 }}
+          >
+            <div
+              style={{
+                width: '100%',
+                textAlign: 'center',
+                padding: '11px 0',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.88) 18%, rgba(0,0,0,0.88) 82%, transparent 100%)',
+                borderTop: '1.5px solid rgba(255,255,255,0.22)',
+                borderBottom: '1.5px solid rgba(255,255,255,0.22)',
+                fontSize: 20,
+                fontWeight: 900,
+                letterSpacing: '0.22em',
+                color: '#fff',
+                textShadow: '0 0 22px rgba(255,255,255,0.65), 0 2px 6px rgba(0,0,0,0.9)',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}
+            >
+              ⚔ ROUND {battle.battle?.round} ⚔
+            </div>
+          </div>
         )}
 
         {/* ── Faint cinematic (plays when HP drops to 0) ─────────────── */}
