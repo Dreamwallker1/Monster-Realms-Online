@@ -1026,7 +1026,11 @@ export default function BattleOverlay() {
 
     updateBattle(battleData);
     if (battleData.status !== 'active') {
-      setTimeout(() => { endBattle(); setCaptureMsg(null); }, 4000);
+      // PvP battles have a manual Continue button — no auto-dismiss
+      const isPvpBattle = battleData.regionId === 'pvp-arena';
+      if (!isPvpBattle) {
+        setTimeout(() => { endBattle(); setCaptureMsg(null); }, 4000);
+      }
     }
   }, [battleData]);
 
@@ -1933,12 +1937,21 @@ export default function BattleOverlay() {
         {isOver && (
           <BattleEndCinematic
             status={status as 'won' | 'lost' | 'captured' | 'fled'}
+            isPvp={battle.battle.regionId === 'pvp-arena'}
+            onComplete={() => { endBattle(); setCaptureMsg(null); }}
             expReward={battle.battle.expReward ?? undefined}
             coinReward={battle.battle.coinReward ?? undefined}
             wildMythId={wildMonster.species.id}
             wildElement={wildMonster.species.element}
             wildRarity={wildMonster.species.rarity}
             wildName={wildMonster.species.name}
+            playerMythId={playerMonster.species.id}
+            playerMythName={playerMonster.species.name}
+            playerMythElement={playerMonster.species.element}
+            playerMythRarity={playerMonster.species.rarity}
+            playerHpPct={(playerMonster.currentHp / playerMonster.maxHp) * 100}
+            totalRounds={battle.battle.round ?? 1}
+            battleLog={log as { actor: string; damageDealt: number | null; critical: boolean; description?: string }[]}
           />
         )}
 
