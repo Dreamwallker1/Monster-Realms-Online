@@ -29,7 +29,68 @@ import {
   xpForNextLevel,
   getExplorerRankForLevel,
 } from "../lib/gameEngine.js";
+import {
+  applyBattleLost,
+  applyBattleWon,
+  deductOrb,
+  applySuccessfulCapture,
+  type StatUpdateDb,
+} from "../lib/battleService.js";
 import type { BattleLogEntry } from "@workspace/db";
+
+/**
+ * Adapts the Drizzle `db` instance to the minimal `StatUpdateDb` interface
+ * expected by the battle service functions. Keeping the adapter thin means
+ * the service functions themselves contain the real business logic under test.
+ */
+function makeStatDb(drizzle: typeof db): StatUpdateDb {
+  return {
+    async fetchPlayerStats(playerId) {
+      const [row] = await drizzle
+        .select({
+          battlesLost: playersTable.battlesLost,
+          battlesWon: playersTable.battlesWon,
+          monstersCaptured: playersTable.monstersCaptured,
+          coins: playersTable.coins,
+        })
+        .from(playersTable)
+        .where(eq(playersTable.id, playerId));
+      return row;
+    },
+    async writePlayerStats(playerId, stats) {
+      await drizzle
+        .update(playersTable)
+        .set(stats)
+        .where(eq(playersTable.id, playerId));
+    },
+    async fetchOrb(playerId, orbType) {
+      const [row] = await drizzle
+        .select()
+        .from(inventoryItemsTable)
+        .where(
+          and(
+            eq(inventoryItemsTable.playerId, playerId),
+            eq(inventoryItemsTable.type, "orb"),
+            eq(inventoryItemsTable.orbType, orbType),
+          ),
+        );
+      return row ? { id: row.id, quantity: row.quantity } : undefined;
+    },
+    async writeOrbQuantity(orbRowId, quantity) {
+      await drizzle
+        .update(inventoryItemsTable)
+        .set({ quantity })
+        .where(eq(inventoryItemsTable.id, orbRowId));
+    },
+    async insertCapturedMonster(data) {
+      const [captured] = await drizzle
+        .insert(capturedMonstersTable)
+        .values(data)
+        .returning();
+      return { id: captured!.id };
+    },
+  };
+}
 
 const router: IRouter = Router();
 
@@ -342,14 +403,7 @@ router.post(
 
       if (newSwitchHp <= 0) {
         newStatus = "lost";
-        const [p] = await db
-          .select({ battlesLost: playersTable.battlesLost })
-          .from(playersTable)
-          .where(eq(playersTable.id, battle.playerId));
-        await db
-          .update(playersTable)
-          .set({ battlesLost: (p?.battlesLost ?? 0) + 1 })
-          .where(eq(playersTable.id, battle.playerId));
+        await applyBattleLost(makeStatDb(db), battle.playerId);
       }
 
       // Persist new monster's HP
@@ -404,25 +458,12 @@ router.post(
       }
     } else if (action === "capture") {
       const orbType = body.data.orbType ?? "Prism";
-      // Deduct one orb from inventory
-      const [orbRow] = await db
-        .select()
-        .from(inventoryItemsTable)
-        .where(
-          and(
-            eq(inventoryItemsTable.playerId, battle.playerId),
-            eq(inventoryItemsTable.type, "orb"),
-            eq(inventoryItemsTable.orbType, orbType),
-          ),
-        );
-      if (!orbRow || orbRow.quantity <= 0) {
+      // Deduct one orb from inventory (always, regardless of capture outcome)
+      const deductedOrb = await deductOrb(makeStatDb(db), battle.playerId, orbType);
+      if (!deductedOrb) {
         res.status(400).json({ error: `No ${orbType} Orbs remaining` });
         return;
       }
-      await db
-        .update(inventoryItemsTable)
-        .set({ quantity: orbRow.quantity - 1 })
-        .where(eq(inventoryItemsTable.id, orbRow.id));
 
       const success = calculateCaptureChance(
         orbType,
@@ -432,37 +473,24 @@ router.post(
         battle.wildShinyVariant,
       );
       if (success) {
-        // Create captured monster
         const personalities = ["Hardy", "Brave", "Calm", "Gentle", "Lax", "Bold", "Jolly", "Quirky", "Sassy", "Timid"];
         const personality = personalities[Math.floor(Math.random() * personalities.length)]!;
         const wildStats = calculateWildStats(wildSpecies, battle.wildLevel);
-        const [captured] = await db
-          .insert(capturedMonstersTable)
-          .values({
-            playerId: battle.playerId,
-            speciesId: wildSpecies.id,
-            level: battle.wildLevel,
-            currentHp: wildStats.hp,
-            maxHp: wildStats.hp,
-            attack: wildStats.attack,
-            defense: wildStats.defense,
-            speed: wildStats.speed,
-            shinyVariant: battle.wildShinyVariant ?? null,
-            personality,
-            inTeam: false,
-          })
-          .returning();
-        capturedMonsterId = captured!.id;
+        const captured = await applySuccessfulCapture(makeStatDb(db), battle.playerId, {
+          playerId: battle.playerId,
+          speciesId: wildSpecies.id,
+          level: battle.wildLevel,
+          currentHp: wildStats.hp,
+          maxHp: wildStats.hp,
+          attack: wildStats.attack,
+          defense: wildStats.defense,
+          speed: wildStats.speed,
+          shinyVariant: battle.wildShinyVariant ?? null,
+          personality,
+          inTeam: false,
+        });
+        capturedMonsterId = captured.id;
         newStatus = "captured";
-        // Update player captured count
-        const [playerRow] = await db
-          .select({ monstersCaptured: playersTable.monstersCaptured })
-          .from(playersTable)
-          .where(eq(playersTable.id, battle.playerId));
-        await db
-          .update(playersTable)
-          .set({ monstersCaptured: (playerRow?.monstersCaptured ?? 0) + 1 })
-          .where(eq(playersTable.id, battle.playerId));
         log.push({
           turn: battle.turn,
           actor: "player",
@@ -559,15 +587,8 @@ router.post(
           })
           .where(eq(capturedMonstersTable.id, playerCaptured.id));
 
-        // Apply coins
-        const [p] = await db
-          .select({ coins: playersTable.coins, battlesWon: playersTable.battlesWon })
-          .from(playersTable)
-          .where(eq(playersTable.id, battle.playerId));
-        await db
-          .update(playersTable)
-          .set({ coins: (p?.coins ?? 0) + coinReward, battlesWon: (p?.battlesWon ?? 0) + 1 })
-          .where(eq(playersTable.id, battle.playerId));
+        // Apply coins and battlesWon
+        await applyBattleWon(makeStatDb(db), battle.playerId, coinReward);
 
         log.push({
           turn: battle.turn,
@@ -632,14 +653,7 @@ router.post(
 
       if (playerHp <= 0) {
         newStatus = "lost";
-        const [p] = await db
-          .select({ battlesLost: playersTable.battlesLost })
-          .from(playersTable)
-          .where(eq(playersTable.id, battle.playerId));
-        await db
-          .update(playersTable)
-          .set({ battlesLost: (p?.battlesLost ?? 0) + 1 })
-          .where(eq(playersTable.id, battle.playerId));
+        await applyBattleLost(makeStatDb(db), battle.playerId);
       }
     }
 
