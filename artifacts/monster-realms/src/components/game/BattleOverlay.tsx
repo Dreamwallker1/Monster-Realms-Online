@@ -1108,7 +1108,23 @@ export default function BattleOverlay() {
         return next;
       });
     }, 1000);
-    return () => clearInterval(interval);
+
+    // Safety-net: if opponentTurnActive somehow stays true for 12 s (e.g. the
+    // interval was GC'd or pendingWildCinematic was cleared before the countdown
+    // fired), force-clear it so the battle doesn't freeze permanently.
+    const safetyTimeout = setTimeout(() => {
+      if (!opponentCinematicFiredRef.current) {
+        console.warn('[BattleOverlay] opponent-turn safety-net fired — force-clearing opponentTurnActive after 12 s');
+        opponentCinematicFiredRef.current = true;
+        pendingWildCinematic.current = null;
+        setOpponentTurnActive(false);
+      }
+    }, 12_000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(safetyTimeout);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opponentTurnActive]);
 
