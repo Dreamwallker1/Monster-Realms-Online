@@ -417,4 +417,97 @@ describe("Stat integrity across mixed outcomes", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// 9. Transaction rollback scenario — partial-write protection
+// ---------------------------------------------------------------------------
+
+describe("Capture transaction rollback scenario", () => {
+  it("documents the partial-write risk: orb write succeeds but monster insert throws", async () => {
+    // Pre-fix risk: without a DB transaction, a crash between writeOrbQuantity
+    // and insertCapturedMonster leaves the player's orb permanently spent with
+    // nothing captured.  The route now wraps both writes in db.transaction() so
+    // the DB engine rolls both back atomically on any error.
+    // This test verifies the service-level sequence so we can confirm both
+    // operations would be covered by a single transaction boundary.
+    let writeOrbCalled = false;
+    let insertAttempted = false;
+
+    const faultyDb: StatUpdateDb = {
+      async fetchPlayerStats() {
+        return { battlesLost: 0, battlesWon: 0, monstersCaptured: 0, coins: 100 };
+      },
+      async writePlayerStats() {},
+      async fetchOrb(_playerId, orbType) {
+        return orbType === "Prism" ? { id: "orb-1", quantity: 3 } : undefined;
+      },
+      async writeOrbQuantity() {
+        writeOrbCalled = true;
+        // In the real DB this write is persisted; without a transaction it
+        // cannot be undone if the next operation crashes.
+      },
+      async insertCapturedMonster() {
+        insertAttempted = true;
+        // Simulate a DB error / mid-request disconnect after orb deduction.
+        throw new Error("Simulated DB crash during monster insert");
+      },
+    };
+
+    // Step 1: orb deduction succeeds
+    const orbRow = await deductOrb(faultyDb, "player-1", "Prism");
+    assert.ok(orbRow, "orb row must be returned before insert");
+    assert.ok(writeOrbCalled, "orb quantity write was issued");
+
+    // Step 2: capture insert crashes — without a transaction the orb write
+    // above is now unrecoverable.
+    await assert.rejects(
+      () => applySuccessfulCapture(faultyDb, "player-1", sampleMonsterData()),
+      /Simulated DB crash/,
+      "insert error must propagate so the route can surface it",
+    );
+    assert.ok(insertAttempted, "insert was attempted");
+
+    // Takeaway: the route wraps deductOrb + applySuccessfulCapture in
+    // db.transaction() — if insertCapturedMonster throws, the DB engine
+    // rolls back the writeOrbQuantity call automatically.
+  });
+
+  it("orb write is always called before monster insert (correct operation order)", async () => {
+    // Verifies the sequencing the transaction relies on: deductOrb (write) must
+    // commit before insertCapturedMonster so the transaction covers both.
+    const calls: string[] = [];
+
+    const orderedDb: StatUpdateDb = {
+      async fetchPlayerStats() {
+        return { battlesLost: 0, battlesWon: 0, monstersCaptured: 0, coins: 0 };
+      },
+      async writePlayerStats() {},
+      async fetchOrb() { return { id: "orb-1", quantity: 2 }; },
+      async writeOrbQuantity() { calls.push("writeOrb"); },
+      async insertCapturedMonster() {
+        calls.push("insertMonster");
+        return { id: "new-id" };
+      },
+    };
+
+    await deductOrb(orderedDb, "player-1", "Prism");
+    await applySuccessfulCapture(orderedDb, "player-1", sampleMonsterData());
+
+    assert.deepEqual(
+      calls,
+      ["writeOrb", "insertMonster"],
+      "orb must be deducted before the monster row is inserted",
+    );
+  });
+
+  it("no orb write issued when player has no orbs (transaction remains empty)", async () => {
+    // Confirms deductOrb short-circuits before any write when quantity is 0,
+    // so an empty transaction does no harm.
+    const db = makeMockDb(freshState({}, { orbType: "Prism", quantity: 0 }));
+    const result = await deductOrb(db, "player-1", "Prism");
+    assert.equal(result, null, "must return null — no orb available");
+    assert.equal(db.state.writtenOrbQuantities.length, 0, "no orb write issued");
+    assert.equal(db.state.insertedMonsters.length, 0, "no monster insert issued");
+  });
+});
+
 console.log("\n✅  All battle-stats tests passed.\n");

@@ -458,56 +458,74 @@ router.post(
       }
     } else if (action === "capture") {
       const orbType = body.data.orbType ?? "Prism";
-      // Deduct one orb from inventory (always, regardless of capture outcome)
-      const deductedOrb = await deductOrb(makeStatDb(db), battle.playerId, orbType);
-      if (!deductedOrb) {
+
+      // Run the orb deduction and the captured-monster insert inside a single
+      // DB transaction.  If either write fails (e.g. a mid-request disconnect
+      // or a DB error on the insert), the entire transaction is rolled back so
+      // the player never loses an orb without receiving the captured myth.
+      let orbMissing = false;
+      await db.transaction(async (tx) => {
+        const txDb = makeStatDb(tx);
+        // Deduct one orb from inventory (always, regardless of capture outcome)
+        const deductedOrb = await deductOrb(txDb, battle.playerId, orbType);
+        if (!deductedOrb) {
+          // No orb available — mark the flag and return without any writes.
+          // The transaction commits as a no-op; we return 400 below.
+          orbMissing = true;
+          return;
+        }
+
+        const success = calculateCaptureChance(
+          orbType,
+          wildHp,
+          battle.wildMaxHp,
+          wildSpecies.captureRate,
+          battle.wildShinyVariant,
+        );
+        if (success) {
+          const personalities = ["Hardy", "Brave", "Calm", "Gentle", "Lax", "Bold", "Jolly", "Quirky", "Sassy", "Timid"];
+          const personality = personalities[Math.floor(Math.random() * personalities.length)]!;
+          const wildStats = calculateWildStats(wildSpecies, battle.wildLevel);
+          // applySuccessfulCapture runs inside the same transaction: if the
+          // insert throws, the orb decrement above is rolled back automatically.
+          const captured = await applySuccessfulCapture(txDb, battle.playerId, {
+            playerId: battle.playerId,
+            speciesId: wildSpecies.id,
+            level: battle.wildLevel,
+            currentHp: wildStats.hp,
+            maxHp: wildStats.hp,
+            attack: wildStats.attack,
+            defense: wildStats.defense,
+            speed: wildStats.speed,
+            shinyVariant: battle.wildShinyVariant ?? null,
+            personality,
+            inTeam: false,
+          });
+          capturedMonsterId = captured.id;
+          newStatus = "captured";
+          log.push({
+            turn: battle.turn,
+            actor: "player",
+            action: "capture",
+            description: `You captured ${wildSpecies.name}!`,
+            damageDealt: null,
+            critical: false,
+          });
+        } else {
+          log.push({
+            turn: battle.turn,
+            actor: "player",
+            action: "capture",
+            description: `${wildSpecies.name} broke free!`,
+            damageDealt: null,
+            critical: false,
+          });
+        }
+      });
+
+      if (orbMissing) {
         res.status(400).json({ error: `No ${orbType} Orbs remaining` });
         return;
-      }
-
-      const success = calculateCaptureChance(
-        orbType,
-        wildHp,
-        battle.wildMaxHp,
-        wildSpecies.captureRate,
-        battle.wildShinyVariant,
-      );
-      if (success) {
-        const personalities = ["Hardy", "Brave", "Calm", "Gentle", "Lax", "Bold", "Jolly", "Quirky", "Sassy", "Timid"];
-        const personality = personalities[Math.floor(Math.random() * personalities.length)]!;
-        const wildStats = calculateWildStats(wildSpecies, battle.wildLevel);
-        const captured = await applySuccessfulCapture(makeStatDb(db), battle.playerId, {
-          playerId: battle.playerId,
-          speciesId: wildSpecies.id,
-          level: battle.wildLevel,
-          currentHp: wildStats.hp,
-          maxHp: wildStats.hp,
-          attack: wildStats.attack,
-          defense: wildStats.defense,
-          speed: wildStats.speed,
-          shinyVariant: battle.wildShinyVariant ?? null,
-          personality,
-          inTeam: false,
-        });
-        capturedMonsterId = captured.id;
-        newStatus = "captured";
-        log.push({
-          turn: battle.turn,
-          actor: "player",
-          action: "capture",
-          description: `You captured ${wildSpecies.name}!`,
-          damageDealt: null,
-          critical: false,
-        });
-      } else {
-        log.push({
-          turn: battle.turn,
-          actor: "player",
-          action: "capture",
-          description: `${wildSpecies.name} broke free!`,
-          damageDealt: null,
-          critical: false,
-        });
       }
     } else {
       // Attack or skill
