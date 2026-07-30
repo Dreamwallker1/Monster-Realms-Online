@@ -11,6 +11,7 @@ import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-char
 import { Package, Wind, RefreshCw, X, ChevronRight } from 'lucide-react';
 import SkillCinematic from '@/components/battle/SkillCinematic';
 import OrbCinematic from '@/components/battle/OrbCinematic';
+import MythEntranceCinematic from '@/components/battle/MythEntranceCinematic';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -548,6 +549,12 @@ export default function BattleOverlay() {
   const [switchAnimKey, setSwitchAnimKey] = useState(0);
   const [orbCinematic, setOrbCinematic]   = useState<{ orbType: string; targetRarity: string } | null>(null);
 
+  // ── Entrance animation state ──────────────────────────────────────────────
+  const [showPlayerEntrance, setShowPlayerEntrance] = useState(false);
+  const [showWildEntrance, setShowWildEntrance]     = useState(false);
+  const seenBattleId = useRef<string | null>(null);
+  const prevSwitchAnimKey = useRef(0);
+
   // ── Two-flag capture coordination ─────────────────────────────────────────
   // Result is applied only when BOTH animation AND API call are settled,
   // so slow requests (> 1800 ms) are never silently dropped.
@@ -632,6 +639,23 @@ export default function BattleOverlay() {
       setTimeout(() => { endBattle(); setCaptureMsg(null); }, 4000);
     }
   }, [battleData]);
+
+  // Trigger entrances when a fresh battle starts
+  useEffect(() => {
+    if (battle.battleId && battle.battleId !== seenBattleId.current) {
+      seenBattleId.current = battle.battleId;
+      setShowPlayerEntrance(true);
+      setShowWildEntrance(true);
+    }
+  }, [battle.battleId]);
+
+  // Trigger player entrance on myth switch
+  useEffect(() => {
+    if (switchAnimKey > 0 && switchAnimKey !== prevSwitchAnimKey.current) {
+      prevSwitchAnimKey.current = switchAnimKey;
+      setShowPlayerEntrance(true);
+    }
+  }, [switchAnimKey]);
 
   // Derive battle data with safe defaults (must happen before early return so hooks below are always called)
   const wildMonster  = battle.battle?.wildMonster ?? null;
@@ -993,6 +1017,26 @@ export default function BattleOverlay() {
             shakeKey={playerShake}
           />
         </div>
+
+        {/* ── Myth entrance cinematics (non-blocking cosmetic overlay) ── */}
+        {showWildEntrance && wildMonster && (
+          <MythEntranceCinematic
+            mythId={wildMonster.species.id}
+            element={wildMonster.species.element}
+            rarity={wildMonster.species.rarity}
+            side="wild"
+            onComplete={() => setShowWildEntrance(false)}
+          />
+        )}
+        {showPlayerEntrance && playerMonster && (
+          <MythEntranceCinematic
+            mythId={playerMonster.species.id}
+            element={playerMonster.species.element}
+            rarity={playerMonster.species.rarity}
+            side="player"
+            onComplete={() => setShowPlayerEntrance(false)}
+          />
+        )}
 
         {/* ── Orb Picker Overlay ────────────────────────────────────────── */}
         {showOrbPicker && !isOver && (
