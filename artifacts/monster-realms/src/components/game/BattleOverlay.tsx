@@ -1452,11 +1452,9 @@ export default function BattleOverlay() {
                 minHeight: 13,
               }}
             >
-              {opponentTurnActive
-                ? '⚡ Opponent'
-                : cinematic || isPending
-                  ? ''
-                  : '◆ Your turn'}
+              {cinematic || isPending || opponentTurnActive
+                ? ''
+                : '◆ Your turn'}
             </div>
           )}
 
@@ -1492,15 +1490,6 @@ export default function BattleOverlay() {
             </div>
           )}
 
-          {/* "Waiting for opponent" label — only during opponent turn */}
-          {opponentTurnActive && (
-            <div
-              className="text-[9px] font-mono"
-              style={{ color: 'rgba(255,255,255,0.32)', letterSpacing: '0.12em', marginTop: 1 }}
-            >
-              Waiting for opponent…
-            </div>
-          )}
         </div>
 
         {/* Player myth HP plate — upper right */}
@@ -2066,17 +2055,6 @@ export default function BattleOverlay() {
               setShowSwitchPanel={setShowSwitchPanel}
               setShowOrbPicker={setShowOrbPicker}
             />
-            {/* Opponent turn — dim the action panel with a frosted overlay */}
-            {opponentTurnActive && (
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ background: 'rgba(0,0,0,0.58)', backdropFilter: 'blur(3px)', zIndex: 5 }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>
-                  Waiting for opponent…
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3">
