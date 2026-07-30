@@ -872,8 +872,10 @@ export default function BattleOverlay() {
     id: number; dmg: number; side: 'wild' | 'player'; crit: boolean;
   }>>([]);
   const [showRoundBanner, setShowRoundBanner] = useState(false);
-  const prevRoundRef = useRef<number>(1);
-  const floatIdRef   = useRef(0);
+  const [displayedRound, setDisplayedRound]   = useState(1);
+  const prevRoundRef     = useRef<number>(1);
+  const pendingRoundRef  = useRef<number>(0); // new round waiting to be announced
+  const floatIdRef       = useRef(0);
 
   // ── PvP arena intro + opponent turn state ─────────────────────────────
   const [showBattleIntro, setShowBattleIntro]     = useState(false);
@@ -1057,16 +1059,19 @@ export default function BattleOverlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cinematic]);
 
-  // ── Round timer reset + banner when round increments ─────────────────────
+  // ── Round tracking — banner fires AFTER opponent's turn ends ────────────
+  // When the API returns a new round number we don't immediately show the banner
+  // because the opponent hasn't acted yet. We park it in pendingRoundRef and
+  // onCinematicComplete (wild phase) picks it up after the opponent cinematic.
   useEffect(() => {
     const currentRound = battle.battle?.round ?? 1;
     if (currentRound === prevRoundRef.current) return;
     prevRoundRef.current = currentRound;
     setRoundTimer(10);
     if (currentRound > 1) {
-      setShowRoundBanner(true);
-      const t = setTimeout(() => setShowRoundBanner(false), 2500);
-      return () => clearTimeout(t);
+      pendingRoundRef.current = currentRound; // deferred — announced after both turns
+    } else {
+      setDisplayedRound(1); // battle start
     }
   }, [battle.battle?.round]);
 
@@ -1175,8 +1180,15 @@ export default function BattleOverlay() {
         setCinematic(null);
       }
     } else {
-      // Wild cinematic done — clear
+      // Wild cinematic done — clear, then announce new round if pending
       setCinematic(null);
+      if (pendingRoundRef.current > 0) {
+        const nextRound = pendingRoundRef.current;
+        pendingRoundRef.current = 0;
+        setDisplayedRound(nextRound);
+        setShowRoundBanner(true);
+        setTimeout(() => setShowRoundBanner(false), 2500);
+      }
     }
   }, [cinematic, battle.battleId, updateBattle, queryClient]);
 
@@ -1412,10 +1424,10 @@ export default function BattleOverlay() {
               transition: 'border-color 0.4s',
             }}
           >
-            ROUND {battle.battle?.round ?? 1}
+            ROUND {displayedRound}
           </div>
 
-          {/* Phase label — switches between "Your Turn" / "Opponent" */}
+          {/* Phase label */}
           {!isOver && (
             <div
               className="text-[9px] font-bold tracking-widest uppercase"
@@ -1463,6 +1475,16 @@ export default function BattleOverlay() {
                 : opponentTurnActive
                   ? opponentTimer
                   : roundTimer}
+            </div>
+          )}
+
+          {/* "Waiting for opponent" label — only during opponent turn */}
+          {opponentTurnActive && (
+            <div
+              className="text-[9px] font-mono"
+              style={{ color: 'rgba(255,255,255,0.32)', letterSpacing: '0.12em', marginTop: 1 }}
+            >
+              Waiting for opponent…
             </div>
           )}
         </div>
@@ -1655,13 +1677,6 @@ export default function BattleOverlay() {
           </div>
         )}
 
-        {/* Opponent-turn arena veil — subtle darkening only, countdown is in the top widget */}
-        {opponentTurnActive && (
-          <div
-            className="absolute inset-0 pointer-events-none battle-opponent-veil"
-            style={{ zIndex: 3, background: 'rgba(0,0,0,0.18)' }}
-          />
-        )}
 
         {/* ── Faint cinematic (plays when HP drops to 0) ─────────────── */}
         {faintCinematic && (
