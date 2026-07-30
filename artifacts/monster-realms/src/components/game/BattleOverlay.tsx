@@ -372,6 +372,7 @@ function BattleTextBox({ text, actor }: { text: string; actor: 'player' | 'wild'
 
 function ActionPanel({
   playerMonster,
+  wildElement,
   cinematic,
   isPending,
   wildHpPct,
@@ -380,6 +381,7 @@ function ActionPanel({
   setShowSwitchPanel,
 }: {
   playerMonster: { species?: { skills?: unknown; element?: string } } | null;
+  wildElement: string;
   cinematic: unknown;
   isPending: boolean;
   wildHpPct: number;
@@ -410,13 +412,20 @@ function ActionPanel({
         {available.length > 0 ? available.map(({ action, type, skill }) => {
           const style = SKILL_STYLE[type] ?? SKILL_STYLE['normal']!;
           const elColors = getElementColors(skill.element);
+          const mult = getTypeMultiplier(skill.element, wildElement);
+          const matchupText = getMatchupText(mult);
+          const matchupColor =
+            mult >= 2.0 ? '#4ADE80' :
+            mult >= 1.5 ? '#86EFAC' :
+            mult === 0   ? '#94A3B8' :
+            mult <= 0.5  ? '#FCA5A5' : null;
           return (
             <button
               key={action}
               onClick={() => handleSkillAction(action)}
               disabled={isBlocked}
               className="relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
-              style={{ background: style.grad, border: `1.5px solid ${style.border}`, boxShadow: `0 0 16px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.12)`, minHeight: 52, padding: '8px 10px' }}
+              style={{ background: style.grad, border: `1.5px solid ${matchupColor ? matchupColor + '55' : style.border}`, boxShadow: `0 0 16px ${matchupColor ? matchupColor + '44' : style.glow}, inset 0 1px 0 rgba(255,255,255,0.12)`, minHeight: 52, padding: '8px 10px' }}
               data-testid={`button-${action}`}
             >
               <div className="flex items-center gap-1.5 w-full">
@@ -424,7 +433,7 @@ function ActionPanel({
                 <span className="text-[12px] font-black text-white truncate flex-1">{skill.name}</span>
                 <span className="text-[9px] font-mono shrink-0" style={{ color: style.textColor }}>PWR {skill.power}</span>
               </div>
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
                 <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold"
                   style={{ background: elColors.primary + '30', color: elColors.primary, border: `1px solid ${elColors.primary}44` }}>
                   {skill.element}
@@ -432,6 +441,14 @@ function ActionPanel({
                 <span className="text-[8px] text-white/30 uppercase font-mono">
                   {type === 'normal' ? 'normal' : type === 'skill1' ? 'special' : type === 'skill2' ? 'power' : '★ ult'}
                 </span>
+                {matchupText && matchupColor && (
+                  <span
+                    className="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+                    style={{ background: matchupColor + '22', color: matchupColor, border: `1px solid ${matchupColor}55` }}
+                  >
+                    {mult >= 1.5 ? '⚡ ' : mult === 0 ? '✕ ' : '↓ '}{matchupText}
+                  </span>
+                )}
               </div>
               <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
                 style={{ background: skill.accuracy >= 90 ? '#22C55E' : skill.accuracy >= 75 ? '#EAB308' : '#EF4444' }} />
@@ -1040,6 +1057,7 @@ export default function BattleOverlay() {
         {!isOver ? (
           <ActionPanel
             playerMonster={playerMonster}
+            wildElement={wildMonster.species.element}
             cinematic={cinematic}
             isPending={isPending}
             wildHpPct={wildHpPct}
