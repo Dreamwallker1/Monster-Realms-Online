@@ -595,50 +595,58 @@ function HpPlate({
 
   return (
     <div
-      className="rounded-2xl px-4 py-3 min-w-[170px] max-w-[210px]"
+      className="rounded-xl px-3 py-2.5"
       style={{
-        background: 'linear-gradient(135deg, rgba(10,10,25,0.88), rgba(5,5,15,0.94))',
-        border: `1.5px solid ${elColors.primary}55`,
-        backdropFilter: 'blur(12px)',
-        boxShadow: `0 4px 24px rgba(0,0,0,0.7), 0 0 12px ${elColors.glow}`,
+        minWidth: 158, maxWidth: 204,
+        background: 'linear-gradient(135deg, rgba(8,8,22,0.92), rgba(4,4,14,0.96))',
+        border: `1.5px solid ${elColors.primary}44`,
+        backdropFilter: 'blur(14px)',
+        boxShadow: `0 4px 20px rgba(0,0,0,0.75), 0 0 10px ${elColors.glow}55`,
       }}
     >
-      {/* Name row */}
-      <div className={`flex items-baseline gap-2 mb-1 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <span className="font-bold text-sm text-white truncate max-w-[110px]">{name}</span>
-        <span className="text-[10px] text-white/50 font-mono shrink-0">Lv.{level}</span>
+      {/* Name + level */}
+      <div className={`flex items-baseline gap-1.5 mb-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        <span className="font-bold text-sm text-white truncate" style={{ maxWidth: 102 }}>{name}</span>
+        <span className="text-[10px] text-white/40 font-mono shrink-0">Lv.{level}</span>
       </div>
       {/* Element + quality badges */}
       <div className={`flex gap-1 mb-2 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
         <Badge
           className="text-[9px] h-4 px-1.5"
-          style={{ background: elColors.primary + '44', color: elColors.primary, border: `1px solid ${elColors.primary}66`, boxShadow: 'none' }}
+          style={{ background: elColors.primary + '38', color: elColors.primary, border: `1px solid ${elColors.primary}55`, boxShadow: 'none' }}
         >
           {element}
         </Badge>
         <Badge
           className="text-[9px] h-4 px-1.5"
-          style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: 'none' }}
+          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: 'none' }}
         >
           {qualLabel}
         </Badge>
       </div>
-      {/* HP bar track */}
-      <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* HP bar — numbers live inside the bar */}
+      <div
+        className="relative w-full rounded-full overflow-hidden"
+        style={{ height: 20, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        {/* Filled portion */}
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="absolute inset-y-0 left-0 rounded-full hp-bar-fill"
           style={{
             width: `${pct}%`,
-            background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`,
-            boxShadow: `0 0 8px ${barColor}99`,
+            background: `linear-gradient(90deg, ${barColor}88, ${barColor}dd)`,
+            boxShadow: `0 0 6px ${barColor}66`,
           }}
         />
-      </div>
-      {/* HP numbers */}
-      <div className={`flex mt-1 ${align === 'right' ? 'justify-start' : 'justify-end'}`}>
-        <span className="text-[10px] font-mono text-white/50">
-          <span className="text-white/75">{currentHp}</span>/{maxHp}
-        </span>
+        {/* HP text overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span
+            className="text-[10px] font-mono font-bold leading-none"
+            style={{ color: 'rgba(255,255,255,0.92)', textShadow: '0 1px 4px rgba(0,0,0,0.98)' }}
+          >
+            {currentHp}<span style={{ opacity: 0.5 }}>/{maxHp}</span>
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -1386,44 +1394,75 @@ export default function BattleOverlay() {
           )}
         </div>
 
-        {/* ── Round counter + countdown — top centre ──────────────────────── */}
+        {/* ── Unified turn widget — top centre ────────────────────────────── */}
         <div
-          className="absolute top-3 left-1/2 -translate-x-1/2 battle-slide-up flex flex-col items-center gap-0.5"
-          style={{ animationDelay: '0.2s', zIndex: 5 }}
+          className="absolute top-3 left-1/2 -translate-x-1/2 battle-slide-up flex flex-col items-center"
+          style={{ animationDelay: '0.2s', zIndex: 13, minWidth: 90, gap: 2 }}
         >
+          {/* Round chip */}
           <div
-            className="px-4 py-1.5 rounded-full text-[11px] font-black tracking-widest uppercase"
+            className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase"
             style={{
               background: 'rgba(0,0,0,0.72)',
-              border: '1.5px solid rgba(255,255,255,0.18)',
-              color: 'rgba(255,255,255,0.85)',
-              backdropFilter: 'blur(8px)',
-              boxShadow: '0 2px 14px rgba(0,0,0,0.6)',
-              letterSpacing: '0.12em',
+              border: `1.5px solid ${opponentTurnActive ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.16)'}`,
+              color: 'rgba(255,255,255,0.82)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.65)',
+              letterSpacing: '0.14em',
+              transition: 'border-color 0.4s',
             }}
           >
             ROUND {battle.battle?.round ?? 1}
           </div>
-          {/* Countdown timer — hidden while cinematic/action is in progress */}
+
+          {/* Phase label — switches between "Your Turn" / "Opponent" */}
+          {!isOver && (
+            <div
+              className="text-[9px] font-bold tracking-widest uppercase"
+              style={{
+                color: opponentTurnActive ? '#FCA5A5' : 'rgba(255,255,255,0.35)',
+                transition: 'color 0.35s ease',
+                letterSpacing: '0.28em',
+                minHeight: 13,
+              }}
+            >
+              {opponentTurnActive
+                ? '⚡ Opponent'
+                : cinematic || isPending
+                  ? ''
+                  : '◆ Your turn'}
+            </div>
+          )}
+
+          {/* Big countdown digit */}
           {!isOver && (
             <div
               className={[
-                'text-[22px] font-black tabular-nums leading-none',
-                roundTimer <= 3 && !cinematic && !performAction.isPending
-                  ? 'text-red-400 timer-urgent'
-                  : roundTimer <= 5 && !cinematic && !performAction.isPending
-                    ? 'text-yellow-400'
-                    : 'text-white/55',
+                'text-[38px] font-black tabular-nums leading-none',
+                opponentTurnActive
+                  ? opponentTimer <= 3 ? 'text-red-400 timer-urgent' : 'text-red-300'
+                  : roundTimer <= 3 && !cinematic && !isPending
+                    ? 'text-red-400 timer-urgent'
+                    : roundTimer <= 5 && !cinematic && !isPending
+                      ? 'text-yellow-300'
+                      : 'text-white/55',
               ].join(' ')}
               style={{
-                textShadow:
-                  roundTimer <= 3 && !cinematic && !performAction.isPending
-                    ? '0 0 18px rgba(239,68,68,0.9)'
+                textShadow: opponentTurnActive
+                  ? opponentTimer <= 3
+                    ? '0 0 24px rgba(239,68,68,0.95)'
+                    : '0 0 10px rgba(239,68,68,0.4)'
+                  : roundTimer <= 3 && !cinematic && !isPending
+                    ? '0 0 20px rgba(239,68,68,0.9)'
                     : 'none',
                 transition: 'color 0.3s, text-shadow 0.3s',
               }}
             >
-              {cinematic || performAction.isPending ? '—' : roundTimer}
+              {cinematic || isPending
+                ? '—'
+                : opponentTurnActive
+                  ? opponentTimer
+                  : roundTimer}
             </div>
           )}
         </div>
@@ -1616,42 +1655,12 @@ export default function BattleOverlay() {
           </div>
         )}
 
-        {/* ── Opponent turn phase indicator ────────────────────────────── */}
+        {/* Opponent-turn arena veil — subtle darkening only, countdown is in the top widget */}
         {opponentTurnActive && (
           <div
-            className="absolute inset-x-0 flex justify-center pointer-events-none"
-            style={{ top: '28%', zIndex: 13 }}
-          >
-            <div
-              className="flex flex-col items-center gap-2 px-10 py-5 rounded-2xl battle-slide-up"
-              style={{
-                background: 'linear-gradient(135deg, rgba(30,5,5,0.88), rgba(0,0,0,0.82))',
-                border: '1.5px solid rgba(239,68,68,0.35)',
-                backdropFilter: 'blur(6px)',
-                boxShadow: '0 0 40px rgba(239,68,68,0.15)',
-              }}
-            >
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.4em', color: '#FCA5A5', textTransform: 'uppercase' }}>
-                ⚡ Opponent&apos;s Turn
-              </div>
-              <div
-                className={`tabular-nums font-black leading-none ${
-                  opponentTimer <= 3 ? 'text-red-400 timer-urgent' : 'text-white'
-                }`}
-                style={{
-                  fontSize: 62,
-                  textShadow: opponentTimer <= 3
-                    ? '0 0 28px rgba(239,68,68,1), 0 0 60px rgba(239,68,68,0.5)'
-                    : '0 0 24px rgba(255,255,255,0.25)',
-                }}
-              >
-                {opponentTimer}
-              </div>
-              <div style={{ fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
-                Choosing move…
-              </div>
-            </div>
-          </div>
+            className="absolute inset-0 pointer-events-none battle-opponent-veil"
+            style={{ zIndex: 3, background: 'rgba(0,0,0,0.18)' }}
+          />
         )}
 
         {/* ── Faint cinematic (plays when HP drops to 0) ─────────────── */}

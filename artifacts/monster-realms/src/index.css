@@ -628,4 +628,31 @@
     50%       { box-shadow: 0 0 18px 4px rgba(255,255,255,0.35); }
   }
   .turn-active-glow { animation: turn-glow 1.4s ease-in-out infinite; }
+
+  /* ── HP bar fill — smooth width transition with a faint shimmer ─────── */
+  .hp-bar-fill {
+    transition: width 0.55s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .hp-bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%);
+    transform: translateX(-100%);
+    animation: hp-shimmer 2.4s ease-in-out infinite;
+  }
+  @keyframes hp-shimmer {
+    0%   { transform: translateX(-100%); }
+    60%  { transform: translateX(100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* ── Opponent-turn arena veil — subtle fade in/out ──────────────────── */
+  @keyframes opponent-veil-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .battle-opponent-veil { animation: opponent-veil-in 0.45s ease forwards; }
 }
