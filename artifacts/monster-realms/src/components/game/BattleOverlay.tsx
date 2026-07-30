@@ -12,6 +12,7 @@ import { Package, Wind, RefreshCw, X, ChevronRight } from 'lucide-react';
 import SkillCinematic from '@/components/battle/SkillCinematic';
 import OrbCinematic from '@/components/battle/OrbCinematic';
 import MythEntranceCinematic from '@/components/battle/MythEntranceCinematic';
+import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -243,10 +244,10 @@ function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: nu
 // ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
 function MythSprite({
-  speciesId, element, rarity = 'C', size = 110, shakeKey,
+  speciesId, element, rarity = 'C', size = 110, shakeKey, isFainting = false,
 }: {
   speciesId: string; element: string; rarity?: string;
-  size?: number; shakeKey: number;
+  size?: number; shakeKey: number; isFainting?: boolean;
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
@@ -260,7 +261,12 @@ function MythSprite({
       <div
         key={animKey}
         className={`battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
-        style={{ filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined }}
+        style={{
+          filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
+          transition: isFainting ? 'opacity 0.35s ease-in, transform 0.35s ease-in' : undefined,
+          opacity: isFainting ? 0 : 1,
+          transform: isFainting ? 'translateY(18px) scale(0.85)' : undefined,
+        }}
       >
         <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
       </div>
@@ -268,6 +274,8 @@ function MythSprite({
       <div style={{
         width: size * 0.65, height: 12, borderRadius: '50%', marginTop: 4,
         background: 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
+        transition: isFainting ? 'opacity 0.35s ease-in' : undefined,
+        opacity: isFainting ? 0 : 1,
       }} />
     </div>
   );
@@ -555,6 +563,14 @@ export default function BattleOverlay() {
   const seenBattleId = useRef<string | null>(null);
   const prevSwitchAnimKey = useRef(0);
 
+  // ── Faint cinematic state ─────────────────────────────────────────────────
+  const [faintCinematic, setFaintCinematic] = useState<{
+    side: 'player' | 'wild';
+    mythId: string;
+    element: string;
+    rarity: string;
+  } | null>(null);
+
   // ── Two-flag capture coordination ─────────────────────────────────────────
   // Result is applied only when BOTH animation AND API call are settled,
   // so slow requests (> 1800 ms) are never silently dropped.
@@ -620,9 +636,25 @@ export default function BattleOverlay() {
 
     if (prevWildHp.current !== null && wd.currentHp < prevWildHp.current) {
       setWildShake((k) => k + 1);
+      if (wd.currentHp === 0 && prevWildHp.current > 0) {
+        setFaintCinematic({
+          side: 'wild',
+          mythId: wd.species?.id ?? '',
+          element: wd.species?.element ?? 'Fire',
+          rarity: wd.species?.rarity ?? 'C',
+        });
+      }
     }
     if (prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
       setPlayerShake((k) => k + 1);
+      if (pd.currentHp === 0 && prevPlayerHp.current > 0) {
+        setFaintCinematic({
+          side: 'player',
+          mythId: pd.species?.id ?? '',
+          element: pd.species?.element ?? 'Fire',
+          rarity: pd.species?.rarity ?? 'C',
+        });
+      }
     }
 
     // Detect myth switch for entrance animation
@@ -664,6 +696,9 @@ export default function BattleOverlay() {
     if (isOver) {
       setShowPlayerEntrance(false);
       setShowWildEntrance(false);
+      // Do NOT clear faintCinematic here — the faint animation (≤ 480ms) needs
+      // to play to completion before the result screen appears (endBattle fires
+      // after 4000ms). onFaintComplete clears it once the animation finishes.
     }
   }, [isOver]);
 
@@ -671,6 +706,9 @@ export default function BattleOverlay() {
   // inside MythEntranceCinematic on every parent re-render.
   const onPlayerEntranceComplete = useCallback(() => setShowPlayerEntrance(false), []);
   const onWildEntranceComplete   = useCallback(() => setShowWildEntrance(false), []);
+
+  // Stable callback for faint cinematic
+  const onFaintComplete = useCallback(() => setFaintCinematic(null), []);
 
   // Derive battle data with safe defaults (must happen before early return so hooks below are always called)
   const wildMonster  = battle.battle?.wildMonster ?? null;
@@ -1012,6 +1050,7 @@ export default function BattleOverlay() {
             rarity={wildMonster.species.rarity}
             size={110}
             shakeKey={wildShake}
+            isFainting={faintCinematic?.side === 'wild'}
           />
         </div>
 
@@ -1030,6 +1069,7 @@ export default function BattleOverlay() {
             rarity={playerMonster.species.rarity}
             size={110}
             shakeKey={playerShake}
+            isFainting={faintCinematic?.side === 'player'}
           />
         </div>
 
@@ -1050,6 +1090,17 @@ export default function BattleOverlay() {
             rarity={playerMonster.species.rarity}
             side="player"
             onComplete={onPlayerEntranceComplete}
+          />
+        )}
+
+        {/* ── Faint cinematic (plays when HP drops to 0) ─────────────── */}
+        {faintCinematic && (
+          <MythFaintCinematic
+            mythId={faintCinematic.mythId}
+            element={faintCinematic.element}
+            rarity={faintCinematic.rarity}
+            side={faintCinematic.side}
+            onComplete={onFaintComplete}
           />
         )}
 
