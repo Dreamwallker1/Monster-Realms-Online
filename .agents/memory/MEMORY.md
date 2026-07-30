@@ -1,7 +1,8 @@
 - [Phaser 4 compatibility](phaser4-compatibility.md) — Graphics.setTint() gone; guard init() with ??; use one Graphics object for all tiles
 - [Monster Realms spawn & movement](monster-realms-movement.md) — player default spawn was inside the pond; terrain must be seeded; Phaser captures DOM events so use window CustomEvent for D-pad
 - [Mythora energy regen](mythora-energy-regen.md) — energy regen added to GET /auth/me; uses updatedAt elapsed; 1 energy/20s; skips DB write if already full
-- [Mythora myth catalogue](mythora-myth-catalogue.md) — 100 myths (5 elements × 20); rarity field stores quality tier C/B/A/S; seed via POST /api/seed; emoji map in monster-emoji.ts
+- [Myth Catalogue v3](myth-catalogue-v3.md) — 25 myths (Fire/Water/Earth/Storm/Shadow × 5); seedOnStartup count-fingerprint triggers upsert on restart; emoji + element-colors must be updated for any new element
+- [Female Characters](female-characters.md) — Luna (teen) + Vera (adult); CharacterConfig has gender+style; WorldScene dispatches to separate draw functions per gender/style
 - [Mythora Zod rarity enum](mythora-zod-rarity.md) — api-zod generated/api.ts must use ['C','B','A','S'] for rarity enum; old enum caused 500 crash on every encounter; re-run seed after any schema change + API restart
 - [Shop & orb system](shop-orb-system.md) — Phantom wallet + SOL shop; orbs are Prism/Luna/Aether/Void; new DB cols + shopPurchasesTable; env: TREASURY_WALLET_ADDRESS, SOLANA_RPC_URL, SOLANA_NETWORK
 - [Daily tournament system](tournament-system.md) — daily 1v1 Arena; prize pool = 30% of day's orb lamports; rank 1-3→10%, 4-7→5%, 8-20→3%; auto-simulated rounds; payout via TREASURY_PRIVATE_KEY env

@@ -3,12 +3,14 @@ import type { MonsterSpeciesElement } from '@workspace/api-client-react';
 export const ELEMENT_COLORS: Record<string, { primary: string; secondary: string; glow: string }> = {
   Fire:     { primary: '#EF4444', secondary: '#F97316', glow: 'rgba(239, 68, 68, 0.4)' },
   Water:    { primary: '#3B82F6', secondary: '#0EA5E9', glow: 'rgba(59, 130, 246, 0.4)' },
+  Earth:    { primary: '#A16207', secondary: '#CA8A04', glow: 'rgba(161, 98, 7, 0.4)' },
+  Storm:    { primary: '#A855F7', secondary: '#7C3AED', glow: 'rgba(168, 85, 247, 0.5)' },
+  Shadow:   { primary: '#6366F1', secondary: '#4338CA', glow: 'rgba(99, 102, 241, 0.45)' },
   Nature:   { primary: '#22C55E', secondary: '#10B981', glow: 'rgba(34, 197, 94, 0.4)' },
   Electric: { primary: '#EAB308', secondary: '#F59E0B', glow: 'rgba(234, 179, 8, 0.4)' },
   Dark:     { primary: '#6366F1', secondary: '#4F46E5', glow: 'rgba(99, 102, 241, 0.4)' },
   // Legacy fallbacks
   Ice:      { primary: '#06B6D4', secondary: '#67E8F9', glow: 'rgba(6, 182, 212, 0.4)' },
-  Earth:    { primary: '#A16207', secondary: '#CA8A04', glow: 'rgba(161, 98, 7, 0.4)' },
   Air:      { primary: '#A5F3FC', secondary: '#E0F2FE', glow: 'rgba(165, 243, 252, 0.4)' },
   Light:    { primary: '#FDE047', secondary: '#FEF08A', glow: 'rgba(253, 224, 71, 0.6)' },
   Metal:    { primary: '#71717A', secondary: '#A1A1AA', glow: 'rgba(113, 113, 122, 0.4)' },

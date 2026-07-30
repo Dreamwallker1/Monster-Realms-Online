@@ -6,13 +6,12 @@ import { Route, Switch, Router as WouterRouter } from 'wouter';
 import Landing from '@/pages/landing';
 import Game from '@/pages/game';
 import Collection from '@/pages/collection';
-import Encyclopedia from '@/pages/encyclopedia';
 import Profile from '@/pages/profile';
 import Leaderboard from '@/pages/leaderboard';
-import MythsTree from '@/pages/myths-tree';
 import Shop from '@/pages/shop';
 import Tournament from '@/pages/tournament';
 import PvP from '@/pages/pvp';
+import TeamBuilder from '@/pages/team-builder';
 import '@/lib/auth';
 
 const queryClient = new QueryClient({
@@ -29,11 +28,10 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/game" component={Game} />
+      <Route path="/team" component={TeamBuilder} />
       <Route path="/collection" component={Collection} />
-      <Route path="/encyclopedia" component={Encyclopedia} />
       <Route path="/profile" component={Profile} />
       <Route path="/leaderboard" component={Leaderboard} />
-      <Route path="/myths-tree" component={MythsTree} />
       <Route path="/shop" component={Shop} />
       <Route path="/tournament" component={Tournament} />
       <Route path="/pvp" component={PvP} />

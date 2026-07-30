@@ -2,6 +2,8 @@ export interface CharacterConfig {
   id: string;
   name: string;
   description: string;
+  gender: 'male' | 'female';
+  style?: 'teen' | 'adult';
   // Phaser hex colors for map sprite
   skinColor:   number;
   hairColor:   number;
@@ -17,10 +19,12 @@ export interface CharacterConfig {
 }
 
 export const CHARACTERS: CharacterConfig[] = [
+  // ── Males ──────────────────────────────────────────────────────────────────
   {
     id: 'kai',
     name: 'Kai',
     description: 'Chill explorer',
+    gender: 'male',
     skinColor:   0xd4956a, skinHex:   '#d4956a',
     hairColor:   0x1a1a1a, hairHex:   '#1a1a1a',
     outfitColor: 0x2563eb, outfitHex: '#2563eb',
@@ -28,19 +32,10 @@ export const CHARACTERS: CharacterConfig[] = [
     avatarColor: '#2563eb',
   },
   {
-    id: 'maya',
-    name: 'Maya',
-    description: 'Nature ranger',
-    skinColor:   0xfdbcb4, skinHex:   '#fdbcb4',
-    hairColor:   0x7c2d12, hairHex:   '#7c2d12',
-    outfitColor: 0x16a34a, outfitHex: '#16a34a',
-    pantsColor:  0x14532d, pantsHex:  '#14532d',
-    avatarColor: '#16a34a',
-  },
-  {
     id: 'alex',
     name: 'Alex',
     description: 'Classic trainer',
+    gender: 'male',
     skinColor:   0xfde68a, skinHex:   '#fde68a',
     hairColor:   0xf59e0b, hairHex:   '#f59e0b',
     outfitColor: 0xdc2626, outfitHex: '#dc2626',
@@ -48,19 +43,10 @@ export const CHARACTERS: CharacterConfig[] = [
     avatarColor: '#dc2626',
   },
   {
-    id: 'nova',
-    name: 'Nova',
-    description: 'Mystic seeker',
-    skinColor:   0xe8d5c4, skinHex:   '#e8d5c4',
-    hairColor:   0xe5e7eb, hairHex:   '#e5e7eb',
-    outfitColor: 0x7c3aed, outfitHex: '#7c3aed',
-    pantsColor:  0x4c1d95, pantsHex:  '#4c1d95',
-    avatarColor: '#7c3aed',
-  },
-  {
     id: 'jay',
     name: 'Jay',
     description: 'Street style',
+    gender: 'male',
     skinColor:   0x8b6347, skinHex:   '#8b6347',
     hairColor:   0x0f0f0f, hairHex:   '#0f0f0f',
     outfitColor: 0x6b7280, outfitHex: '#6b7280',
@@ -71,11 +57,39 @@ export const CHARACTERS: CharacterConfig[] = [
     id: 'blaze',
     name: 'Blaze',
     description: 'Speed runner',
+    gender: 'male',
     skinColor:   0xfca5a5, skinHex:   '#fca5a5',
     hairColor:   0xdc2626, hairHex:   '#dc2626',
     outfitColor: 0xea580c, outfitHex: '#ea580c',
     pantsColor:  0x7c2d12, pantsHex:  '#7c2d12',
     avatarColor: '#ea580c',
+  },
+  // ── Females ────────────────────────────────────────────────────────────────
+  {
+    id: 'luna',
+    name: 'Luna',
+    description: 'High school explorer',
+    gender: 'female',
+    style: 'teen',
+    // light skin, dark navy hair, indigo school uniform, dark navy shorts
+    skinColor:   0xfcd5a8, skinHex:   '#fcd5a8',
+    hairColor:   0x1e1b4b, hairHex:   '#1e1b4b',
+    outfitColor: 0x6366f1, outfitHex: '#6366f1',
+    pantsColor:  0x312e81, pantsHex:  '#312e81',
+    avatarColor: '#6366f1',
+  },
+  {
+    id: 'vera',
+    name: 'Vera',
+    description: 'Elite myth hunter',
+    gender: 'female',
+    style: 'adult',
+    // warm skin, deep auburn hair, teal jacket, dark teal slacks
+    skinColor:   0xe8caa0, skinHex:   '#e8caa0',
+    hairColor:   0x7c1d1d, hairHex:   '#7c1d1d',
+    outfitColor: 0x0f766e, outfitHex: '#0f766e',
+    pantsColor:  0x134e4a, pantsHex:  '#134e4a',
+    avatarColor: '#0f766e',
   },
 ];
 

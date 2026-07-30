@@ -109,12 +109,50 @@ export const MONSTER_EMOJI: Record<string, string> = {
   'voidraven':  '🦅🕳️',
   'umbraeon':   '🌑👑',
   'noctiris':   '🐍✨',
+
+  // ── v3 Fire ────────────────────────────────────────────────────────────────
+  'emberpup':    '🐺🔥',
+  'cinderclaw':  '🐱🔥',
+  'flamewing':   '🦅🔥',
+  'magmahorn':   '🦏🌋',
+  'pyredrake':   '🐉🌋',
+
+  // ── v3 Water ───────────────────────────────────────────────────────────────
+  'bubblefin':   '🐟💧',
+  'wavecrest':   '🐢🌊',
+  'tidalwing':   '🦈💧',
+  'deepfang':    '🐍🌊',
+  'abyssalord':  '🐋🌊',
+
+  // ── v3 Earth ───────────────────────────────────────────────────────────────
+  'pebbleback':  '🐢🪨',
+  'thornbriar':  '🌿🪨',
+  'graniteclaw': '🐻🪨',
+  'crystalhorn': '🦄💎',
+  'terravast':   '🗿🌍',
+
+  // ── v3 Storm ───────────────────────────────────────────────────────────────
+  'zappet':      '⚡🐰',
+  'galecub':     '🦊⚡',
+  'thunderwing': '🦅⚡',
+  'stormcrown':  '🦁⚡',
+  'vortexwyrm':  '🌀🐉',
+
+  // ── v3 Shadow ──────────────────────────────────────────────────────────────
+  'gloomite':    '👻🌑',
+  'veilpaw':     '🐾🌑',
+  'duskfang':    '🐺🌑',
+  'nightshade':  '🐍🌑',
+  'voidreign':   '✨🌑',
 };
 
 /** Fallback emoji by element */
 export const ELEMENT_EMOJI: Record<string, string> = {
   Fire:     '🔥',
   Water:    '💧',
+  Earth:    '🪨',
+  Storm:    '⚡',
+  Shadow:   '🌑',
   Nature:   '🌿',
   Electric: '⚡',
   Dark:     '🌑',

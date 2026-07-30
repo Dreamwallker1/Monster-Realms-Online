@@ -320,6 +320,17 @@ export default class WorldScene extends Phaser.Scene {
   // ─── Human sprite ─────────────────────────────────────────────────────────
 
   private createHumanSprite(char: CharacterConfig): Phaser.GameObjects.Container {
+    if (char.gender === 'female' && char.style === 'teen') {
+      return this.createLunaSprite(char);
+    }
+    if (char.gender === 'female' && char.style === 'adult') {
+      return this.createVeraSprite(char);
+    }
+    return this.createMaleSprite(char);
+  }
+
+  /** Standard male trainer sprite */
+  private createMaleSprite(char: CharacterConfig): Phaser.GameObjects.Container {
     const g = this.add.graphics();
 
     // Shadow
@@ -360,10 +371,10 @@ export default class WorldScene extends Phaser.Scene {
 
     // Hair (top arc)
     g.fillStyle(char.hairColor, 1);
-    g.fillRect(-9, -22, 18, 9);  // hair block
-    g.fillCircle(-7, -20, 5);    // left side hair
-    g.fillCircle(7,  -20, 5);    // right side hair
-    g.fillCircle(0,  -22, 6);    // top hair
+    g.fillRect(-9, -22, 18, 9);
+    g.fillCircle(-7, -20, 5);
+    g.fillCircle(7,  -20, 5);
+    g.fillCircle(0,  -22, 6);
 
     // Eyes
     g.fillStyle(0x1a1a1a, 1);
@@ -377,8 +388,167 @@ export default class WorldScene extends Phaser.Scene {
     g.fillStyle(0xc0706a, 1);
     g.fillRect(-3, -10, 6, 2);
 
-    const container = this.add.container(0, 0, [g]);
-    return container;
+    return this.add.container(0, 0, [g]);
+  }
+
+  /** Luna — teenage girl: ponytail, school-style uniform, skirt */
+  private createLunaSprite(char: CharacterConfig): Phaser.GameObjects.Container {
+    const g = this.add.graphics();
+
+    // Shadow
+    g.fillStyle(0x000000, 0.2);
+    g.fillEllipse(0, 14, 14, 5);
+
+    // Skirt (wider, rounded hem)
+    g.fillStyle(char.pantsColor, 1);
+    g.fillRect(-8, 4, 16, 10);   // skirt body (wider than pants)
+    g.fillRect(-9, 12, 18, 3);   // hem
+
+    // Legs (slightly thinner)
+    g.fillStyle(char.skinColor, 1);
+    g.fillRect(-5, 10, 4, 6);    // left leg
+    g.fillRect(1,  10, 4, 6);    // right leg
+
+    // Shoes (small, rounded)
+    g.fillStyle(0x3a2a6a, 1);    // navy shoe
+    g.fillRect(-6, 15, 5, 3);
+    g.fillRect(1,  15, 5, 3);
+
+    // Body / torso (narrower)
+    g.fillStyle(char.outfitColor, 1);
+    g.fillRect(-6, -4, 12, 10);
+
+    // Collar detail (white V)
+    g.fillStyle(0xffffff, 0.4);
+    g.fillRect(-2, -4, 4, 4);
+
+    // Arms (slimmer)
+    g.fillStyle(char.outfitColor, 1);
+    g.fillRect(-11, -4, 5, 8);  // left arm
+    g.fillRect(6,   -4, 5, 8);  // right arm
+
+    // Hands
+    g.fillStyle(char.skinColor, 1);
+    g.fillCircle(-9, 4, 2.5);
+    g.fillCircle(9,  4, 2.5);
+
+    // Neck
+    g.fillStyle(char.skinColor, 1);
+    g.fillRect(-2, -8, 5, 5);
+
+    // Head (slightly smaller, rounder)
+    g.fillStyle(char.skinColor, 1);
+    g.fillCircle(0, -14, 8);
+
+    // Hair base (dark navy)
+    g.fillStyle(char.hairColor, 1);
+    g.fillRect(-8, -22, 16, 9);  // hair cap
+    g.fillCircle(-6, -20, 5);
+    g.fillCircle(6,  -20, 5);
+    g.fillCircle(0,  -22, 6);
+
+    // Ponytail (extends to the right)
+    g.fillStyle(char.hairColor, 1);
+    g.fillRect(6, -21, 3, 12);   // ponytail stem
+    g.fillCircle(7, -10, 4);     // ponytail end
+    g.fillCircle(7, -14, 3);     // ponytail mid
+
+    // Hair tie (bright accent)
+    g.fillStyle(0x8b5cf6, 1);    // purple hair tie
+    g.fillCircle(7, -18, 2.5);
+
+    // Eyes (slightly larger for teen look)
+    g.fillStyle(0x1a1a1a, 1);
+    g.fillCircle(-3.5, -15, 2.5);
+    g.fillCircle(3.5,  -15, 2.5);
+    g.fillStyle(0x6366f1, 0.8);  // violet iris
+    g.fillCircle(-3.5, -15, 1.5);
+    g.fillCircle(3.5,  -15, 1.5);
+    g.fillStyle(0xffffff, 0.9);
+    g.fillCircle(-2.5, -16, 1);
+    g.fillCircle(4.5,  -16, 1);
+
+    // Mouth (small smile)
+    g.fillStyle(0xd08080, 1);
+    g.fillRect(-2, -11, 4, 1.5);
+
+    return this.add.container(0, 0, [g]);
+  }
+
+  /** Vera — adult woman: long hair, teal jacket, elegant proportions */
+  private createVeraSprite(char: CharacterConfig): Phaser.GameObjects.Container {
+    const g = this.add.graphics();
+
+    // Shadow
+    g.fillStyle(0x000000, 0.2);
+    g.fillEllipse(0, 15, 14, 5);
+
+    // Legs / trousers
+    g.fillStyle(char.pantsColor, 1);
+    g.fillRect(-5, 6, 4, 9);    // left leg
+    g.fillRect(1,  6, 4, 9);    // right leg
+
+    // Boots (taller)
+    g.fillStyle(0x1a1a1a, 1);
+    g.fillRect(-6, 12, 5, 4);
+    g.fillRect(1,  12, 5, 4);
+
+    // Body / jacket (slightly wider at shoulders)
+    g.fillStyle(char.outfitColor, 1);
+    g.fillRect(-7, -5, 14, 13);
+
+    // Jacket lapel
+    g.fillStyle(char.outfitColor, 1);
+    g.fillRect(-4, -5, 8, 5);
+    g.fillStyle(0xffffff, 0.15);
+    g.fillRect(-3, -5, 2, 5);    // left lapel highlight
+    g.fillRect(1,  -5, 2, 5);    // right lapel highlight
+
+    // Arms (longer, slimmer)
+    g.fillStyle(char.outfitColor, 1);
+    g.fillRect(-12, -5, 5, 10); // left arm
+    g.fillRect(7,   -5, 5, 10); // right arm
+
+    // Hands
+    g.fillStyle(char.skinColor, 1);
+    g.fillCircle(-10, 5, 3);
+    g.fillCircle(10,  5, 3);
+
+    // Neck
+    g.fillStyle(char.skinColor, 1);
+    g.fillRect(-2, -9, 5, 5);
+
+    // Head (more oval / mature)
+    g.fillStyle(char.skinColor, 1);
+    g.fillEllipse(0, -14, 17, 19);
+
+    // Long hair — flows down behind body
+    g.fillStyle(char.hairColor, 1);
+    // Hair cap
+    g.fillRect(-9, -23, 18, 10);
+    g.fillCircle(-7, -21, 5);
+    g.fillCircle(7,  -21, 5);
+    g.fillCircle(0,  -23, 6);
+    // Long flowing strands on left
+    g.fillRect(-9, -18, 4, 22);
+    g.fillCircle(-7, 4, 3.5);
+
+    // Eyes (almond-shaped, mature)
+    g.fillStyle(0x1a1a1a, 1);
+    g.fillEllipse(-4, -15, 6, 4);
+    g.fillEllipse(4,  -15, 6, 4);
+    g.fillStyle(0x7c1d1d, 0.9);  // deep amber iris
+    g.fillCircle(-4, -15, 1.8);
+    g.fillCircle(4,  -15, 1.8);
+    g.fillStyle(0xffffff, 0.8);
+    g.fillCircle(-2.5, -16, 1);
+    g.fillCircle(5.5,  -16, 1);
+
+    // Mouth (defined, elegant)
+    g.fillStyle(0xc06060, 1);
+    g.fillRect(-3, -11, 6, 2);
+
+    return this.add.container(0, 0, [g]);
   }
 
   // ─── Update loop ──────────────────────────────────────────────────────────
@@ -415,13 +585,31 @@ export default class WorldScene extends Phaser.Scene {
     this.playerX = newX;
     this.playerY = newY;
 
+    // Physics-feel: main position tween with springy ease
     this.tweens.add({
       targets: this.playerContainer,
       x: this.playerX * TILE_SIZE + TILE_SIZE / 2,
       y: this.playerY * TILE_SIZE + TILE_SIZE / 2,
-      duration: 120,
-      ease: 'Sine.easeInOut',
+      duration: 105,
+      ease: 'Cubic.easeOut',
     });
+
+    // Squash & stretch: quick scale-down during movement, snap back
+    if (this.playerContainer) {
+      this.tweens.add({
+        targets: this.playerContainer,
+        scaleX: 0.88,
+        scaleY: 1.10,
+        duration: 50,
+        ease: 'Sine.easeIn',
+        yoyo: true,
+        onComplete: () => {
+          if (this.playerContainer) {
+            this.playerContainer.setScale(1, 1);
+          }
+        },
+      });
+    }
 
     // Map dx/dy → API direction (cardinal only for API; diagonals handled locally)
     const apiDir = this.toApiDirection(dx, dy);

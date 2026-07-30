@@ -1,19 +1,19 @@
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/game-store';
 import { Link } from 'wouter';
-import { X, Grid3x3, BookOpen, User, Trophy, LogOut, Trees, ShoppingBag, Swords, Shield } from 'lucide-react';
+import { X, Grid3x3, User, Trophy, ShoppingBag, Swords, Shield, Users } from 'lucide-react';
 import { clearToken } from '@/lib/auth';
 
 export default function GameSidebar() {
   const { sidebarOpen, setSidebarOpen, player } = useGameStore();
-  
+
   const handleLogout = () => {
     clearToken();
     window.location.href = '/';
   };
-  
+
   if (!sidebarOpen) return null;
-  
+
   return (
     <>
       {/* Backdrop */}
@@ -21,7 +21,7 @@ export default function GameSidebar() {
         className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
         onClick={() => setSidebarOpen(false)}
       />
-      
+
       {/* Sidebar */}
       <div className="fixed right-0 top-0 bottom-0 z-50 w-80 glass-panel rounded-l-3xl p-6 animate-slide-in-right">
         <div className="flex items-center justify-between mb-8">
@@ -35,7 +35,7 @@ export default function GameSidebar() {
             <X size={24} />
           </Button>
         </div>
-        
+
         {player && (
           <div className="mb-8 p-4 rounded-lg bg-card border border-card-border">
             <div className="flex items-center gap-3">
@@ -50,8 +50,18 @@ export default function GameSidebar() {
             </div>
           </div>
         )}
-        
+
         <nav className="space-y-2">
+          <Link
+            href="/team"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
+            onClick={() => setSidebarOpen(false)}
+            data-testid="link-team"
+          >
+            <Users size={20} className="text-cyan-400" />
+            <span className="font-semibold text-cyan-200">Team Builder</span>
+          </Link>
+
           <Link
             href="/collection"
             className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
@@ -61,17 +71,7 @@ export default function GameSidebar() {
             <Grid3x3 size={20} />
             <span className="font-semibold">Collection</span>
           </Link>
-          
-          <Link
-            href="/encyclopedia"
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
-            onClick={() => setSidebarOpen(false)}
-            data-testid="link-encyclopedia"
-          >
-            <BookOpen size={20} />
-            <span className="font-semibold">Encyclopedia</span>
-          </Link>
-          
+
           <Link
             href="/profile"
             className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
@@ -81,7 +81,7 @@ export default function GameSidebar() {
             <User size={20} />
             <span className="font-semibold">Profile</span>
           </Link>
-          
+
           <Link
             href="/leaderboard"
             className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
@@ -90,16 +90,6 @@ export default function GameSidebar() {
           >
             <Trophy size={20} />
             <span className="font-semibold">Leaderboard</span>
-          </Link>
-
-          <Link
-            href="/myths-tree"
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent/20 transition-colors w-full text-left"
-            onClick={() => setSidebarOpen(false)}
-            data-testid="link-myths-tree"
-          >
-            <Trees size={20} className="text-emerald-400" />
-            <span className="font-semibold">Myths Tree</span>
           </Link>
 
           <Link
@@ -132,7 +122,7 @@ export default function GameSidebar() {
             <span className="font-semibold text-red-300">⚔ PvP Battle</span>
           </Link>
         </nav>
-        
+
         <div className="absolute bottom-6 left-6 right-6">
           <Button
             variant="outline"
@@ -140,7 +130,7 @@ export default function GameSidebar() {
             onClick={handleLogout}
             data-testid="button-logout"
           >
-            <LogOut size={18} />
+            <X size={18} />
             Logout
           </Button>
         </div>
