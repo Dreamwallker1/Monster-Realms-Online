@@ -10,6 +10,7 @@ import { MythSvgIcon } from '@/lib/myth-svgs';
 import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-chart';
 import { Package, Wind, RefreshCw, X, ChevronRight } from 'lucide-react';
 import SkillCinematic from '@/components/battle/SkillCinematic';
+import OrbCinematic from '@/components/battle/OrbCinematic';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -545,6 +546,18 @@ export default function BattleOverlay() {
   const [showSwitchPanel, setShowSwitchPanel] = useState(false);
   const [showOrbPicker, setShowOrbPicker] = useState(false);
   const [switchAnimKey, setSwitchAnimKey] = useState(0);
+  const [orbCinematic, setOrbCinematic]   = useState<{ orbType: string; targetRarity: string } | null>(null);
+
+  // ── Two-flag capture coordination ─────────────────────────────────────────
+  // Result is applied only when BOTH animation AND API call are settled,
+  // so slow requests (> 1800 ms) are never silently dropped.
+  const captureAnimDone    = useRef(false);
+  const captureReqDone     = useRef(false);
+  const pendingCaptureResult = useRef<Parameters<typeof updateBattle>[0] | null>(null);
+  const pendingCaptureError  = useRef<string | null>(null);
+  // Stable ref so both code paths always call the latest version.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const finalizeCaptureRef = useRef<() => void>(() => {});
 
   // ── Cinematic state ──────────────────────────────────────────────────────
   const [cinematic, setCinematic] = useState<{
@@ -713,32 +726,94 @@ export default function BattleOverlay() {
     }
   }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction]);
 
+  // Keep finalizeCaptureRef.current up-to-date on every render so both
+  // the animation callback and the API promise always call the latest version.
+  finalizeCaptureRef.current = () => {
+    if (!captureAnimDone.current || !captureReqDone.current) return; // wait for both
+    // Reset flags first so a re-entrant call is a no-op
+    captureAnimDone.current = false;
+    captureReqDone.current  = false;
+    const result = pendingCaptureResult.current;
+    const errMsg = pendingCaptureError.current;
+    pendingCaptureResult.current = null;
+    pendingCaptureError.current  = null;
+
+    setOrbCinematic(null);
+
+    if (result) {
+      updateBattle(result);
+      if (battle.battleId) {
+        queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
+      }
+      const last = result.log?.slice(-1)[0];
+      if (last?.action === 'capture') {
+        setCaptureMsg(last.description);
+        setTimeout(() => setCaptureMsg(null), 3000);
+      }
+    }
+    if (errMsg) {
+      setCaptureMsg(errMsg);
+      setTimeout(() => setCaptureMsg(null), 3000);
+    }
+  };
+
+  // ── Orb cinematic complete ────────────────────────────────────────────────
+  // Animation side: set flag and attempt finalization.
+  const onOrbCinematicComplete = useCallback(() => {
+    captureAnimDone.current = true;
+    finalizeCaptureRef.current();
+  }, []); // stable — reads latest via ref
+
   // ── Capture / flee action ─────────────────────────────────────────────────
   const handleAction = useCallback(async (action: 'capture' | 'flee', orbType = 'Prism') => {
     if (!battle.battleId || isPending || isOver) return;
     setShowOrbPicker(false);
+
+    if (action === 'capture') {
+      // Reset two-flag state, then start animation and API call in parallel.
+      captureAnimDone.current  = false;
+      captureReqDone.current   = false;
+      pendingCaptureResult.current = null;
+      pendingCaptureError.current  = null;
+
+      const targetRarity = wildMonster?.species?.rarity ?? 'C';
+      setOrbCinematic({ orbType, targetRarity: targetRarity as string });
+
+      // Fire-and-forget: store result/error then signal completion flag.
+      // finalizeCaptureRef.current() applies the outcome only once both
+      // animation AND this promise have settled — whichever is slower.
+      performAction.mutateAsync({
+        battleId: battle.battleId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: { action, orbType: orbType as any },
+      }).then((updated) => {
+        pendingCaptureResult.current = updated;
+        captureReqDone.current = true;
+        finalizeCaptureRef.current();
+      }).catch((err: unknown) => {
+        console.error('Capture action failed:', err);
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        pendingCaptureError.current = msg ?? 'Capture failed';
+        captureReqDone.current = true;
+        finalizeCaptureRef.current();
+      });
+      return;
+    }
+
+    // Flee — no cinematic needed
     try {
       const updated = await performAction.mutateAsync({
         battleId: battle.battleId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: { action, orbType: action === 'capture' ? (orbType as any) : undefined },
+        data: { action, orbType: undefined },
       });
       updateBattle(updated);
       queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
-      if (action === 'capture') {
-        const last = updated.log?.slice(-1)[0];
-        if (last?.action === 'capture') {
-          setCaptureMsg(last.description);
-          setTimeout(() => setCaptureMsg(null), 3000);
-        }
-      }
     } catch (err: unknown) {
       console.error('Battle action failed:', err);
-      // Surface "no orbs" errors to the player
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       if (msg) { setCaptureMsg(msg); setTimeout(() => setCaptureMsg(null), 3000); }
     }
-  }, [battle.battleId, isPending, isOver, performAction, updateBattle, queryClient]);
+  }, [battle.battleId, isPending, isOver, wildMonster, performAction, updateBattle, queryClient]);
 
   const handleSwitch = async (capturedId: string) => {
     if (!battle.battleId || isPending || isOver) return;
@@ -1177,6 +1252,16 @@ export default function BattleOverlay() {
           />
         )}
 
+        {/* ── Orb Cinematic overlay ────────────────────────────────────── */}
+        {orbCinematic && (
+          <OrbCinematic
+            key={`orb-${orbCinematic.orbType}`}
+            orbType={orbCinematic.orbType}
+            targetRarity={orbCinematic.targetRarity}
+            onComplete={onOrbCinematicComplete}
+          />
+        )}
+
         {/* Capture attempt feedback toast */}
         {captureMsg && !isOver && (
           <div
@@ -1222,7 +1307,7 @@ export default function BattleOverlay() {
           <ActionPanel
             playerMonster={playerMonster}
             wildElement={wildMonster.species.element}
-            cinematic={cinematic}
+            cinematic={cinematic ?? orbCinematic}
             isPending={isPending}
             wildHpPct={wildHpPct}
             orbCounts={orbCounts}
