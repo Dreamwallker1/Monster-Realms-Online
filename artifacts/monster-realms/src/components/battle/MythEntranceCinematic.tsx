@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MYTH_ARCHETYPE } from '@/lib/myth-svgs';
 
@@ -880,10 +880,20 @@ export default function MythEntranceCinematic({
   const strike = getStrike(mythId);
   const { cx, cy } = mythCenter(side);
 
+  // Keep a stable ref to the latest onComplete so the timeout below fires
+  // exactly once per mount (not on every parent re-render that passes a new
+  // inline arrow function).  Cleanup on unmount safely cancels the timer so
+  // the callback is never invoked on a detached component.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; });
+
   useEffect(() => {
-    const t = setTimeout(onComplete, rc.timeout);
+    const t = setTimeout(() => onCompleteRef.current(), rc.timeout);
     return () => clearTimeout(t);
-  }, [onComplete, rc.timeout]);
+    // rc.timeout (derived from rarity) is the only structural dep; onComplete
+    // is intentionally accessed via ref to prevent restarts on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rc.timeout]);
 
   return (
     <AnimatePresence>

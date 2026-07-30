@@ -657,13 +657,28 @@ export default function BattleOverlay() {
     }
   }, [switchAnimKey]);
 
+  // Clear any in-progress entrance animations when the battle is over so they
+  // don't overlay the result screen or outlive the component.
+  const isOver = (battle.battle?.status ?? 'active') !== 'active';
+  useEffect(() => {
+    if (isOver) {
+      setShowPlayerEntrance(false);
+      setShowWildEntrance(false);
+    }
+  }, [isOver]);
+
+  // Stable callbacks for entrance cinematics — avoids restarting the timeout
+  // inside MythEntranceCinematic on every parent re-render.
+  const onPlayerEntranceComplete = useCallback(() => setShowPlayerEntrance(false), []);
+  const onWildEntranceComplete   = useCallback(() => setShowWildEntrance(false), []);
+
   // Derive battle data with safe defaults (must happen before early return so hooks below are always called)
   const wildMonster  = battle.battle?.wildMonster ?? null;
   const playerMonster = battle.battle?.playerMonster ?? null;
   const log          = battle.battle?.log ?? [];
   const status       = battle.battle?.status ?? 'active';
   const isPending    = performAction.isPending;
-  const isOver       = status !== 'active';
+  // isOver is declared above (near the isOver effect) so we don't redeclare it here
 
   // ── Cinematic complete handler ────────────────────────────────────────────
   const onCinematicComplete = useCallback(() => {
@@ -1025,7 +1040,7 @@ export default function BattleOverlay() {
             element={wildMonster.species.element}
             rarity={wildMonster.species.rarity}
             side="wild"
-            onComplete={() => setShowWildEntrance(false)}
+            onComplete={onWildEntranceComplete}
           />
         )}
         {showPlayerEntrance && playerMonster && (
@@ -1034,7 +1049,7 @@ export default function BattleOverlay() {
             element={playerMonster.species.element}
             rarity={playerMonster.species.rarity}
             side="player"
-            onComplete={() => setShowPlayerEntrance(false)}
+            onComplete={onPlayerEntranceComplete}
           />
         )}
 
