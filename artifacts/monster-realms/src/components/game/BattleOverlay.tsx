@@ -1377,12 +1377,6 @@ export default function BattleOverlay() {
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
       <div className="relative flex-1 overflow-hidden">
-        {/* World shake wrapper — camera punch on hit; HUD/cinematics are inside but that's fine */}
-        <div
-          key={arenaShakeId}
-          className={arenaShakeId > 0 ? (arenaShakeCrit ? 'arena-shake-crit' : 'arena-shake') : ''}
-          style={{ position: 'absolute', inset: 0 }}
-        >
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
@@ -2033,7 +2027,6 @@ export default function BattleOverlay() {
             {captureMsg.includes('captured') ? '✅ ' : '❌ '}{captureMsg}
           </div>
         )}
-        </div> {/* ← close world shake wrapper */}
       </div>
 
       {/* ── BATTLE TEXT BOX ──────────────────────────────────────────────────── */}

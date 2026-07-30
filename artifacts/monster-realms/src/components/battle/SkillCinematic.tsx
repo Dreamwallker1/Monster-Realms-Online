@@ -1271,24 +1271,15 @@ export default function SkillCinematic({
           <SRarityExtras side={attackerSide} color={el.color} glow={el.glow} />
         )}
 
-        {/* ── Critical hit screen slam — sharp white punch, then element color ── */}
+        {/* ── Critical hit screen punch — brief white flash only, no colour overlay ── */}
         {isCritical && (
-          <>
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: 'white', zIndex: 6 }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.7, 0] }}
-              transition={{ duration: 0.12, delay: 0.40 }}
-            />
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: el.color, zIndex: 6 }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.22, 0] }}
-              transition={{ duration: 0.22, delay: 0.50 }}
-            />
-          </>
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'white', zIndex: 6 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.45, 0] }}
+            transition={{ duration: 0.18, delay: 0.40 }}
+          />
         )}
 
         {/* ── Skill name ── */}
