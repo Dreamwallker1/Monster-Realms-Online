@@ -344,46 +344,67 @@ router.post("/auth/gm-login", async (_req, res): Promise<void> => {
     { playerId: player.id, name: "Healing Herb",   type: "heal", quantity: 999, description: "Restores 30 HP to one monster.",                  orbType: null     },
   ]);
 
-  // ── 3. Build GM team — best S-tier from each element ────────────────────
+  // ── 3. Build GM collection — all 100 myths, best S-tier in active team ──
   await db.delete(capturedMonstersTable).where(eq(capturedMonstersTable.playerId, player.id));
 
-  const ELEMENTS = ["Fire", "Water", "Nature", "Electric", "Dark"];
-  const sTierSpecies = await db
-    .select()
-    .from(monsterSpeciesTable)
-    .where(eq(monsterSpeciesTable.rarity, "S"));
+  const allSpecies = await db.select().from(monsterSpeciesTable);
 
-  // Pick one per element (cycle if fewer than 6)
-  const picks: typeof sTierSpecies = [];
+  const ELEMENTS = ["Fire", "Water", "Nature", "Electric", "Dark"];
+  const sTierSpecies = allSpecies.filter(s => s.rarity === "S");
+
+  // Pick one S-tier per element for the active team (slots 0-5)
+  const teamPicks: typeof allSpecies = [];
   for (const el of ELEMENTS) {
     const match = sTierSpecies.find(s => s.element === el);
-    if (match) picks.push(match);
-    if (picks.length >= 6) break;
+    if (match) teamPicks.push(match);
+    if (teamPicks.length >= 6) break;
   }
-  // Fill remaining slots from any S-tier
-  let idx = 0;
-  while (picks.length < 6 && sTierSpecies.length > 0) {
-    picks.push(sTierSpecies[idx % sTierSpecies.length]!);
-    idx++;
+  let fillIdx = 0;
+  while (teamPicks.length < 6 && sTierSpecies.length > 0) {
+    teamPicks.push(sTierSpecies[fillIdx % sTierSpecies.length]!);
+    fillIdx++;
   }
+  const teamSpeciesIds = new Set(teamPicks.map(s => s.id));
 
   const GM_LEVEL = 50;
-  const teamInserts = picks.slice(0, 6).map((species, slot) => {
-    const stats = calcStats(species, GM_LEVEL);
-    return {
-      playerId:  player.id,
-      speciesId: species.id,
-      level:     GM_LEVEL,
-      currentHp: stats.hp,
-      maxHp:     stats.hp,
-      attack:    stats.attack,
-      defense:   stats.defense,
-      speed:     stats.speed,
-      inTeam:    true,
-      teamSlot:  slot,
-    };
-  });
-  if (teamInserts.length > 0) await db.insert(capturedMonstersTable).values(teamInserts);
+
+  // All species not in the active team go into the collection (inTeam: false)
+  const collectionSpecies = allSpecies.filter(s => !teamSpeciesIds.has(s.id));
+
+  const allInserts = [
+    ...teamPicks.slice(0, 6).map((species, slot) => {
+      const stats = calcStats(species, GM_LEVEL);
+      return {
+        playerId:  player.id,
+        speciesId: species.id,
+        level:     GM_LEVEL,
+        currentHp: stats.hp,
+        maxHp:     stats.hp,
+        attack:    stats.attack,
+        defense:   stats.defense,
+        speed:     stats.speed,
+        inTeam:    true,
+        teamSlot:  slot,
+      };
+    }),
+    ...collectionSpecies.map((species) => {
+      const stats = calcStats(species, GM_LEVEL);
+      return {
+        playerId:  player.id,
+        speciesId: species.id,
+        level:     GM_LEVEL,
+        currentHp: stats.hp,
+        maxHp:     stats.hp,
+        attack:    stats.attack,
+        defense:   stats.defense,
+        speed:     stats.speed,
+        inTeam:    false,
+        teamSlot:  null as number | null,
+      };
+    }),
+  ];
+
+  if (allInserts.length > 0) await db.insert(capturedMonstersTable).values(allInserts);
 
   // ── 4. Return token + player ─────────────────────────────────────────────
   const token = generateToken(player.id);
