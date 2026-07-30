@@ -816,6 +816,26 @@ export default function BattleOverlay() {
           )}
         </div>
 
+        {/* ── Round counter — top centre ──────────────────────────────────── */}
+        <div
+          className="absolute top-4 left-1/2 -translate-x-1/2 battle-slide-up flex flex-col items-center"
+          style={{ animationDelay: '0.2s', zIndex: 5 }}
+        >
+          <div
+            className="px-4 py-1.5 rounded-full text-[11px] font-black tracking-widest uppercase"
+            style={{
+              background: 'rgba(0,0,0,0.7)',
+              border: '1.5px solid rgba(255,255,255,0.18)',
+              color: 'rgba(255,255,255,0.85)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 2px 14px rgba(0,0,0,0.6)',
+              letterSpacing: '0.12em',
+            }}
+          >
+            ROUND {battle.battle?.round ?? 1}
+          </div>
+        </div>
+
         {/* Player myth HP plate — upper right */}
         <div className="absolute top-4 right-4 battle-slide-up" style={{ animationDelay: '0.15s' }}>
           <HpPlate
@@ -917,8 +937,8 @@ export default function BattleOverlay() {
               </button>
             </div>
             <p className="px-4 pb-3 text-[11px] text-white/40">
-              Select which orb to throw. Higher-tier orbs improve catch rates.
-              {wildHpPct < 30 && <span className="text-emerald-400 ml-1">● Low HP — good moment to catch!</span>}
+              Weaken the myth first — lower HP raises catch rate.
+              {wildHpPct < 30 && <span className="text-emerald-400 ml-1">● Low HP — great moment to throw!</span>}
             </p>
 
             {/* Orb list */}
@@ -926,6 +946,8 @@ export default function BattleOverlay() {
               {ORB_CONFIG.map(orb => {
                 const count = orbCounts[orb.type] ?? 0;
                 const isEmpty = count <= 0;
+                const catchPct = (battle.battle as any)?.captureOdds?.[orb.type] ?? 0;
+                const pctColor = catchPct >= 60 ? '#34D399' : catchPct >= 30 ? '#EAB308' : catchPct >= 10 ? '#FB923C' : '#F87171';
                 return (
                   <button
                     key={orb.type}
@@ -963,13 +985,16 @@ export default function BattleOverlay() {
                       </div>
                     </div>
 
-                    {/* Throw indicator */}
-                    {!isEmpty && (
-                      <div className="shrink-0 flex items-center gap-1 text-xs font-bold" style={{ color: orb.color }}>
-                        <Package size={12} />
-                        <span>Throw</span>
+                    {/* Live catch % */}
+                    <div className="shrink-0 flex flex-col items-end gap-0.5">
+                      <div
+                        className="text-base font-black tabular-nums"
+                        style={{ color: isEmpty ? 'rgba(255,255,255,0.2)' : pctColor, textShadow: isEmpty ? 'none' : `0 0 8px ${pctColor}88` }}
+                      >
+                        {catchPct}%
                       </div>
-                    )}
+                      <div className="text-[8px] text-white/30 uppercase tracking-wider">catch</div>
+                    </div>
                   </button>
                 );
               })}

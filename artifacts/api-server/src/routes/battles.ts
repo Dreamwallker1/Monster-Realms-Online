@@ -23,6 +23,7 @@ import {
 import {
   calculateDamage,
   calculateCaptureChance,
+  getCaptureOdds,
   getElementMultiplier,
   rollCritical,
   calculateWildStats,
@@ -140,6 +141,14 @@ function formatBattle(
     coinReward: b.coinReward ?? null,
     capturedMonsterId: b.capturedMonsterId ?? null,
     regionId: b.regionId,
+    round: b.turn,
+    captureOdds: getCaptureOdds(
+      b.wildCurrentHp,
+      b.wildMaxHp,
+      species.captureRate,
+      b.wildLevel,
+      b.wildShinyVariant ?? null,
+    ),
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };
@@ -481,6 +490,7 @@ router.post(
           battle.wildMaxHp,
           wildSpecies.captureRate,
           battle.wildShinyVariant,
+          battle.wildLevel,
         );
         if (success) {
           const personalities = ["Hardy", "Brave", "Calm", "Gentle", "Lax", "Bold", "Jolly", "Quirky", "Sassy", "Timid"];

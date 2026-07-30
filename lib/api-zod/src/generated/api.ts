@@ -820,6 +820,8 @@ export const StartBattleResponse = zod.object({
   "coinReward": zod.number().nullish(),
   "capturedMonsterId": zod.string().nullish(),
   "regionId": zod.string(),
+  "round": zod.number(),
+  "captureOdds": zod.object({ "Prism": zod.number(), "Luna": zod.number(), "Aether": zod.number(), "Void": zod.number() }),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -929,6 +931,8 @@ export const GetBattleResponse = zod.object({
   "coinReward": zod.number().nullish(),
   "capturedMonsterId": zod.string().nullish(),
   "regionId": zod.string(),
+  "round": zod.number(),
+  "captureOdds": zod.object({ "Prism": zod.number(), "Luna": zod.number(), "Aether": zod.number(), "Void": zod.number() }),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1048,6 +1052,8 @@ export const PerformBattleActionResponse = zod.object({
   "coinReward": zod.number().nullish(),
   "capturedMonsterId": zod.string().nullish(),
   "regionId": zod.string(),
+  "round": zod.number(),
+  "captureOdds": zod.object({ "Prism": zod.number(), "Luna": zod.number(), "Aether": zod.number(), "Void": zod.number() }),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })

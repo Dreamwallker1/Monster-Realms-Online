@@ -26,7 +26,8 @@ export function calculateDamage(
   elementMultiplier: number,
   isCritical: boolean,
 ): number {
-  const base = ((attackPower * skillPower) / (defense + 50)) * 10;
+  // Multiplier reduced from 10 → 2.5 so battles last ~4× longer (5-10 rounds typical)
+  const base = ((attackPower * skillPower) / (defense + 50)) * 2.5;
   const randomFactor = 0.85 + Math.random() * 0.3;
   const critical = isCritical ? 1.5 : 1;
   return Math.max(1, Math.round(base * elementMultiplier * randomFactor * critical));
@@ -115,30 +116,68 @@ export function calculateWildStats(
   };
 }
 
+const ORB_BONUS: Record<string, number> = {
+  Prism:    1.0,   // C tier — baseline
+  Luna:     1.6,   // B tier
+  Aether:   2.5,   // A tier
+  Void:     4.0,   // S tier — near-guaranteed on weakened myth
+  // Legacy fallbacks
+  Basic:    1.0,
+  Explorer: 1.3,
+  Hunter:   1.7,
+  Elite:    2.2,
+  Master:   3.0,
+};
+
+/**
+ * Compute raw capture probability (0–1) for a given orb.
+ * - hpFactor: 0.15 at full HP → 1.0 at 0 HP (steep; rewards weakening)
+ * - levelPenalty: each level past 1 reduces odds by ~2.5% (Lv20 = 0.67×, Lv50 = 0.44×)
+ * - shinyPenalty: 0.5× if the myth has a shiny variant
+ */
+function captureRaw(
+  orbType: string,
+  currentHp: number,
+  maxHp: number,
+  captureRate: number,
+  wildLevel: number,
+  shinyVariant: string | null,
+): number {
+  const hpFactor = 0.15 + 0.85 * (1 - currentHp / Math.max(1, maxHp));
+  const levelPenalty = 1 / (1 + (wildLevel - 1) * 0.025);
+  const shinyPenalty = shinyVariant ? 0.5 : 1;
+  return (captureRate / 100) * (ORB_BONUS[orbType] ?? 1) * hpFactor * levelPenalty * shinyPenalty;
+}
+
 export function calculateCaptureChance(
   orbType: string,
   currentHp: number,
   maxHp: number,
   captureRate: number,
   shinyVariant: string | null,
+  wildLevel: number = 1,
 ): boolean {
-  const orbBonus: Record<string, number> = {
-    // New tiered orbs
-    Prism: 1.0,    // C — base capture rate
-    Luna: 1.6,     // B — uncommon, better odds
-    Aether: 2.5,   // A — rare, high bonus
-    Void: 4.0,     // S — legendary, near-guaranteed
-    // Legacy fallbacks
-    Basic: 1,
-    Explorer: 1.3,
-    Hunter: 1.7,
-    Elite: 2.2,
-    Master: 3,
-  };
-  const hpFactor = (maxHp - currentHp * 0.5) / maxHp; // lower HP → easier capture
-  const baseChance = (captureRate / 100) * (orbBonus[orbType] ?? 1) * hpFactor;
-  const shinyPenalty = shinyVariant ? 0.5 : 1;
-  return Math.random() < baseChance * shinyPenalty;
+  return Math.random() < captureRaw(orbType, currentHp, maxHp, captureRate, wildLevel, shinyVariant);
+}
+
+/**
+ * Returns capture % (0-95) for each orb type — used by the battle API
+ * so the frontend can show live capture odds without guessing.
+ */
+export function getCaptureOdds(
+  currentHp: number,
+  maxHp: number,
+  captureRate: number,
+  wildLevel: number,
+  shinyVariant: string | null,
+): Record<string, number> {
+  const orbs = ['Prism', 'Luna', 'Aether', 'Void'];
+  const result: Record<string, number> = {};
+  for (const orb of orbs) {
+    const raw = captureRaw(orb, currentHp, maxHp, captureRate, wildLevel, shinyVariant);
+    result[orb] = Math.min(95, Math.round(raw * 100));
+  }
+  return result;
 }
 
 export function getExplorerRankForLevel(level: number): string {
