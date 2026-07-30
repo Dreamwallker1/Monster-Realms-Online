@@ -1,5 +1,10 @@
 import { db } from "@workspace/db";
-import { monsterSpeciesTable, regionsTable } from "@workspace/db";
+import {
+  monsterSpeciesTable,
+  regionsTable,
+  capturedMonstersTable,
+  battlesTable,
+} from "@workspace/db";
 import { MONSTER_SEED_DATA } from "./monsterData.js";
 import { REGION_SEED_DATA } from "./regionData.js";
 import { logger } from "./logger.js";
@@ -7,11 +12,16 @@ import { logger } from "./logger.js";
 /**
  * Called once at server startup.
  *
- * - Counts rows in regionsTable and monsterSpeciesTable.
- * - If either table is empty, auto-seeds it and logs an info message.
- * - If both are already populated, logs a brief confirmation.
- * - Logs a WARN for any unexpected error so the process keeps running
- *   (a seed failure must not crash the server).
+ * Compares the DB species and region counts against the catalogue constants.
+ * - Counts match → log confirmation and return (nothing to do).
+ * - Counts differ → inside a single transaction:
+ *     1. Delete battles, captured_monsters, species, regions (FK order).
+ *     2. Re-insert all species and regions fresh.
+ *   This guarantees one restart fully resolves stale data so subsequent
+ *   restarts see matching counts and skip the reseed entirely.
+ *
+ * Logs a WARN for any unexpected error so the process keeps running
+ * (a seed failure must not crash the server).
  */
 export async function seedOnStartup(): Promise<void> {
   try {
@@ -20,71 +30,91 @@ export async function seedOnStartup(): Promise<void> {
       db.select().from(monsterSpeciesTable),
     ]);
 
-    const regionsEmpty = regionRows.length === 0;
-    const speciesEmpty = speciesRows.length === 0;
+    const expectedSpecies = MONSTER_SEED_DATA.length;
+    const expectedRegions = REGION_SEED_DATA.length;
+    const actualSpecies   = speciesRows.length;
+    const actualRegions   = regionRows.length;
 
-    if (!regionsEmpty && !speciesEmpty) {
+    const speciesMismatch = actualSpecies !== expectedSpecies;
+    const regionsMismatch = actualRegions !== expectedRegions;
+
+    if (!speciesMismatch && !regionsMismatch) {
       logger.info(
-        { regions: regionRows.length, species: speciesRows.length },
+        { regions: actualRegions, species: actualSpecies },
         "Startup seed check passed — tables already populated",
       );
       return;
     }
 
-    if (regionsEmpty) {
+    // Log what triggered the re-seed
+    if (speciesMismatch) {
       logger.warn(
-        "⚠️  regionsTable is empty — encounters will fall back to static data until seeded. Auto-seeding now…",
+        { dbSpecies: actualSpecies, expectedSpecies },
+        "⚠️  Species count mismatch — catalogue has changed. Auto-reseeding now…",
       );
     }
-    if (speciesEmpty) {
+    if (regionsMismatch) {
       logger.warn(
-        "⚠️  monsterSpeciesTable is empty — encounters cannot trigger until seeded. Auto-seeding now…",
+        { dbRegions: actualRegions, expectedRegions },
+        "⚠️  Region count mismatch — auto-reseeding now…",
       );
     }
 
-    // Seed species
-    for (const monster of MONSTER_SEED_DATA) {
-      await db
-        .insert(monsterSpeciesTable)
-        .values(monster)
-        .onConflictDoUpdate({
-          target: monsterSpeciesTable.id,
-          set: {
-            name: monster.name,
-            element: monster.element,
-            rarity: monster.rarity,
-            baseHp: monster.baseHp,
-            baseAttack: monster.baseAttack,
-            baseDefense: monster.baseDefense,
-            baseSpeed: monster.baseSpeed,
-            description: monster.description,
-            lore: monster.lore,
-            captureRate: monster.captureRate,
-            skills: monster.skills,
-            regionIds: monster.regionIds,
-          },
-        });
-    }
+    // Run the full wipe + re-insert inside a single transaction so a partial
+    // failure cannot leave the DB in a mixed state, and so subsequent restarts
+    // see consistent counts and skip this block entirely.
+    await db.transaction(async (tx) => {
+      // Delete in FK-safe order:
+      //   battles → captured_monsters → monster_species → regions
+      await tx.delete(battlesTable);
+      await tx.delete(capturedMonstersTable);
+      await tx.delete(monsterSpeciesTable);
+      await tx.delete(regionsTable); // must come after species (regions are standalone but clear stale rows)
 
-    // Seed regions
-    for (const region of REGION_SEED_DATA) {
-      await db
-        .insert(regionsTable)
-        .values(region)
-        .onConflictDoUpdate({
-          target: regionsTable.id,
-          set: {
-            name: region.name,
-            biome: region.biome,
-            description: region.description,
-            monsterSpeciesIds: region.monsterSpeciesIds,
-          },
-        });
-    }
+      // Insert all species fresh
+      for (const monster of MONSTER_SEED_DATA) {
+        await tx
+          .insert(monsterSpeciesTable)
+          .values(monster)
+          .onConflictDoUpdate({
+            target: monsterSpeciesTable.id,
+            set: {
+              name:        monster.name,
+              element:     monster.element,
+              rarity:      monster.rarity,
+              baseHp:      monster.baseHp,
+              baseAttack:  monster.baseAttack,
+              baseDefense: monster.baseDefense,
+              baseSpeed:   monster.baseSpeed,
+              description: monster.description,
+              lore:        monster.lore,
+              captureRate: monster.captureRate,
+              skills:      monster.skills,
+              regionIds:   monster.regionIds,
+            },
+          });
+      }
+
+      // Insert all regions fresh
+      for (const region of REGION_SEED_DATA) {
+        await tx
+          .insert(regionsTable)
+          .values(region)
+          .onConflictDoUpdate({
+            target: regionsTable.id,
+            set: {
+              name:              region.name,
+              biome:             region.biome,
+              description:       region.description,
+              monsterSpeciesIds: region.monsterSpeciesIds,
+            },
+          });
+      }
+    });
 
     logger.info(
       { regions: REGION_SEED_DATA.length, species: MONSTER_SEED_DATA.length },
-      "Auto-seed complete — game data is ready",
+      `Auto-reseeded ${MONSTER_SEED_DATA.length} species and ${REGION_SEED_DATA.length} regions — game data is ready`,
     );
   } catch (err) {
     logger.warn(
