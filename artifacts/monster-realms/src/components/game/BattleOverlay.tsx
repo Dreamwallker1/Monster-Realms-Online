@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/store/game-store';
-import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey, useGetPlayerCollection } from '@workspace/api-client-react';
+import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey, useGetPlayerCollection, useGetPlayerInventory, getGetPlayerInventoryQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getElementColors, QUALITY_LABEL } from '@/lib/element-colors';
 import { getCharacter } from '@/lib/characters';
 import type { CharacterConfig } from '@/lib/characters';
 import { MythSvgIcon } from '@/lib/myth-svgs';
 import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-chart';
-import { Package, Wind, RefreshCw, X } from 'lucide-react';
+import { Package, Wind, RefreshCw, X, ChevronRight } from 'lucide-react';
 import SkillCinematic from '@/components/battle/SkillCinematic';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
@@ -368,6 +368,15 @@ function BattleTextBox({ text, actor }: { text: string; actor: 'player' | 'wild'
   );
 }
 
+// ─── Orb config ───────────────────────────────────────────────────────────────
+
+const ORB_CONFIG = [
+  { type: 'Prism',  emoji: '🔵', color: '#22D3EE', glow: 'rgba(34,211,238,0.35)',  border: '#22D3EE55', grad: 'linear-gradient(135deg,#0E7490,#0891B2)', bonusLabel: '1×'   },
+  { type: 'Luna',   emoji: '🟣', color: '#A78BFA', glow: 'rgba(167,139,250,0.35)', border: '#A78BFA55', grad: 'linear-gradient(135deg,#5B21B6,#7C3AED)', bonusLabel: '1.6×' },
+  { type: 'Aether', emoji: '🟢', color: '#34D399', glow: 'rgba(52,211,153,0.35)',  border: '#34D39955', grad: 'linear-gradient(135deg,#065F46,#059669)', bonusLabel: '2.5×' },
+  { type: 'Void',   emoji: '🟡', color: '#C084FC', glow: 'rgba(192,132,252,0.4)',  border: '#C084FC55', grad: 'linear-gradient(135deg,#581C87,#7E22CE)', bonusLabel: '4×'   },
+] as const;
+
 // ─── Action Panel (skill buttons + utility row) ──────────────────────────────
 
 function ActionPanel({
@@ -376,18 +385,22 @@ function ActionPanel({
   cinematic,
   isPending,
   wildHpPct,
+  orbCounts,
   handleSkillAction,
   handleAction,
   setShowSwitchPanel,
+  setShowOrbPicker,
 }: {
   playerMonster: { species?: { skills?: unknown; element?: string } } | null;
   wildElement: string;
   cinematic: unknown;
   isPending: boolean;
   wildHpPct: number;
+  orbCounts: Record<string, number>;
   handleSkillAction: (a: ActionType) => void;
   handleAction: (a: 'capture' | 'flee') => void;
   setShowSwitchPanel: (v: boolean) => void;
+  setShowOrbPicker: (v: boolean) => void;
 }) {
   const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
   const skillDefs: { action: ActionType; type: SkillData['type'] }[] = [
@@ -470,14 +483,27 @@ function ActionPanel({
       {/* Bottom row: Throw Orb + Switch + Flee */}
       <div className="grid grid-cols-3 gap-2">
         <button
-          onClick={() => handleAction('capture')}
+          onClick={() => setShowOrbPicker(true)}
           disabled={isPending}
-          className="relative flex items-center justify-center gap-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg,rgba(20,20,40,0.9),rgba(30,15,60,0.95))', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 0 12px rgba(245,158,11,0.2)', color: '#FDE68A', minHeight: 42 }}
+          className="relative flex flex-col items-center justify-center gap-0.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,rgba(20,20,40,0.9),rgba(30,15,60,0.95))', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 0 12px rgba(245,158,11,0.2)', color: '#FDE68A', minHeight: 42, padding: '4px 6px' }}
           data-testid="button-capture-battle"
         >
-          <Package size={13} />
-          <span>Throw Orb</span>
+          <div className="flex items-center gap-1">
+            <Package size={12} />
+            <span>Throw Orb</span>
+            <ChevronRight size={10} className="opacity-60" />
+          </div>
+          <div className="flex gap-1 items-center">
+            {ORB_CONFIG.map(o => {
+              const count = orbCounts[o.type] ?? 0;
+              return (
+                <span key={o.type} className="text-[8px] font-mono" style={{ color: count > 0 ? o.color : 'rgba(255,255,255,0.2)' }}>
+                  {count}
+                </span>
+              );
+            })}
+          </div>
           {wildHpPct < 30 && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />}
         </button>
 
@@ -517,6 +543,7 @@ export default function BattleOverlay() {
   const [playerShake, setPlayerShake]     = useState(0);
   const [captureMsg, setCaptureMsg]       = useState<string | null>(null);
   const [showSwitchPanel, setShowSwitchPanel] = useState(false);
+  const [showOrbPicker, setShowOrbPicker] = useState(false);
   const [switchAnimKey, setSwitchAnimKey] = useState(0);
 
   // ── Cinematic state ──────────────────────────────────────────────────────
@@ -543,6 +570,20 @@ export default function BattleOverlay() {
   const { data: teamCollection } = useGetPlayerCollection(player?.id ?? '', undefined, {
     query: { enabled: !!player?.id && battle.active },
   });
+
+  const { data: inventory } = useGetPlayerInventory(player?.id ?? '', {
+    query: {
+      queryKey: getGetPlayerInventoryQueryKey(player?.id ?? ''),
+      enabled: !!player?.id && battle.active,
+    },
+  });
+
+  const orbCounts: Record<string, number> = {};
+  for (const item of inventory?.items ?? []) {
+    if (item.type === 'orb' && item.orbType) {
+      orbCounts[item.orbType] = (orbCounts[item.orbType] ?? 0) + (item.quantity ?? 1);
+    }
+  }
 
   const performAction = usePerformBattleAction();
 
@@ -660,13 +701,15 @@ export default function BattleOverlay() {
     }
   }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction]);
 
-  // ── Capture action (no cinematic, immediate) ──────────────────────────────
-  const handleAction = useCallback(async (action: 'capture' | 'flee') => {
+  // ── Capture / flee action ─────────────────────────────────────────────────
+  const handleAction = useCallback(async (action: 'capture' | 'flee', orbType = 'Prism') => {
     if (!battle.battleId || isPending || isOver) return;
+    setShowOrbPicker(false);
     try {
       const updated = await performAction.mutateAsync({
         battleId: battle.battleId,
-        data: { action, orbType: action === 'capture' ? 'Prism' : undefined },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: { action, orbType: action === 'capture' ? (orbType as any) : undefined },
       });
       updateBattle(updated);
       queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
@@ -677,8 +720,11 @@ export default function BattleOverlay() {
           setTimeout(() => setCaptureMsg(null), 3000);
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Battle action failed:', err);
+      // Surface "no orbs" errors to the player
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      if (msg) { setCaptureMsg(msg); setTimeout(() => setCaptureMsg(null), 3000); }
     }
   }, [battle.battleId, isPending, isOver, performAction, updateBattle, queryClient]);
 
@@ -840,6 +886,84 @@ export default function BattleOverlay() {
             shakeKey={playerShake}
           />
         </div>
+
+        {/* ── Orb Picker Overlay ────────────────────────────────────────── */}
+        {showOrbPicker && !isOver && (
+          <div
+            className="absolute inset-0 flex flex-col"
+            style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)', zIndex: 20 }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <span className="text-sm font-bold text-white/90 tracking-wider uppercase">Choose Orb</span>
+              <button
+                onClick={() => setShowOrbPicker(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                <X size={14} className="text-white/70" />
+              </button>
+            </div>
+            <p className="px-4 pb-3 text-[11px] text-white/40">
+              Select which orb to throw. Higher-tier orbs improve catch rates.
+              {wildHpPct < 30 && <span className="text-emerald-400 ml-1">● Low HP — good moment to catch!</span>}
+            </p>
+
+            {/* Orb list */}
+            <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-2">
+              {ORB_CONFIG.map(orb => {
+                const count = orbCounts[orb.type] ?? 0;
+                const isEmpty = count <= 0;
+                return (
+                  <button
+                    key={orb.type}
+                    disabled={isEmpty || isPending}
+                    onClick={() => handleAction('capture', orb.type)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{
+                      background: isEmpty ? 'rgba(255,255,255,0.03)' : orb.grad,
+                      border: `1.5px solid ${isEmpty ? 'rgba(255,255,255,0.08)' : orb.border}`,
+                      boxShadow: isEmpty ? 'none' : `0 0 14px ${orb.glow}`,
+                    }}
+                    data-testid={`button-orb-${orb.type.toLowerCase()}`}
+                  >
+                    {/* Orb icon */}
+                    <div
+                      className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                      style={{ background: isEmpty ? 'rgba(0,0,0,0.3)' : `${orb.color}22`, border: `1px solid ${orb.color}44` }}
+                    >
+                      {orb.emoji}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-black text-sm text-white truncate">{orb.type} Orb</span>
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                          style={{ background: `${orb.color}22`, color: orb.color, border: `1px solid ${orb.color}44` }}
+                        >
+                          {orb.bonusLabel} rate
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-white/40 font-mono">
+                        {isEmpty ? 'None in bag' : `${count} remaining`}
+                      </div>
+                    </div>
+
+                    {/* Throw indicator */}
+                    {!isEmpty && (
+                      <div className="shrink-0 flex items-center gap-1 text-xs font-bold" style={{ color: orb.color }}>
+                        <Package size={12} />
+                        <span>Throw</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Switch Myth Panel Overlay ──────────────────────────────────── */}
         {showSwitchPanel && !isOver && (
@@ -1061,9 +1185,11 @@ export default function BattleOverlay() {
             cinematic={cinematic}
             isPending={isPending}
             wildHpPct={wildHpPct}
+            orbCounts={orbCounts}
             handleSkillAction={handleSkillAction}
             handleAction={handleAction}
             setShowSwitchPanel={setShowSwitchPanel}
+            setShowOrbPicker={setShowOrbPicker}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3">
