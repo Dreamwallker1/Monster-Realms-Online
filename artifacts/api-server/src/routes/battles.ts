@@ -455,9 +455,13 @@ router.post(
         capturedMonsterId = captured!.id;
         newStatus = "captured";
         // Update player captured count
+        const [playerRow] = await db
+          .select({ monstersCaptured: playersTable.monstersCaptured })
+          .from(playersTable)
+          .where(eq(playersTable.id, battle.playerId));
         await db
           .update(playersTable)
-          .set({ monstersCaptured: playerCaptured.level + 1 })
+          .set({ monstersCaptured: (playerRow?.monstersCaptured ?? 0) + 1 })
           .where(eq(playersTable.id, battle.playerId));
         log.push({
           turn: battle.turn,
