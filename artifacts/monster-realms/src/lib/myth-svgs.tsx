@@ -955,9 +955,61 @@ export const MYTH_ARCHETYPE: Record<string, ArchetypeName> = {
   'umbraeon':'ShadowGolem','noctiris':'ShadowGolem',
 };
 
-// ── Color palettes per element ────────────────────────────────────────────────
+// ── Per-myth deterministic color generation ───────────────────────────────────
+// Each myth gets unique colors derived from its ID + element so that two myths
+// with the same archetype shape still look visually distinct.
+
+/** djb2-style hash → stable float 0..1 for any string */
+function idHash(id: string): number {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) {
+    h = ((h << 5) + h + id.charCodeAt(i)) >>> 0; // force unsigned 32-bit
+  }
+  return (h % 1000) / 999; // 0..1
+}
+
+type ElementBand = {
+  primaryHue:   [number, number]; // [min, max] hue for primary colour
+  secondaryHue: [number, number];
+  accentHue:    [number, number];
+  sat: number;        // saturation %
+  primaryL:  number;  // lightness % for primary
+  secondaryL: number;
+  accentL:   number;
+};
+
+const ELEMENT_BANDS: Record<string, ElementBand> = {
+  Fire:     { primaryHue:[0,40],    secondaryHue:[10,50],  accentHue:[20,60],   sat:90, primaryL:28,  secondaryL:45, accentL:62 },
+  Water:    { primaryHue:[190,230], secondaryHue:[175,215],accentHue:[165,210], sat:82, primaryL:28,  secondaryL:46, accentL:60 },
+  Nature:   { primaryHue:[85,145],  secondaryHue:[70,130], accentHue:[55,120],  sat:78, primaryL:22,  secondaryL:40, accentL:56 },
+  Electric: { primaryHue:[38,68],   secondaryHue:[42,72],  accentHue:[48,80],   sat:95, primaryL:32,  secondaryL:50, accentL:65 },
+  Dark:     { primaryHue:[255,310], secondaryHue:[250,300],accentHue:[270,330], sat:80, primaryL:12,  secondaryL:26, accentL:52 },
+};
+
+function lerp(a: number, b: number, t: number) { return Math.round(a + (b - a) * t); }
+
+/** Returns [primary, secondary, accent] CSS hsl strings unique to this myth */
+function getMythColors(mythId: string, element: string): [string, string, string] {
+  const t = idHash(mythId);
+  const band = ELEMENT_BANDS[element] ?? ELEMENT_BANDS.Fire!;
+
+  // Use slightly shifted t values for secondary/accent so they don't all move in lockstep
+  const t2 = idHash(mythId + '_s') ;
+  const t3 = idHash(mythId + '_a');
+
+  const pH = lerp(band.primaryHue[0],   band.primaryHue[1],   t)  % 360;
+  const sH = lerp(band.secondaryHue[0], band.secondaryHue[1], t2) % 360;
+  const aH = lerp(band.accentHue[0],    band.accentHue[1],    t3) % 360;
+
+  return [
+    `hsl(${pH}, ${band.sat}%,         ${band.primaryL}%)`,
+    `hsl(${sH}, ${band.sat - 8}%,     ${band.secondaryL}%)`,
+    `hsl(${aH}, 100%,                 ${band.accentL}%)`,
+  ];
+}
+
+// Kept for fallback glow colour extraction (accent only)
 const ARCHETYPE_COLORS: Record<string, [string, string, string]> = {
-  // element → [primary, secondary, accent]
   Fire:     ['#7B1A00', '#B84000', '#FF8C00'],
   Water:    ['#004466', '#006B9F', '#00CCEE'],
   Nature:   ['#1A4A00', '#2E7B14', '#7EC832'],
@@ -999,7 +1051,8 @@ export interface MythSvgProps {
 
 export function MythSvgIcon({ mythId, element, rarity = 'C', size = 100, className }: MythSvgProps) {
   const archetype = (MYTH_ARCHETYPE[mythId] ?? fallback(element)) as ArchetypeName;
-  const [p, s, a] = ARCHETYPE_COLORS[element] ?? ARCHETYPE_COLORS.Fire!;
+  // Each myth gets its own unique colour palette derived from its ID
+  const [p, s, a] = getMythColors(mythId, element);
   const glowFilter = {
     C: 'none',
     B: `drop-shadow(0 0 5px ${a}) drop-shadow(0 0 2px ${a})`,
