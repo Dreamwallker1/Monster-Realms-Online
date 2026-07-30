@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/store/game-store';
 import { useGetBattle, usePerformBattleAction, getGetBattleQueryKey, useGetPlayerCollection, useGetPlayerInventory, getGetPlayerInventoryQueryKey } from '@workspace/api-client-react';
@@ -6,12 +7,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getElementColors, QUALITY_LABEL } from '@/lib/element-colors';
 import { getCharacter } from '@/lib/characters';
 import type { CharacterConfig } from '@/lib/characters';
-import { MythSvgIcon } from '@/lib/myth-svgs';
+import { MythSvgIcon, MYTH_ARCHETYPE } from '@/lib/myth-svgs';
 import { getTypeMultiplier, getMatchupText, ELEMENT_ICON } from '@/lib/type-chart';
 import { Package, Wind, RefreshCw, X, ChevronRight } from 'lucide-react';
 import SkillCinematic from '@/components/battle/SkillCinematic';
 import OrbCinematic from '@/components/battle/OrbCinematic';
-import MythEntranceCinematic from '@/components/battle/MythEntranceCinematic';
+import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components/battle/MythEntranceCinematic';
 import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
@@ -241,6 +242,298 @@ function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: nu
   );
 }
 
+// ─── Hit-reaction overlay ──────────────────────────────────────────────────────
+// Plays a ≤300ms archetype-specific burst at the myth's position on every hit.
+
+const EL_HIT: Record<string, { color: string; glow: string }> = {
+  Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.7)' },
+  Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.7)' },
+  Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.7)' },
+  Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.8)' },
+  Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.7)' },
+};
+const getElHit = (e: string) => EL_HIT[e] ?? { color: '#94A3B8', glow: 'rgba(148,163,184,0.5)' };
+
+// Slash marks — 3 diagonal lines bursting outward (CLAW_SLASH, SHADOW_CLAW)
+function HitSlash({ color, glow }: { color: string; glow: string }) {
+  const slashes = [
+    { x1: 30, y1: 30, x2: 55, y2: 55 },
+    { x1: 50, y1: 20, x2: 75, y2: 45 },
+    { x1: 20, y1: 50, x2: 45, y2: 75 },
+  ];
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: 'visible' }}>
+      {slashes.map((s, i) => (
+        <motion.line
+          key={i}
+          x1={`${s.x1}%`} y1={`${s.y1}%`} x2={`${s.x2}%`} y2={`${s.y2}%`}
+          stroke={color} strokeWidth={3} strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.9, 0] }}
+          transition={{ duration: 0.26, delay: i * 0.03, ease: 'easeOut' }}
+        />
+      ))}
+      {/* central impact flash */}
+      <motion.circle cx="50%" cy="50%" r="22"
+        fill="none" stroke={color} strokeWidth={2}
+        style={{ filter: `drop-shadow(0 0 6px ${glow})` }}
+        initial={{ r: 8, opacity: 0.9 }}
+        animate={{ r: [8, 28, 36], opacity: [0.9, 0.5, 0] }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+      />
+    </svg>
+  );
+}
+
+// Fang marks — two vertical bars + flash (BITE_LUNGE)
+function HitFang({ color, glow }: { color: string; glow: string }) {
+  return (
+    <>
+      {[-14, 14].map((dx, i) => (
+        <motion.div
+          key={i}
+          className="absolute pointer-events-none rounded-sm"
+          style={{
+            left: `calc(50% + ${dx}px)`, top: '28%',
+            width: 5, height: 26,
+            background: color,
+            boxShadow: `0 0 8px ${glow}`,
+            transformOrigin: 'top center',
+          }}
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: [0, 1, 1, 0], opacity: [0, 1, 0.8, 0] }}
+          transition={{ duration: 0.24, delay: i * 0.03 }}
+        />
+      ))}
+      <motion.div
+        className="absolute inset-0 rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(circle, ${color}55 0%, transparent 65%)` }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.7, 0] }}
+        transition={{ duration: 0.2 }}
+      />
+    </>
+  );
+}
+
+// Particle burst — sparks radiate out (FLAME_BURST, VINE_WHIP, SPORE_BOMB)
+function HitBurst({ color, glow, count = 7 }: { color: string; glow: string; count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => {
+        const angle = (i / count) * 360;
+        const dist = 38 + (i % 3) * 10;
+        return (
+          <motion.div
+            key={i}
+            className="absolute pointer-events-none rounded-full"
+            style={{
+              left: '50%', top: '50%',
+              width: 5 + (i % 3) * 2, height: 5 + (i % 3) * 2,
+              background: color,
+              boxShadow: `0 0 5px ${glow}`,
+            }}
+            initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
+            animate={{
+              x: Math.cos((angle * Math.PI) / 180) * dist,
+              y: Math.sin((angle * Math.PI) / 180) * dist,
+              opacity: [0, 1, 0],
+              scale: [0, 1.2, 0],
+            }}
+            transition={{ duration: 0.26, delay: i * 0.015, ease: 'easeOut' }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// Concentric ring(s) (ROCK_SMASH, TIDAL_SLAM, THUNDER_STOMP, BUBBLE_SHOT)
+function HitRing({ color, glow, rings = 2, squash = false }: {
+  color: string; glow: string; rings?: number; squash?: boolean;
+}) {
+  return (
+    <>
+      {Array.from({ length: rings }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute pointer-events-none rounded-full border-2"
+          style={{
+            left: '50%', top: squash ? '72%' : '50%',
+            transform: 'translate(-50%,-50%)',
+            borderColor: color,
+            boxShadow: `0 0 8px ${glow}`,
+          }}
+          initial={{ width: 0, height: 0, opacity: 0.9 }}
+          animate={{
+            width:  [0, (70 + i * 36)],
+            height: squash ? [0, (28 + i * 14)] : [0, (70 + i * 36)],
+            opacity: [0.9, 0],
+          }}
+          transition={{ duration: 0.26, delay: i * 0.06, ease: 'easeOut' }}
+        />
+      ))}
+    </>
+  );
+}
+
+// Electric flash — center burst + 2 spark streaks (LIGHTNING_BOLT, SPARK_DASH)
+function HitElectric({ color, glow }: { color: string; glow: string }) {
+  return (
+    <>
+      <motion.div
+        className="absolute inset-0 pointer-events-none rounded-xl"
+        style={{ background: `radial-gradient(circle at 50% 45%, ${color}88 0%, transparent 65%)` }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 0] }}
+        transition={{ duration: 0.18 }}
+      />
+      {[[-20, -15], [20, -10]].map(([dx, dy], i) => (
+        <motion.div
+          key={i}
+          className="absolute pointer-events-none rounded-full"
+          style={{
+            left: `calc(50% + ${dx}px)`, top: `calc(45% + ${dy}px)`,
+            width: 4, height: 4,
+            background: '#FFF',
+            boxShadow: `0 0 6px ${glow}`,
+          }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{
+            scale: [0, 2.5, 0],
+            x: [0, dx * 2],
+            y: [0, dy * 2],
+            opacity: [0, 1, 0],
+          }}
+          transition={{ duration: 0.22, delay: i * 0.04 }}
+        />
+      ))}
+    </>
+  );
+}
+
+// Void pull — inward implosion pulse (VOID_PULL)
+function HitVoid({ color, glow }: { color: string; glow: string }) {
+  return (
+    <>
+      {[0, 1].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute pointer-events-none rounded-full border-2"
+          style={{
+            left: '50%', top: '50%',
+            transform: 'translate(-50%,-50%)',
+            borderColor: color,
+            boxShadow: `0 0 8px ${glow}`,
+          }}
+          initial={{ width: 70 + i * 30, height: 70 + i * 30, opacity: 0.8 }}
+          animate={{ width: [70 + i * 30, 12, 0], height: [70 + i * 30, 12, 0], opacity: [0.8, 0.5, 0] }}
+          transition={{ duration: 0.28, delay: i * 0.05, ease: 'easeIn' }}
+        />
+      ))}
+      <motion.div
+        className="absolute inset-0 pointer-events-none rounded-xl"
+        style={{ background: `radial-gradient(circle, ${color}44 0%, transparent 70%)` }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.9, 0] }}
+        transition={{ duration: 0.28 }}
+      />
+    </>
+  );
+}
+
+// Eclipse beam flash (ECLIPSE_BEAM)
+function HitEclipse({ color, glow }: { color: string; glow: string }) {
+  return (
+    <>
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: `radial-gradient(circle at 50% 40%, white 0%, ${color}88 30%, transparent 70%)` }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.85, 0] }}
+        transition={{ duration: 0.24 }}
+      />
+      <motion.div
+        className="absolute pointer-events-none rounded-full border"
+        style={{
+          left: '50%', top: '50%',
+          transform: 'translate(-50%,-50%)',
+          borderColor: '#FFF',
+          boxShadow: `0 0 12px ${glow}`,
+        }}
+        initial={{ width: 0, height: 0, opacity: 1 }}
+        animate={{ width: [0, 90], height: [0, 90], opacity: [1, 0] }}
+        transition={{ duration: 0.28, ease: 'easeOut' }}
+      />
+    </>
+  );
+}
+
+type StrikeType =
+  | 'CLAW_SLASH' | 'BITE_LUNGE' | 'FLAME_BURST' | 'ROCK_SMASH'
+  | 'TIDAL_SLAM' | 'BUBBLE_SHOT' | 'VINE_WHIP'   | 'SPORE_BOMB'
+  | 'LIGHTNING_BOLT' | 'SPARK_DASH' | 'THUNDER_STOMP'
+  | 'SHADOW_CLAW' | 'VOID_PULL' | 'ECLIPSE_BEAM';
+
+function HitReactionOverlay({ speciesId, element, animKey }: {
+  speciesId: string; element: string; animKey: number;
+}) {
+  if (animKey === 0) return null;
+  const strikeType: StrikeType = getStrike(speciesId);
+  const { color, glow } = getElHit(element);
+
+  let effect: React.ReactNode;
+  switch (strikeType) {
+    case 'CLAW_SLASH':
+    case 'SHADOW_CLAW':
+      effect = <HitSlash color={color} glow={glow} />;
+      break;
+    case 'BITE_LUNGE':
+      effect = <HitFang color={color} glow={glow} />;
+      break;
+    case 'FLAME_BURST':
+    case 'VINE_WHIP':
+    case 'SPORE_BOMB':
+      effect = <HitBurst color={color} glow={glow} />;
+      break;
+    case 'ROCK_SMASH':
+      effect = <HitRing color={color} glow={glow} rings={2} squash />;
+      break;
+    case 'TIDAL_SLAM':
+      effect = <HitRing color={color} glow={glow} rings={2} />;
+      break;
+    case 'BUBBLE_SHOT':
+      effect = <HitRing color={color} glow={glow} rings={1} />;
+      break;
+    case 'THUNDER_STOMP':
+      effect = <HitRing color={color} glow={glow} rings={2} squash />;
+      break;
+    case 'LIGHTNING_BOLT':
+    case 'SPARK_DASH':
+      effect = <HitElectric color={color} glow={glow} />;
+      break;
+    case 'VOID_PULL':
+      effect = <HitVoid color={color} glow={glow} />;
+      break;
+    case 'ECLIPSE_BEAM':
+      effect = <HitEclipse color={color} glow={glow} />;
+      break;
+    default:
+      effect = <HitBurst color={color} glow={glow} />;
+  }
+
+  return (
+    <div
+      key={animKey}
+      className="absolute inset-0 pointer-events-none"
+      style={{ zIndex: 10 }}
+    >
+      {effect}
+    </div>
+  );
+}
+
 // ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
 function MythSprite({
@@ -259,16 +552,22 @@ function MythSprite({
   return (
     <div className="flex flex-col items-center">
       <div
-        key={animKey}
-        className={`battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
-        style={{
-          filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
-          transition: isFainting ? 'opacity 0.35s ease-in, transform 0.35s ease-in' : undefined,
-          opacity: isFainting ? 0 : 1,
-          transform: isFainting ? 'translateY(18px) scale(0.85)' : undefined,
-        }}
+        className="relative"
+        style={{ width: size, height: size }}
       >
-        <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
+        <div
+          key={animKey}
+          className={`battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
+          style={{
+            filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
+            transition: isFainting ? 'opacity 0.35s ease-in, transform 0.35s ease-in' : undefined,
+            opacity: isFainting ? 0 : 1,
+            transform: isFainting ? 'translateY(18px) scale(0.85)' : undefined,
+          }}
+        >
+          <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
+        </div>
+        <HitReactionOverlay speciesId={speciesId} element={element} animKey={animKey} />
       </div>
       {/* Ground shadow */}
       <div style={{

@@ -11,7 +11,7 @@ type StrikeType =
   | 'SHADOW_CLAW' | 'VOID_PULL' | 'ECLIPSE_BEAM';
 
 // Same map as SkillCinematic — entrance style matches the myth's strike personality
-const ARCHETYPE_STRIKE: Record<string, StrikeType> = {
+export const ARCHETYPE_STRIKE: Record<string, StrikeType> = {
   FireWolf: 'CLAW_SLASH',    FireDrake: 'BITE_LUNGE',
   FireSpirit: 'FLAME_BURST', FireGolem: 'ROCK_SMASH',
   EmberMoth: 'FLAME_BURST',  CinderSerpent: 'BITE_LUNGE',
@@ -34,11 +34,13 @@ const ARCHETYPE_STRIKE: Record<string, StrikeType> = {
   EclipseOwl: 'ECLIPSE_BEAM',AbyssSpider: 'VOID_PULL',
 };
 
-function getStrike(mythId?: string): StrikeType {
+export function getStrike(mythId?: string): StrikeType {
   if (!mythId) return 'CLAW_SLASH';
   const arch = MYTH_ARCHETYPE[mythId];
   return (arch && ARCHETYPE_STRIKE[arch]) ? ARCHETYPE_STRIKE[arch]! : 'CLAW_SLASH';
 }
+
+export type { StrikeType };
 
 // ─── Rarity config ────────────────────────────────────────────────────────────
 // C=simple, B=glow added, A=particles, S=full aura reveal
