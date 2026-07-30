@@ -14,6 +14,7 @@ import SkillCinematic from '@/components/battle/SkillCinematic';
 import OrbCinematic from '@/components/battle/OrbCinematic';
 import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components/battle/MythEntranceCinematic';
 import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
+import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -1928,49 +1929,17 @@ export default function BattleOverlay() {
           </div>
         )}
 
-        {/* ── End-of-battle result overlay ────────────────────────────────── */}
+        {/* ── End-of-battle cinematic ──────────────────────────────────────── */}
         {isOver && (
-          <div className="absolute inset-0 flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 10 }}
-          >
-            <div className="text-center space-y-4 capture-success px-6">
-              {status === 'captured' && (
-                <>
-                  <div className="flex justify-center mb-2">
-                    <MythSvgIcon mythId={wildMonster.species.id} element={wildMonster.species.element} rarity={wildMonster.species.rarity} size={72}/>
-                  </div>
-                  <p className="text-2xl font-bold" style={{ color: '#34D399', textShadow: '0 0 20px #34D399' }}>
-                    Captured!
-                  </p>
-                  <p className="text-base text-white/80">{wildMonster.species.name} joined your collection</p>
-                </>
-              )}
-              {status === 'won' && (
-                <>
-                  <div className="text-5xl mb-2">🏆</div>
-                  <p className="text-2xl font-bold text-yellow-400" style={{ textShadow: '0 0 20px #EAB308' }}>Victory!</p>
-                  {battle.battle.expReward && (
-                    <div className="flex gap-4 justify-center text-sm font-mono">
-                      <span className="text-cyan-400">+{battle.battle.expReward} EXP</span>
-                      {battle.battle.coinReward && <span className="text-yellow-400">+{battle.battle.coinReward} coins</span>}
-                    </div>
-                  )}
-                </>
-              )}
-              {status === 'fled' && (
-                <>
-                  <div className="text-5xl mb-2">💨</div>
-                  <p className="text-xl font-bold text-white/70">Got away safely!</p>
-                </>
-              )}
-              {status === 'lost' && (
-                <>
-                  <div className="text-5xl mb-2">💀</div>
-                  <p className="text-xl font-bold text-red-400">Your myth fainted...</p>
-                </>
-              )}
-            </div>
-          </div>
+          <BattleEndCinematic
+            status={status as 'won' | 'lost' | 'captured' | 'fled'}
+            expReward={battle.battle.expReward ?? undefined}
+            coinReward={battle.battle.coinReward ?? undefined}
+            wildMythId={wildMonster.species.id}
+            wildElement={wildMonster.species.element}
+            wildRarity={wildMonster.species.rarity}
+            wildName={wildMonster.species.name}
+          />
         )}
 
         {/* ── Skill Cinematic overlay ───────────────────────────────────── */}
