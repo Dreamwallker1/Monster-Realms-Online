@@ -551,9 +551,13 @@ export default function BattleOverlay() {
     skillName: string; element: string; power: number;
     attackerSide: 'player' | 'wild'; isCritical?: boolean; description?: string;
     phase: 'player' | 'wild';
+    attackerMythId?: string; attackerRarity?: string; skillType?: string;
   } | null>(null);
   const pendingBattleResult = useRef<Parameters<typeof updateBattle>[0] | null>(null);
-  const pendingWildCinematic = useRef<{ skillName: string; element: string; power: number; isCritical?: boolean } | null>(null);
+  const pendingWildCinematic = useRef<{
+    skillName: string; element: string; power: number; isCritical?: boolean;
+    attackerMythId?: string; attackerRarity?: string;
+  } | null>(null);
 
   const prevWildHp      = useRef<number | null>(null);
   const prevPlayerHp    = useRef<number | null>(null);
@@ -647,6 +651,9 @@ export default function BattleOverlay() {
           isCritical: wild.isCritical,
           attackerSide: 'wild',
           phase: 'wild',
+          attackerMythId: wild.attackerMythId,
+          attackerRarity:  wild.attackerRarity,
+          skillType: 'normal',
         });
       } else {
         setCinematic(null);
@@ -673,6 +680,9 @@ export default function BattleOverlay() {
       description: skill.description,
       attackerSide: 'player',
       phase: 'player',
+      attackerMythId: playerMonster?.species?.id,
+      attackerRarity:  playerMonster?.species?.rarity ?? 'C',
+      skillType: skill.type,
     });
 
     try {
@@ -691,6 +701,8 @@ export default function BattleOverlay() {
           element: wildElement,
           power: wildEntry.damageDealt ?? 40,
           isCritical: wildEntry.critical,
+          attackerMythId: updated.wildMonster?.species?.id,
+          attackerRarity:  updated.wildMonster?.species?.rarity ?? 'C',
         };
       }
       pendingBattleResult.current = updated;
@@ -1134,6 +1146,9 @@ export default function BattleOverlay() {
             attackerSide={cinematic.attackerSide}
             isCritical={cinematic.isCritical}
             onComplete={onCinematicComplete}
+            attackerMythId={cinematic.attackerMythId}
+            attackerRarity={cinematic.attackerRarity}
+            skillType={cinematic.skillType}
           />
         )}
 
