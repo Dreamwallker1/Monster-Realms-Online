@@ -1120,24 +1120,111 @@ function SRarityExtras({ side, color, glow }: { side: 'player' | 'wild'; color: 
 }
 
 // ─── Impact flash ─────────────────────────────────────────────────────────────
+// Replaces the old soft blob — hard white punch + 8 spikes + shockwave ring
 
 function ImpactFlash({ side, color, scale }: { side: 'player' | 'wild'; color: string; scale: number }) {
-  const defX = side === 'player' ? '22%' : '72%';
+  const defX  = side === 'player' ? '22%' : '72%';
+  const defXN = side === 'player' ? 22 : 72;
+  const defY  = 44;
+  const spikeAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+
   return (
-    <motion.div
-      className="absolute pointer-events-none"
-      style={{
-        left: defX, top: '44%',
-        transform: 'translate(-50%,-50%)',
-        width: `${80 * scale}px`, height: `${80 * scale}px`,
-        borderRadius: '50%',
-        background: `radial-gradient(circle, white 0%, ${color}88 40%, transparent 100%)`,
-        boxShadow: `0 0 ${24 * scale}px ${color}`,
-      }}
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: [0, 2.8, 0], opacity: [0, 1, 0] }}
-      transition={{ duration: 0.32, delay: 0.48, ease: 'easeOut' }}
-    />
+    <>
+      {/* Hard white flash — snap in, snap out */}
+      <motion.div
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          left: defX, top: `${defY}%`,
+          transform: 'translate(-50%,-50%)',
+          background: 'white',
+          zIndex: 4,
+        }}
+        initial={{ width: 0, height: 0, opacity: 0 }}
+        animate={{
+          width:  [0, 100 * scale, 70 * scale, 0],
+          height: [0, 100 * scale, 70 * scale, 0],
+          opacity: [0, 1, 0.65, 0],
+        }}
+        transition={{ duration: 0.20, delay: 0.40, ease: [0.0, 0.8, 0.4, 1] }}
+      />
+      {/* Colored secondary bloom */}
+      <motion.div
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          left: defX, top: `${defY}%`,
+          transform: 'translate(-50%,-50%)',
+          background: `radial-gradient(circle, ${color}ee 0%, ${color}55 45%, transparent 100%)`,
+          boxShadow: `0 0 ${44 * scale}px ${color}`,
+          zIndex: 3,
+        }}
+        initial={{ width: 0, height: 0, opacity: 0 }}
+        animate={{
+          width:  [0, 180 * scale],
+          height: [0, 180 * scale],
+          opacity: [0, 1, 0],
+        }}
+        transition={{ duration: 0.36, delay: 0.41, ease: 'easeOut' }}
+      />
+      {/* 8-directional sharp spikes */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 4, overflow: 'visible' }}>
+        {spikeAngles.map((deg, i) => {
+          const rad = (deg * Math.PI) / 180;
+          const len = (28 + (i % 2 === 0 ? 14 : 8)) * scale;
+          return (
+            <motion.line
+              key={`spike-${i}`}
+              x1={`${defXN}%`} y1={`${defY}%`}
+              stroke={i % 2 === 0 ? '#ffffff' : color}
+              strokeWidth={(3.5 - (i % 2)) * scale}
+              strokeLinecap="round"
+              style={{ filter: `drop-shadow(0 0 ${4 * scale}px ${color})` }}
+              initial={{ x2: `${defXN}%`, y2: `${defY}%`, opacity: 0 }}
+              animate={{
+                x2: [
+                  `${defXN}%`,
+                  `calc(${defXN}% + ${(Math.cos(rad) * len).toFixed(1)}px)`,
+                ],
+                y2: [
+                  `${defY}%`,
+                  `calc(${defY}% + ${(Math.sin(rad) * len).toFixed(1)}px)`,
+                ],
+                opacity: [0, 1, 0],
+              }}
+              transition={{ duration: 0.22, delay: 0.41 + i * 0.008, ease: 'easeOut' }}
+            />
+          );
+        })}
+      </svg>
+      {/* Expanding shockwave ring */}
+      <motion.div
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          left: defX, top: `${defY}%`,
+          transform: 'translate(-50%,-50%)',
+          border: `${Math.max(1.5, 2 * scale)}px solid ${color}`,
+          boxShadow: `0 0 ${12 * scale}px ${color}`,
+          zIndex: 3,
+        }}
+        initial={{ width: 0, height: 0, opacity: 0.9 }}
+        animate={{ width: [0, 200 * scale], height: [0, 200 * scale], opacity: [0.9, 0] }}
+        transition={{ duration: 0.30, delay: 0.43, ease: 'easeOut' }}
+      />
+      {/* Second tighter ring (rarity B+) */}
+      {scale >= 0.9 && (
+        <motion.div
+          className="absolute pointer-events-none rounded-full"
+          style={{
+            left: defX, top: `${defY}%`,
+            transform: 'translate(-50%,-50%)',
+            border: `${Math.max(1, 1.5 * scale)}px solid #ffffff99`,
+            zIndex: 3,
+          }}
+          initial={{ width: 0, height: 0, opacity: 0.7 }}
+          animate={{ width: [0, 120 * scale], height: [0, 120 * scale], opacity: [0.7, 0] }}
+          transition={{ duration: 0.22, delay: 0.42, ease: 'easeOut' }}
+        />
+      )}
+    </>
   );
 }
 
@@ -1182,6 +1269,26 @@ export default function SkillCinematic({
         {/* ── S-rarity screen effects (behind everything else) ── */}
         {attackerRarity === 'S' && (
           <SRarityExtras side={attackerSide} color={el.color} glow={el.glow} />
+        )}
+
+        {/* ── Critical hit screen slam — sharp white punch, then element color ── */}
+        {isCritical && (
+          <>
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: 'white', zIndex: 6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.7, 0] }}
+              transition={{ duration: 0.12, delay: 0.40 }}
+            />
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: el.color, zIndex: 6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.22, 0] }}
+              transition={{ duration: 0.22, delay: 0.50 }}
+            />
+          </>
         )}
 
         {/* ── Skill name ── */}

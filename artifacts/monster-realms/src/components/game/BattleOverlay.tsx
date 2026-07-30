@@ -877,6 +877,12 @@ export default function BattleOverlay() {
   const pendingRoundRef  = useRef<number>(0); // new round waiting to be announced
   const floatIdRef       = useRef(0);
 
+  // ── Hit-feel: camera shake + sprite flash ─────────────────────────────
+  const [arenaShakeId, setArenaShakeId]     = useState(0);
+  const [arenaShakeCrit, setArenaShakeCrit] = useState(false);
+  const [hitFlashWild, setHitFlashWild]     = useState(0);
+  const [hitFlashPlayer, setHitFlashPlayer] = useState(0);
+
   // ── PvP arena intro + opponent turn state ─────────────────────────────
   const [showBattleIntro, setShowBattleIntro]     = useState(false);
   const [opponentTurnActive, setOpponentTurnActive] = useState(false);
@@ -970,7 +976,11 @@ export default function BattleOverlay() {
       );
       const wfid = ++floatIdRef.current;
       setDamageFloats(f => [...f, { id: wfid, dmg: wildDmg, side: 'wild', crit: wildCrit }]);
-      setTimeout(() => setDamageFloats(f => f.filter(x => x.id !== wfid)), 1400);
+      setTimeout(() => setDamageFloats(f => f.filter(x => x.id !== wfid)), 1600);
+      // Camera shake + sprite flash
+      setHitFlashWild(k => k + 1);
+      setArenaShakeCrit(wildCrit);
+      setArenaShakeId(k => k + 1);
       if (wd.currentHp === 0 && prevWildHp.current > 0) {
         setFaintCinematic({
           side: 'wild',
@@ -989,7 +999,11 @@ export default function BattleOverlay() {
       );
       const pfid = ++floatIdRef.current;
       setDamageFloats(f => [...f, { id: pfid, dmg: playerDmg, side: 'player', crit: playerCrit }]);
-      setTimeout(() => setDamageFloats(f => f.filter(x => x.id !== pfid)), 1400);
+      setTimeout(() => setDamageFloats(f => f.filter(x => x.id !== pfid)), 1600);
+      // Camera shake + sprite flash
+      setHitFlashPlayer(k => k + 1);
+      setArenaShakeCrit(playerCrit);
+      setArenaShakeId(k => k + 1);
       if (pd.currentHp === 0 && prevPlayerHp.current > 0) {
         setFaintCinematic({
           side: 'player',
@@ -1363,6 +1377,12 @@ export default function BattleOverlay() {
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
       <div className="relative flex-1 overflow-hidden">
+        {/* World shake wrapper — camera punch on hit; HUD/cinematics are inside but that's fine */}
+        <div
+          key={arenaShakeId}
+          className={arenaShakeId > 0 ? (arenaShakeCrit ? 'arena-shake-crit' : 'arena-shake') : ''}
+          style={{ position: 'absolute', inset: 0 }}
+        >
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
@@ -1527,6 +1547,8 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance"
           style={{ bottom: '36%', left: '8%', animationDelay: '0.05s', zIndex: 2 }}
         >
+          {/* Stagger wrapper — re-keyed when wild takes a hit */}
+          <div key={`wstagger-${wildShake}`} className={wildShake > 0 ? 'hit-stagger-right' : ''}>
           {/* Inner lunge wrapper — re-keyed on each wild attack to replay animation */}
           <div
             key={`wlunge-${wildLungeKey}`}
@@ -1559,6 +1581,7 @@ export default function BattleOverlay() {
               isFainting={faintCinematic?.side === 'wild'}
             />
           </div>
+          </div> {/* ← close stagger wrapper */}
         </div>
 
         {/* Player Myth — RIGHT FRONT */}
@@ -1567,6 +1590,8 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance"
           style={{ bottom: '36%', right: '8%', animationDelay: '0.1s', zIndex: 2 }}
         >
+          {/* Stagger wrapper — re-keyed when player myth takes a hit */}
+          <div key={`pstagger-${playerShake}`} className={playerShake > 0 ? 'hit-stagger-left' : ''}>
           {/* Inner lunge wrapper — re-keyed on each player attack to replay animation */}
           <div
             key={`plunge-${playerLungeKey}`}
@@ -1584,6 +1609,7 @@ export default function BattleOverlay() {
               isFainting={faintCinematic?.side === 'player'}
             />
           </div>
+          </div> {/* ← close stagger wrapper */}
         </div>
 
         {/* ── Myth entrance cinematics (non-blocking cosmetic overlay) ── */}
@@ -1606,27 +1632,61 @@ export default function BattleOverlay() {
           />
         )}
 
+        {/* ── Hit flash overlays — brief white radial burst at defender ─── */}
+        <div
+          key={`hfw-${hitFlashWild}`}
+          className={`absolute pointer-events-none rounded-full ${hitFlashWild > 0 ? 'hit-white-flash' : ''}`}
+          style={{
+            left: '8%', bottom: '36%',
+            transform: 'translate(-10%, 10%)',
+            width: 150, height: 150,
+            background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 40%, transparent 100%)',
+            zIndex: 10,
+            opacity: 0,
+          }}
+        />
+        <div
+          key={`hfp-${hitFlashPlayer}`}
+          className={`absolute pointer-events-none rounded-full ${hitFlashPlayer > 0 ? 'hit-white-flash' : ''}`}
+          style={{
+            right: '8%', bottom: '36%',
+            transform: 'translate(10%, 10%)',
+            width: 150, height: 150,
+            background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 40%, transparent 100%)',
+            zIndex: 10,
+            opacity: 0,
+          }}
+        />
+
         {/* ── Floating damage numbers ─────────────────────────────────── */}
         {damageFloats.map(f => (
           <div
             key={f.id}
-            className="absolute dmg-float"
+            className={`absolute ${f.crit ? 'dmg-float-crit' : 'dmg-float'}`}
             style={{
-              ...(f.side === 'wild' ? { left: '16%' } : { right: '16%' }),
-              bottom: '52%',
+              ...(f.side === 'wild' ? { left: '12%' } : { right: '12%' }),
+              bottom: '54%',
               zIndex: 12,
-              fontSize: f.crit ? 21 : 16,
+              fontSize: f.crit ? 34 : 22,
               fontWeight: 900,
               fontFamily: 'monospace',
-              color: f.crit ? '#FBBF24' : '#fff',
+              color: f.crit ? '#FDE047' : '#FF7070',
               textShadow: f.crit
-                ? '0 0 14px #F59E0B, 0 2px 6px rgba(0,0,0,0.95)'
-                : '0 0 6px rgba(255,255,255,0.35), 0 2px 4px rgba(0,0,0,0.9)',
+                ? '0 0 24px #F59E0B, 0 0 48px #F59E0B66, 0 3px 8px rgba(0,0,0,0.98)'
+                : '0 0 12px rgba(255,100,100,0.8), 0 3px 7px rgba(0,0,0,0.98)',
               whiteSpace: 'nowrap',
+              lineHeight: 1,
             }}
           >
-            {f.crit && <span style={{ fontSize: 10, marginRight: 3, letterSpacing: '0.05em' }}>CRIT!</span>}
-            −{f.dmg}
+            {f.crit && (
+              <div style={{
+                fontSize: 10, letterSpacing: '0.25em', color: '#FDE047',
+                marginBottom: 3, textShadow: '0 0 8px #F59E0B',
+              }}>
+                ★ CRITICAL!
+              </div>
+            )}
+            -{f.dmg}
           </div>
         ))}
 
@@ -1973,6 +2033,7 @@ export default function BattleOverlay() {
             {captureMsg.includes('captured') ? '✅ ' : '❌ '}{captureMsg}
           </div>
         )}
+        </div> {/* ← close world shake wrapper */}
       </div>
 
       {/* ── BATTLE TEXT BOX ──────────────────────────────────────────────────── */}
