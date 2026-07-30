@@ -867,6 +867,13 @@ export default function BattleOverlay() {
   const prevRoundRef = useRef<number>(1);
   const floatIdRef   = useRef(0);
 
+  // ── PvP arena intro + opponent turn state ─────────────────────────────
+  const [showBattleIntro, setShowBattleIntro]     = useState(false);
+  const [opponentTurnActive, setOpponentTurnActive] = useState(false);
+  const [opponentTimer, setOpponentTimer]           = useState(10);
+  const opponentCinematicFiredRef = useRef(false);
+  const opponentFireAtRef         = useRef(7); // randomised per turn (timer value at which wild fires)
+
   // ── Entrance animation state ──────────────────────────────────────────────
   const [showPlayerEntrance, setShowPlayerEntrance] = useState(false);
   const [showWildEntrance, setShowWildEntrance]     = useState(false);
@@ -998,12 +1005,15 @@ export default function BattleOverlay() {
     }
   }, [battleData]);
 
-  // Trigger entrances when a fresh battle starts
+  // Trigger entrances + PvP intro cinematic when a fresh battle starts
   useEffect(() => {
     if (battle.battleId && battle.battleId !== seenBattleId.current) {
       seenBattleId.current = battle.battleId;
+      setShowBattleIntro(true);
       setShowPlayerEntrance(true);
       setShowWildEntrance(true);
+      const t = setTimeout(() => setShowBattleIntro(false), 2800);
+      return () => clearTimeout(t);
     }
   }, [battle.battleId]);
 
@@ -1047,19 +1057,60 @@ export default function BattleOverlay() {
     setRoundTimer(10);
     if (currentRound > 1) {
       setShowRoundBanner(true);
-      const t = setTimeout(() => setShowRoundBanner(false), 1150);
+      const t = setTimeout(() => setShowRoundBanner(false), 2500);
       return () => clearTimeout(t);
     }
   }, [battle.battle?.round]);
 
   // ── Countdown tick while player has their turn ────────────────────────────
   useEffect(() => {
-    if (isOver || cinematic !== null || performAction.isPending || showOrbPicker || showSwitchPanel) return;
+    if (isOver || cinematic !== null || performAction.isPending || showOrbPicker || showSwitchPanel || opponentTurnActive) return;
     const id = setInterval(() => {
       setRoundTimer(t => Math.max(0, t - 1));
     }, 1000);
     return () => clearInterval(id);
-  }, [isOver, cinematic, performAction.isPending, showOrbPicker, showSwitchPanel]);
+  }, [isOver, cinematic, performAction.isPending, showOrbPicker, showSwitchPanel, opponentTurnActive]);
+
+  // ── Opponent turn: countdown then fire wild cinematic ─────────────────────
+  useEffect(() => {
+    if (!opponentTurnActive) {
+      // When opponent turn ends, reset player timer to 10
+      setRoundTimer(10);
+      return;
+    }
+    opponentCinematicFiredRef.current = false;
+    setOpponentTimer(10);
+    // Randomise when the opponent "decides" (4–7 remaining = 3–6 s into the turn)
+    opponentFireAtRef.current = 4 + Math.floor(Math.random() * 4);
+    const interval = setInterval(() => {
+      setOpponentTimer(prev => {
+        const next = Math.max(0, prev - 1);
+        if (next <= opponentFireAtRef.current && !opponentCinematicFiredRef.current) {
+          opponentCinematicFiredRef.current = true;
+          clearInterval(interval);
+          const wild = pendingWildCinematic.current;
+          if (wild) {
+            pendingWildCinematic.current = null;
+            setCinematic({
+              skillName: wild.skillName,
+              element: wild.element,
+              power: wild.power,
+              isCritical: wild.isCritical,
+              attackerSide: 'wild',
+              phase: 'wild',
+              attackerMythId: wild.attackerMythId,
+              attackerRarity: wild.attackerRarity,
+              skillType: 'normal',
+            });
+          }
+          setOpponentTurnActive(false);
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opponentTurnActive]);
 
   // Stable callbacks for entrance cinematics — avoids restarting the timeout
   // inside MythEntranceCinematic on every parent re-render.
@@ -1092,19 +1143,11 @@ export default function BattleOverlay() {
         pendingBattleResult.current = null;
       }
       if (wild && result?.status === 'active') {
-        pendingWildCinematic.current = null;
-        setCinematic({
-          skillName: wild.skillName,
-          element: wild.element,
-          power: wild.power,
-          isCritical: wild.isCritical,
-          attackerSide: 'wild',
-          phase: 'wild',
-          attackerMythId: wild.attackerMythId,
-          attackerRarity:  wild.attackerRarity,
-          skillType: 'normal',
-        });
+        // Hand off to opponent turn phase — the countdown will fire the wild cinematic
+        // (pendingWildCinematic.current still holds `wild`; opponent effect consumes it)
+        setOpponentTurnActive(true);
       } else {
+        pendingWildCinematic.current = null;
         setCinematic(null);
       }
     } else {
@@ -1510,29 +1553,87 @@ export default function BattleOverlay() {
           </div>
         ))}
 
-        {/* ── Round start banner (rounds 2+) ───────────────────────────── */}
+        {/* ── Round start banner (rounds 2+) — dramatic sweep ─────────── */}
         {showRoundBanner && (
           <div
             className="absolute inset-0 flex items-center justify-center round-banner-flash"
             style={{ zIndex: 14 }}
           >
+            <div style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
+              {/* Scan line */}
+              <div className="battle-intro-scan absolute inset-x-0 top-0"
+                style={{ height: 2, background: 'rgba(255,255,255,0.6)', zIndex: 1 }} />
+              {/* Banner body */}
+              <div
+                style={{
+                  width: '100%',
+                  textAlign: 'center',
+                  padding: '16px 0',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.93) 15%, rgba(0,0,0,0.93) 85%, transparent 100%)',
+                  borderTop: '2px solid rgba(255,255,255,0.28)',
+                  borderBottom: '2px solid rgba(255,255,255,0.28)',
+                  boxShadow: '0 0 40px rgba(0,0,0,0.8)',
+                }}
+              >
+                <div style={{
+                  fontSize: 11, fontWeight: 800, letterSpacing: '0.55em',
+                  color: 'rgba(255,255,255,0.5)', marginBottom: 6, textTransform: 'uppercase',
+                }}>
+                  ─── Round begins ───
+                </div>
+                <div style={{
+                  fontSize: 36, fontWeight: 900, letterSpacing: '0.18em', lineHeight: 1,
+                  color: '#fff',
+                  textShadow: '0 0 30px rgba(255,255,255,0.7), 0 0 60px rgba(255,200,100,0.4), 0 3px 8px rgba(0,0,0,0.9)',
+                  fontFamily: 'var(--font-mono, monospace)',
+                }}>
+                  ⚔ ROUND {battle.battle?.round} ⚔
+                </div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.35em',
+                  color: 'rgba(255,200,100,0.7)', marginTop: 8, textTransform: 'uppercase',
+                }}>
+                  Fight!
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Opponent turn phase indicator ────────────────────────────── */}
+        {opponentTurnActive && (
+          <div
+            className="absolute inset-x-0 flex justify-center pointer-events-none"
+            style={{ top: '28%', zIndex: 13 }}
+          >
             <div
+              className="flex flex-col items-center gap-2 px-10 py-5 rounded-2xl battle-slide-up"
               style={{
-                width: '100%',
-                textAlign: 'center',
-                padding: '11px 0',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.88) 18%, rgba(0,0,0,0.88) 82%, transparent 100%)',
-                borderTop: '1.5px solid rgba(255,255,255,0.22)',
-                borderBottom: '1.5px solid rgba(255,255,255,0.22)',
-                fontSize: 20,
-                fontWeight: 900,
-                letterSpacing: '0.22em',
-                color: '#fff',
-                textShadow: '0 0 22px rgba(255,255,255,0.65), 0 2px 6px rgba(0,0,0,0.9)',
-                fontFamily: 'var(--font-mono, monospace)',
+                background: 'linear-gradient(135deg, rgba(30,5,5,0.88), rgba(0,0,0,0.82))',
+                border: '1.5px solid rgba(239,68,68,0.35)',
+                backdropFilter: 'blur(6px)',
+                boxShadow: '0 0 40px rgba(239,68,68,0.15)',
               }}
             >
-              ⚔ ROUND {battle.battle?.round} ⚔
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.4em', color: '#FCA5A5', textTransform: 'uppercase' }}>
+                ⚡ Opponent&apos;s Turn
+              </div>
+              <div
+                className={`tabular-nums font-black leading-none ${
+                  opponentTimer <= 3 ? 'text-red-400 timer-urgent' : 'text-white'
+                }`}
+                style={{
+                  fontSize: 62,
+                  textShadow: opponentTimer <= 3
+                    ? '0 0 28px rgba(239,68,68,1), 0 0 60px rgba(239,68,68,0.5)'
+                    : '0 0 24px rgba(255,255,255,0.25)',
+                }}
+              >
+                {opponentTimer}
+              </div>
+              <div style={{ fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase' }}>
+                Choosing move…
+              </div>
             </div>
           </div>
         )}
@@ -1858,18 +1959,31 @@ export default function BattleOverlay() {
         }}
       >
         {!isOver ? (
-          <ActionPanel
-            playerMonster={playerMonster}
-            wildElement={wildMonster.species.element}
-            cinematic={cinematic ?? orbCinematic}
-            isPending={isPending}
-            wildHpPct={wildHpPct}
-            orbCounts={orbCounts}
-            handleSkillAction={handleSkillAction}
-            handleAction={handleAction}
-            setShowSwitchPanel={setShowSwitchPanel}
-            setShowOrbPicker={setShowOrbPicker}
-          />
+          <>
+            <ActionPanel
+              playerMonster={playerMonster}
+              wildElement={wildMonster.species.element}
+              cinematic={cinematic ?? orbCinematic ?? (opponentTurnActive ? 'blocked' : null)}
+              isPending={isPending}
+              wildHpPct={wildHpPct}
+              orbCounts={orbCounts}
+              handleSkillAction={handleSkillAction}
+              handleAction={handleAction}
+              setShowSwitchPanel={setShowSwitchPanel}
+              setShowOrbPicker={setShowOrbPicker}
+            />
+            {/* Opponent turn — dim the action panel with a frosted overlay */}
+            {opponentTurnActive && (
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.58)', backdropFilter: 'blur(3px)', zIndex: 5 }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>
+                  Waiting for opponent…
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <button
@@ -1888,6 +2002,43 @@ export default function BattleOverlay() {
           </div>
         )}
       </div>
+
+      {/* ── PvP Arena Entry Cinematic (covers full screen on battle start) ─── */}
+      {showBattleIntro && (
+        <div
+          className="absolute inset-0 battle-intro-overlay flex flex-col items-center justify-center"
+          style={{ zIndex: 70, pointerEvents: 'none' }}
+        >
+          {/* Scan line sweep */}
+          <div className="battle-intro-scan absolute inset-x-0 top-0" style={{ height: 3, background: 'rgba(255,255,255,0.55)' }} />
+
+          <div className="battle-intro-content text-center" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.55em', color: '#FCA5A5', marginBottom: 18 }}>
+              PVP ARENA
+            </div>
+            <div style={{
+              fontSize: 54, fontWeight: 900, letterSpacing: '0.1em', lineHeight: 1,
+              color: '#fff',
+              textShadow: '0 0 60px rgba(239,68,68,0.75), 0 0 120px rgba(239,68,68,0.35), 0 4px 12px rgba(0,0,0,0.95)',
+            }}>
+              BATTLE
+            </div>
+            <div style={{
+              fontSize: 54, fontWeight: 900, letterSpacing: '0.1em', lineHeight: 1.05,
+              color: '#fff',
+              textShadow: '0 0 60px rgba(239,68,68,0.75), 0 0 120px rgba(239,68,68,0.35), 0 4px 12px rgba(0,0,0,0.95)',
+            }}>
+              START!
+            </div>
+            {/* Crossed swords accent */}
+            <div className="battle-intro-swords flex items-center justify-center gap-4 mt-6">
+              <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.8))', flex: 1, maxWidth: 60 }} />
+              <span style={{ fontSize: 22 }}>⚔</span>
+              <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(239,68,68,0.8), transparent)', flex: 1, maxWidth: 60 }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

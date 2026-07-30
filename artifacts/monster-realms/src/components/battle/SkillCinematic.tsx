@@ -24,10 +24,10 @@ const RARITY_CFG: Record<string, {
   hitWaves: number; scale: number; particleScale: number;
   dur: number; timeout: number; extraGlow: number;
 }> = {
-  C: { hitWaves: 1, scale: 0.65, particleScale: 0.6, dur: 0.48, timeout: 780, extraGlow: 0 },
-  B: { hitWaves: 2, scale: 0.90, particleScale: 1.0, dur: 0.60, timeout: 900, extraGlow: 0.4 },
-  A: { hitWaves: 2, scale: 1.10, particleScale: 1.3, dur: 0.72, timeout: 1020, extraGlow: 0.8 },
-  S: { hitWaves: 3, scale: 1.40, particleScale: 1.8, dur: 0.90, timeout: 1150, extraGlow: 1.4 },
+  C: { hitWaves: 1, scale: 0.65, particleScale: 0.6, dur: 0.85, timeout: 1400, extraGlow: 0 },
+  B: { hitWaves: 2, scale: 0.90, particleScale: 1.0, dur: 1.05, timeout: 1700, extraGlow: 0.4 },
+  A: { hitWaves: 2, scale: 1.10, particleScale: 1.3, dur: 1.30, timeout: 2000, extraGlow: 0.8 },
+  S: { hitWaves: 3, scale: 1.40, particleScale: 1.8, dur: 1.65, timeout: 2500, extraGlow: 1.4 },
 };
 const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
 
