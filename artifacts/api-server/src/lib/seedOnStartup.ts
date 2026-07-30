@@ -2,8 +2,6 @@ import { db } from "@workspace/db";
 import {
   monsterSpeciesTable,
   regionsTable,
-  capturedMonstersTable,
-  battlesTable,
 } from "@workspace/db";
 import { MONSTER_SEED_DATA } from "./monsterData.js";
 import { REGION_SEED_DATA } from "./regionData.js";
@@ -12,66 +10,65 @@ import { logger } from "./logger.js";
 /**
  * Called once at server startup.
  *
- * Compares the DB species and region counts against the catalogue constants.
- * - Counts match → log confirmation and return (nothing to do).
- * - Counts differ → inside a single transaction:
- *     1. Delete battles, captured_monsters, species, regions (FK order).
- *     2. Re-insert all species and regions fresh.
- *   This guarantees one restart fully resolves stale data so subsequent
- *   restarts see matching counts and skip the reseed entirely.
+ * Compares the DB species and region ID-sets against the catalogue constants.
+ * Uses a deterministic content fingerprint (sorted ID list) — not just row
+ * counts — so it detects catalogue swaps where totals are equal but species
+ * differ.
  *
- * Logs a WARN for any unexpected error so the process keeps running
- * (a seed failure must not crash the server).
+ * When a mismatch is found the function upserts all species and regions.
+ * It NEVER deletes battles, captured_monsters, or any player-progress tables;
+ * player collections are always preserved.
+ *
+ * Stale species rows (IDs no longer in the catalogue) are left in the DB as
+ * inert data.  They will not appear in any region's spawn pool because they
+ * are absent from every region's monsterSpeciesIds list.
  */
+
+function catalogueFingerprint(ids: string[]): string {
+  return [...ids].sort().join(",");
+}
+
 export async function seedOnStartup(): Promise<void> {
   try {
     const [regionRows, speciesRows] = await Promise.all([
-      db.select().from(regionsTable),
-      db.select().from(monsterSpeciesTable),
+      db.select({ id: regionsTable.id }).from(regionsTable),
+      db.select({ id: monsterSpeciesTable.id }).from(monsterSpeciesTable),
     ]);
 
-    const expectedSpecies = MONSTER_SEED_DATA.length;
-    const expectedRegions = REGION_SEED_DATA.length;
-    const actualSpecies   = speciesRows.length;
-    const actualRegions   = regionRows.length;
+    const dbSpeciesFingerprint  = catalogueFingerprint(speciesRows.map(r => r.id));
+    const dbRegionsFingerprint  = catalogueFingerprint(regionRows.map(r => r.id));
+    const catSpeciesFingerprint = catalogueFingerprint(MONSTER_SEED_DATA.map(m => m.id as string));
+    const catRegionsFingerprint = catalogueFingerprint(REGION_SEED_DATA.map(r => r.id));
 
-    const speciesMismatch = actualSpecies !== expectedSpecies;
-    const regionsMismatch = actualRegions !== expectedRegions;
+    const speciesMismatch = dbSpeciesFingerprint !== catSpeciesFingerprint;
+    const regionsMismatch = dbRegionsFingerprint !== catRegionsFingerprint;
 
     if (!speciesMismatch && !regionsMismatch) {
       logger.info(
-        { regions: actualRegions, species: actualSpecies },
+        { regions: regionRows.length, species: speciesRows.length },
         "Startup seed check passed — tables already populated",
       );
       return;
     }
 
-    // Log what triggered the re-seed
+    // Log what triggered the upsert
     if (speciesMismatch) {
       logger.warn(
-        { dbSpecies: actualSpecies, expectedSpecies },
-        "⚠️  Species count mismatch — catalogue has changed. Auto-reseeding now…",
+        { dbSpecies: speciesRows.length, expectedSpecies: MONSTER_SEED_DATA.length },
+        "⚠️  Species catalogue mismatch — upserting catalogue data now…",
       );
     }
     if (regionsMismatch) {
       logger.warn(
-        { dbRegions: actualRegions, expectedRegions },
-        "⚠️  Region count mismatch — auto-reseeding now…",
+        { dbRegions: regionRows.length, expectedRegions: REGION_SEED_DATA.length },
+        "⚠️  Region catalogue mismatch — upserting catalogue data now…",
       );
     }
 
-    // Run the full wipe + re-insert inside a single transaction so a partial
-    // failure cannot leave the DB in a mixed state, and so subsequent restarts
-    // see consistent counts and skip this block entirely.
+    // Non-destructive upsert: update species and regions in place.
+    // Player progress tables (battles, captured_monsters) are NEVER touched.
     await db.transaction(async (tx) => {
-      // Delete in FK-safe order:
-      //   battles → captured_monsters → monster_species → regions
-      await tx.delete(battlesTable);
-      await tx.delete(capturedMonstersTable);
-      await tx.delete(monsterSpeciesTable);
-      await tx.delete(regionsTable); // must come after species (regions are standalone but clear stale rows)
-
-      // Insert all species fresh
+      // Upsert all species
       for (const monster of MONSTER_SEED_DATA) {
         await tx
           .insert(monsterSpeciesTable)
@@ -95,7 +92,7 @@ export async function seedOnStartup(): Promise<void> {
           });
       }
 
-      // Insert all regions fresh
+      // Upsert all regions
       for (const region of REGION_SEED_DATA) {
         await tx
           .insert(regionsTable)
@@ -114,7 +111,7 @@ export async function seedOnStartup(): Promise<void> {
 
     logger.info(
       { regions: REGION_SEED_DATA.length, species: MONSTER_SEED_DATA.length },
-      `Auto-reseeded ${MONSTER_SEED_DATA.length} species and ${REGION_SEED_DATA.length} regions — game data is ready`,
+      `Catalogue upsert complete — ${MONSTER_SEED_DATA.length} species and ${REGION_SEED_DATA.length} regions are up to date`,
     );
   } catch (err) {
     logger.warn(

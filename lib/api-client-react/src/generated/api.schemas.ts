@@ -251,6 +251,10 @@ export type CaptureInputOrbType = typeof CaptureInputOrbType[keyof typeof Captur
 
 
 export const CaptureInputOrbType = {
+  Prism: 'Prism',
+  Luna: 'Luna',
+  Aether: 'Aether',
+  Void: 'Void',
   Basic: 'Basic',
   Explorer: 'Explorer',
   Hunter: 'Hunter',
@@ -385,6 +389,10 @@ export type BattleActionInputOrbType = typeof BattleActionInputOrbType[keyof typ
 
 
 export const BattleActionInputOrbType = {
+  Prism: 'Prism',
+  Luna: 'Luna',
+  Aether: 'Aether',
+  Void: 'Void',
   Basic: 'Basic',
   Explorer: 'Explorer',
   Hunter: 'Hunter',

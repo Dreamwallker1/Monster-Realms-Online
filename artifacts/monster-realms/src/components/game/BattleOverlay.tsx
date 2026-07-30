@@ -666,7 +666,7 @@ export default function BattleOverlay() {
     try {
       const updated = await performAction.mutateAsync({
         battleId: battle.battleId,
-        data: { action, orbType: action === 'capture' ? 'Basic' : undefined },
+        data: { action, orbType: action === 'capture' ? 'Prism' : undefined },
       });
       updateBattle(updated);
       queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });

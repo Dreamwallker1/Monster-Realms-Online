@@ -538,7 +538,7 @@ export const CaptureMonsterBody = zod.object({
   "speciesId": zod.string(),
   "level": zod.number(),
   "shinyVariant": zod.union([zod.literal('Golden'),zod.literal('Crystal'),zod.literal('Shadow'),zod.literal('Galaxy'),zod.literal('Prismatic'),zod.literal(null)]).nullish(),
-  "orbType": zod.enum(['Basic', 'Explorer', 'Hunter', 'Elite', 'Master', 'Celestial', 'Infinity'])
+  "orbType": zod.enum(['Prism', 'Luna', 'Aether', 'Void', 'Basic', 'Explorer', 'Hunter', 'Elite', 'Master', 'Celestial', 'Infinity'])
 })
 
 export const CaptureMonsterResponse = zod.object({
@@ -943,7 +943,11 @@ export const PerformBattleActionParams = zod.object({
 
 export const PerformBattleActionBody = zod.object({
   "action": zod.enum(['attack', 'skill1', 'skill2', 'ultimate', 'capture', 'flee', 'switch']),
-  "orbType": zod.union([zod.literal('Basic'),zod.literal('Explorer'),zod.literal('Hunter'),zod.literal('Elite'),zod.literal('Master'),zod.literal('Celestial'),zod.literal('Infinity'),zod.literal(null)]).nullish(),
+  "orbType": zod.union([
+    zod.literal('Prism'),zod.literal('Luna'),zod.literal('Aether'),zod.literal('Void'),
+    zod.literal('Basic'),zod.literal('Explorer'),zod.literal('Hunter'),zod.literal('Elite'),zod.literal('Master'),zod.literal('Celestial'),zod.literal('Infinity'),
+    zod.literal(null)
+  ]).nullish(),
   "switchToMonsterId": zod.string().optional()
 })
 
