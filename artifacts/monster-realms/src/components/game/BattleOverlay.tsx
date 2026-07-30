@@ -702,6 +702,7 @@ function ActionPanel({
   wildElement,
   cinematic,
   isPending,
+  opponentTurnActive,
   wildHpPct,
   orbCounts,
   handleSkillAction,
@@ -713,6 +714,7 @@ function ActionPanel({
   wildElement: string;
   cinematic: unknown;
   isPending: boolean;
+  opponentTurnActive: boolean;
   wildHpPct: number;
   orbCounts: Record<string, number>;
   handleSkillAction: (a: ActionType) => void;
@@ -734,10 +736,37 @@ function ActionPanel({
     })
     .filter((x): x is { action: ActionType; type: SkillData['type']; skill: SkillData } => x !== null);
 
-  const isBlocked = !!cinematic || isPending;
+  const isBlocked = !!cinematic || isPending || opponentTurnActive;
 
   return (
     <div className="flex flex-col gap-2">
+      {/* Opponent-turn indicator */}
+      {opponentTurnActive && (
+        <div
+          className="flex items-center justify-center gap-1.5"
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            color: 'rgba(252,165,165,0.75)',
+            textTransform: 'uppercase',
+            fontFamily: 'var(--font-mono, monospace)',
+          }}
+        >
+          <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'rgba(239,68,68,0.7)', boxShadow: '0 0 6px rgba(239,68,68,0.6)', animation: 'pulse 1.2s ease-in-out infinite' }} />
+          Opponent&apos;s turn…
+        </div>
+      )}
+
+      {/* Buttons wrapper — dimmed and non-interactive during opponent turn */}
+      <div
+        style={{
+          opacity: opponentTurnActive ? 0.45 : 1,
+          pointerEvents: opponentTurnActive ? 'none' : 'auto',
+          transition: 'opacity 0.2s ease',
+        }}
+        className="flex flex-col gap-2"
+      >
       {/* Skill buttons — 2×2 grid */}
       <div className="grid grid-cols-2 gap-2">
         {available.length > 0 ? available.map(({ action, type, skill }) => {
@@ -847,6 +876,7 @@ function ActionPanel({
           <span>Flee</span>
         </button>
       </div>
+      </div>{/* end dimming wrapper */}
     </div>
   );
 }
@@ -2028,8 +2058,9 @@ export default function BattleOverlay() {
             <ActionPanel
               playerMonster={playerMonster}
               wildElement={wildMonster.species.element}
-              cinematic={cinematic ?? orbCinematic ?? (opponentTurnActive ? 'blocked' : null)}
+              cinematic={cinematic ?? orbCinematic ?? null}
               isPending={isPending}
+              opponentTurnActive={opponentTurnActive}
               wildHpPct={wildHpPct}
               orbCounts={orbCounts}
               handleSkillAction={handleSkillAction}
