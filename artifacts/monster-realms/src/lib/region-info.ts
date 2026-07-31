@@ -43,11 +43,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🌿',
     accentColor: '#6edd70',
     // regionData.ts → verdant-meadows → monsterSpeciesIds
-    speciesIds: [
-      'seed-sprite', 'leaf-ferret', 'vine-pup', 'moss-crab', 'petal-bee',
-      'root-mole', 'fern-hatchling', 'sprout-sprite',
-      'bloom-guardian', 'grove-hawk',
-    ],
+    speciesIds: [],
   },
 
   'volcanic-rift': {
@@ -57,9 +53,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🔥',
     accentColor: '#ff6620',
     // regionData.ts → volcanic-rift → monsterSpeciesIds
-    speciesIds: [
-      'ashquill', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
-    ],
+    speciesIds: ['ashquill', 'flarelynx'],
   },
 
   'ocean-ruins': {
@@ -69,10 +63,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '💧',
     accentColor: '#40c8cc',
     // regionData.ts → ocean-ruins → monsterSpeciesIds
-    speciesIds: [
-      'tide-pup', 'coral-sprite', 'brook-turtle', 'wave-imp', 'reef-hatchling',
-      'surge-hound', 'sea-golem', 'aqua-guardian', 'storm-crab',
-    ],
+    speciesIds: [],
   },
 
   'shadow-marsh': {
@@ -82,11 +73,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🌑',
     accentColor: '#9060cc',
     // regionData.ts → shadow-marsh → monsterSpeciesIds
-    speciesIds: [
-      'shadow-imp', 'gloom-wisp', 'dusk-ferret', 'night-crab',
-      'umbra-moth', 'murk-toad',
-      'void-stalker', 'shadow-bat', 'dusk-serpent', 'gloom-golem', 'eclipse-hawk',
-    ],
+    speciesIds: [],
   },
 
   'ancient-forest': {
@@ -96,11 +83,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🌲',
     accentColor: '#44cc66',
     // regionData.ts → ancient-forest → monsterSpeciesIds
-    speciesIds: [
-      'seed-sprite', 'leaf-ferret', 'vine-pup', 'fern-hatchling',
-      'bloom-guardian', 'thorn-wolf', 'briar-golem', 'spore-bat', 'canopy-serpent',
-      'ancient-treant', 'verdant-titan', 'thorn-colossus', 'gaia-wyrm',
-    ],
+    speciesIds: [],
   },
 
   'thunder-valley': {
@@ -110,11 +93,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '⚡',
     accentColor: '#eeee30',
     // regionData.ts → thunder-valley → monsterSpeciesIds
-    speciesIds: [
-      'spark-kit', 'zap-moth', 'volt-hatchling', 'arc-sprite',
-      'static-crab', 'buzz-bee', 'jolt-lizard', 'charge-pup',
-      'thunder-wolf', 'storm-bat', 'storm-serpent', 'arc-golem', 'lightning-hawk',
-    ],
+    speciesIds: [],
   },
 
   // ── High-level server regions (not on the movement map; reachable via API) ─
@@ -126,9 +105,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🌋',
     accentColor: '#cc4400',
     // regionData.ts → scorched-wastes → monsterSpeciesIds
-    speciesIds: [
-      'ashquill', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
-    ],
+    speciesIds: ['ashquill', 'flarelynx'],
   },
 
   'deep-current': {
@@ -138,12 +115,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🌊',
     accentColor: '#2266cc',
     // regionData.ts → deep-current → monsterSpeciesIds
-    speciesIds: [
-      'mist-jellyfish', 'stream-otter', 'puddle-toad',
-      'deep-ray', 'abyssal-eel',
-      'tempest-leviathan', 'ocean-titan', 'tide-colossus', 'abyss-wyrm',
-      'poseidon-serpent', 'thalassa-deity',
-    ],
+    speciesIds: [],
   },
 
   'storm-peaks': {
@@ -153,12 +125,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🌩️',
     accentColor: '#aaaaff',
     // regionData.ts → storm-peaks → monsterSpeciesIds
-    speciesIds: [
-      'volt-hatchling', 'static-crab', 'jolt-lizard',
-      'plasma-ray', 'storm-serpent',
-      'storm-colossus', 'galvanos', 'tempest-titan', 'arc-leviathan',
-      'zeus-wyrm', 'thunder-deity',
-    ],
+    speciesIds: [],
   },
 
   'void-realm': {
@@ -168,12 +135,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     element: '🕳️',
     accentColor: '#8800cc',
     // regionData.ts → void-realm → monsterSpeciesIds
-    speciesIds: [
-      'dark-sprite', 'shade-hatchling', 'dusk-ferret',
-      'nightmare-specter',
-      'abyssal-wraith', 'void-titan', 'dark-colossus', 'shadow-leviathan',
-      'erebus-entity', 'void-deity',
-    ],
+    speciesIds: [],
   },
 };
 

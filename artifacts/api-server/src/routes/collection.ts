@@ -26,8 +26,10 @@ import {
   UpdateCapturedMonsterResponse,
 } from "@workspace/api-zod";
 import { calculateWildStats } from "../lib/gameEngine.js";
+import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 
 const router: IRouter = Router();
+const ACTIVE_SPECIES_IDS = new Set(MONSTER_SEED_DATA.map((species) => species.id));
 
 export function formatCapturedMonster(
   c: CapturedMonster,
@@ -79,7 +81,9 @@ router.get(
       )
       .where(eq(capturedMonstersTable.playerId, params.data.playerId));
 
-    let results = rows.filter((r) => r.monster_species);
+    let results = rows.filter(
+      (r) => r.monster_species && ACTIVE_SPECIES_IDS.has(r.captured_monsters.speciesId),
+    );
 
     if (query.data.element) {
       results = results.filter(
@@ -119,6 +123,10 @@ router.post(
     const body = CaptureMonsterBody.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({ error: body.error.message });
+      return;
+    }
+    if (!ACTIVE_SPECIES_IDS.has(body.data.speciesId)) {
+      res.status(404).json({ error: "Monster species not found" });
       return;
     }
 
@@ -195,7 +203,7 @@ router.get(
           eq(capturedMonstersTable.playerId, params.data.playerId),
         ),
       );
-    if (!row || !row.monster_species) {
+    if (!row || !row.monster_species || !ACTIVE_SPECIES_IDS.has(row.captured_monsters.speciesId)) {
       res.status(404).json({ error: "Monster not found" });
       return;
     }

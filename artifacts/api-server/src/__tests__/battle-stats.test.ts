@@ -33,10 +33,13 @@ import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 import { REGION_SEED_DATA } from "../lib/regionData.js";
 
 describe("Flarelynx catalogue integration", () => {
-  it("replaces Cinderclaw without changing the 25-myth catalogue size", () => {
-    assert.equal(MONSTER_SEED_DATA.length, 25);
+  it("keeps only Ashquill and Flarelynx in the active catalogue", () => {
+    assert.equal(MONSTER_SEED_DATA.length, 2);
+    assert.deepEqual(
+      MONSTER_SEED_DATA.map((myth) => myth.id).sort(),
+      ["ashquill", "flarelynx"],
+    );
     assert.ok(MONSTER_SEED_DATA.some((myth) => myth.id === "flarelynx"));
-    assert.ok(!MONSTER_SEED_DATA.some((myth) => myth.id === "cinderclaw"));
   });
 
   it("keeps Flarelynx as a Fire C myth with three attacks", () => {

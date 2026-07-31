@@ -8,8 +8,11 @@ import {
   ListMonsterSpeciesQueryParams,
   ListMonsterSpeciesResponse,
 } from "@workspace/api-zod";
+import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 
 const router: IRouter = Router();
+const ACTIVE_SPECIES_IDS = MONSTER_SEED_DATA.map((species) => species.id);
+const ACTIVE_SPECIES_SET = new Set(ACTIVE_SPECIES_IDS);
 
 function formatSpecies(s: typeof monsterSpeciesTable.$inferSelect) {
   return {
@@ -45,7 +48,7 @@ router.get("/monsters", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [inArray(monsterSpeciesTable.id, ACTIVE_SPECIES_IDS)];
   if (queryParams.data.element) {
     conditions.push(eq(monsterSpeciesTable.element, queryParams.data.element));
   }
@@ -69,6 +72,10 @@ router.get("/monsters/:speciesId", async (req, res): Promise<void> => {
   const params = GetMonsterSpeciesParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!ACTIVE_SPECIES_SET.has(params.data.speciesId)) {
+    res.status(404).json({ error: "Monster species not found" });
     return;
   }
 

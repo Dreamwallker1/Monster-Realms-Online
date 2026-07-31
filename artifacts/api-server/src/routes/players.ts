@@ -25,8 +25,10 @@ import {
   GetPlayerRadarResponse,
 } from "@workspace/api-zod";
 import { formatCapturedMonster } from "./collection.js";
+import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 
 const router: IRouter = Router();
+const ACTIVE_SPECIES_IDS = new Set(MONSTER_SEED_DATA.map((species) => species.id));
 
 // GET /players/:playerId
 router.get("/players/:playerId", async (req, res): Promise<void> => {
@@ -135,7 +137,7 @@ router.get(
       );
 
     const formatted = teamMembers
-      .filter((r) => r.monster_species)
+      .filter((r) => r.monster_species && ACTIVE_SPECIES_IDS.has(r.captured_monsters.speciesId))
       .map((r) => formatCapturedMonster(r.captured_monsters, r.monster_species!))
       .sort((a, b) => (a.teamSlot ?? 99) - (b.teamSlot ?? 99));
 
@@ -197,7 +199,7 @@ router.put(
       );
 
     const formatted = teamMembers
-      .filter((r) => r.monster_species)
+      .filter((r) => r.monster_species && ACTIVE_SPECIES_IDS.has(r.captured_monsters.speciesId))
       .map((r) => formatCapturedMonster(r.captured_monsters, r.monster_species!))
       .sort((a, b) => (a.teamSlot ?? 99) - (b.teamSlot ?? 99));
 
