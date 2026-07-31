@@ -14,6 +14,8 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { rarityHpMult } from "../lib/gameEngine.js";
+import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+import { timingSafeEqual } from "node:crypto";
 
 // ─── Starter pack helper ────────────────────────────────────────────────────
 
@@ -35,6 +37,95 @@ function calcStats(species: typeof monsterSpeciesTable.$inferSelect, level: numb
     defense: Math.round(species.baseDefense * scale),
     speed:   Math.round(species.baseSpeed   * scale),
   };
+}
+
+function isConfiguredGmUsername(username: string): boolean {
+  const configuredUsername = process.env.GM_USERNAME;
+  return Boolean(
+    configuredUsername &&
+    username.trim().toLocaleUpperCase() === configuredUsername.trim().toLocaleUpperCase(),
+  );
+}
+
+function matchesConfiguredGm(username: string, password: string): boolean {
+  const configuredUsername = process.env.GM_USERNAME;
+  const configuredPassword = process.env.GM_PASSWORD;
+  if (!configuredUsername || !configuredPassword || !isConfiguredGmUsername(username)) return false;
+
+  const supplied = Buffer.from(password);
+  const expected = Buffer.from(configuredPassword);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+async function provisionGameMaster(player: typeof playersTable.$inferSelect) {
+  const activeSpeciesIds = new Set(MONSTER_SEED_DATA.map((species) => species.id));
+  const activeSpecies = (await db.select().from(monsterSpeciesTable))
+    .filter((species) => activeSpeciesIds.has(species.id));
+
+  const maxStats = {
+    explorerLevel: 50,
+    explorerXp: 999999,
+    explorerRank: "Mythic Master",
+    tilesExplored: 9999,
+    energy: 999,
+    maxEnergy: 999,
+    coins: 1000000,
+    monstersDiscovered: activeSpecies.length,
+    monstersCaptured: activeSpecies.length,
+    pvpWins: 999,
+    battlesWon: 999,
+    secretsFound: 99,
+    firstDiscoveries: activeSpecies.length,
+  };
+
+  const [updatedPlayer] = await db
+    .update(playersTable)
+    .set(maxStats)
+    .where(eq(playersTable.id, player.id))
+    .returning();
+  if (!updatedPlayer) throw new Error("Failed to update Game Master");
+
+  await db.delete(inventoryItemsTable).where(eq(inventoryItemsTable.playerId, player.id));
+  await db.insert(inventoryItemsTable).values([
+    { playerId: player.id, name: "Void Orb", type: "orb", quantity: 999, description: "A legendary orb that can capture any myth.", orbType: "Void" },
+    { playerId: player.id, name: "Aether Orb", type: "orb", quantity: 999, description: "Rare elemental orb that bends reality.", orbType: "Aether" },
+    { playerId: player.id, name: "Luna Orb", type: "orb", quantity: 999, description: "Moonlit energy for Uncommon myth capture.", orbType: "Luna" },
+    { playerId: player.id, name: "Prism Orb", type: "orb", quantity: 999, description: "A shimmering orb that captures Common myths.", orbType: "Prism" },
+    { playerId: player.id, name: "Healing Herb", type: "heal", quantity: 999, description: "Restores 30 HP to one monster.", orbType: null },
+  ]);
+
+  await db.delete(capturedMonstersTable).where(eq(capturedMonstersTable.playerId, player.id));
+
+  const rarityOrder: Record<string, number> = { S: 0, A: 1, B: 2, C: 3 };
+  const sortedSpecies = [...activeSpecies].sort(
+    (a, b) => (rarityOrder[a.rarity] ?? 4) - (rarityOrder[b.rarity] ?? 4),
+  );
+  const teamIds = new Set(sortedSpecies.slice(0, 3).map((species) => species.id));
+  const GM_LEVEL = 50;
+  let teamSlot = 0;
+
+  const collection = sortedSpecies.map((species) => {
+    const stats = calcStats(species, GM_LEVEL);
+    const inTeam = teamIds.has(species.id);
+    return {
+      playerId: player.id,
+      speciesId: species.id,
+      level: GM_LEVEL,
+      currentHp: stats.hp,
+      maxHp: stats.hp,
+      attack: stats.attack,
+      defense: stats.defense,
+      speed: stats.speed,
+      inTeam,
+      teamSlot: inTeam ? teamSlot++ : null,
+    };
+  });
+
+  if (collection.length > 0) {
+    await db.insert(capturedMonstersTable).values(collection);
+  }
+
+  return updatedPlayer;
 }
 
 function pickRandom<T>(arr: T[]): T | undefined {
@@ -190,6 +281,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   }
   const { username, password, avatarColor, starterElement } = parsed.data;
 
+  if (isConfiguredGmUsername(username)) {
+    res.status(403).json({ error: "This username is reserved" });
+    return;
+  }
+
   const existing = await db
     .select({ id: playersTable.id })
     .from(playersTable)
@@ -240,13 +336,31 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   }
   const { username, password } = parsed.data;
 
-  const [player] = await db
+  let [player] = await db
     .select()
     .from(playersTable)
     .where(eq(playersTable.username, username));
 
   if (!player) {
-    res.status(401).json({ error: "Invalid credentials" });
+    if (!matchesConfiguredGm(username, password)) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    [player] = await db
+      .insert(playersTable)
+      .values({
+        username: process.env.GM_USERNAME!.trim(),
+        passwordHash,
+        isGuest: false,
+        avatarColor: "#ffd700",
+      })
+      .returning();
+  }
+
+  if (!player) {
+    res.status(500).json({ error: "Failed to create Game Master" });
     return;
   }
 
@@ -255,10 +369,17 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const valid = await verifyPassword(password, player.passwordHash);
+  const isGm = isConfiguredGmUsername(player.username);
+  const valid = isGm
+    ? matchesConfiguredGm(username, password)
+    : await verifyPassword(password, player.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
+  }
+
+  if (isGm) {
+    player = await provisionGameMaster(player);
   }
 
   const token = generateToken(player.id);
@@ -322,124 +443,6 @@ function formatPlayer(p: typeof playersTable.$inferSelect) {
     createdAt: p.createdAt.toISOString(),
   };
 }
-
-// POST /auth/gm-login — instant Game Master account (max level, max everything)
-router.post("/auth/gm-login", async (_req, res): Promise<void> => {
-  const GM_USERNAME = "GameMaster";
-  const GM_COLOR   = "#ffd700"; // gold
-
-  // ── 1. Upsert the GM player with maxed stats ─────────────────────────────
-  let [player] = await db.select().from(playersTable).where(eq(playersTable.username, GM_USERNAME));
-
-  const maxStats = {
-    explorerLevel:      50,
-    explorerXp:         999999,
-    explorerRank:       "Mythic Master",
-    tilesExplored:      9999,
-    energy:             999,
-    maxEnergy:          999,
-    coins:              1000000,
-    monstersDiscovered: 100,
-    monstersCaptured:   100,
-    pvpWins:            999,
-    battlesWon:         999,
-    secretsFound:       99,
-    firstDiscoveries:   50,
-  };
-
-  if (player) {
-    const [updated] = await db
-      .update(playersTable)
-      .set(maxStats)
-      .where(eq(playersTable.id, player.id))
-      .returning();
-    if (updated) player = updated;
-  } else {
-    const passwordHash = await hashPassword("gm_master_secret_" + Date.now());
-    const [inserted] = await db
-      .insert(playersTable)
-      .values({ username: GM_USERNAME, passwordHash, isGuest: false, avatarColor: GM_COLOR, ...maxStats })
-      .returning();
-    if (!inserted) { res.status(500).json({ error: "Failed to create GM player" }); return; }
-    player = inserted;
-  }
-
-  // ── 2. Reset inventory — 999 of everything ───────────────────────────────
-  await db.delete(inventoryItemsTable).where(eq(inventoryItemsTable.playerId, player.id));
-  await db.insert(inventoryItemsTable).values([
-    { playerId: player.id, name: "Void Orb",      type: "orb",  quantity: 999, description: "A legendary orb that can capture any myth.",     orbType: "Void"   },
-    { playerId: player.id, name: "Aether Orb",    type: "orb",  quantity: 999, description: "Rare elemental orb that bends reality.",          orbType: "Aether" },
-    { playerId: player.id, name: "Luna Orb",       type: "orb",  quantity: 999, description: "Moonlit energy for Uncommon myth capture.",       orbType: "Luna"   },
-    { playerId: player.id, name: "Prism Orb",      type: "orb",  quantity: 999, description: "A shimmering orb that captures Common myths.",    orbType: "Prism"  },
-    { playerId: player.id, name: "Healing Herb",   type: "heal", quantity: 999, description: "Restores 30 HP to one monster.",                  orbType: null     },
-  ]);
-
-  // ── 3. Build GM collection — all 100 myths, best S-tier in active team ──
-  await db.delete(capturedMonstersTable).where(eq(capturedMonstersTable.playerId, player.id));
-
-  const allSpecies = await db.select().from(monsterSpeciesTable);
-
-  const ELEMENTS = ["Fire", "Water", "Earth", "Storm", "Shadow"];
-  const sTierSpecies = allSpecies.filter(s => s.rarity === "S");
-
-  // Pick one S-tier per element for the active team (slots 0-5)
-  const teamPicks: typeof allSpecies = [];
-  for (const el of ELEMENTS) {
-    const match = sTierSpecies.find(s => s.element === el);
-    if (match) teamPicks.push(match);
-    if (teamPicks.length >= 6) break;
-  }
-  let fillIdx = 0;
-  while (teamPicks.length < 6 && sTierSpecies.length > 0) {
-    teamPicks.push(sTierSpecies[fillIdx % sTierSpecies.length]!);
-    fillIdx++;
-  }
-  const teamSpeciesIds = new Set(teamPicks.map(s => s.id));
-
-  const GM_LEVEL = 50;
-
-  // All species not in the active team go into the collection (inTeam: false)
-  const collectionSpecies = allSpecies.filter(s => !teamSpeciesIds.has(s.id));
-
-  const allInserts = [
-    ...teamPicks.slice(0, 6).map((species, slot) => {
-      const stats = calcStats(species, GM_LEVEL);
-      return {
-        playerId:  player.id,
-        speciesId: species.id,
-        level:     GM_LEVEL,
-        currentHp: stats.hp,
-        maxHp:     stats.hp,
-        attack:    stats.attack,
-        defense:   stats.defense,
-        speed:     stats.speed,
-        inTeam:    true,
-        teamSlot:  slot,
-      };
-    }),
-    ...collectionSpecies.map((species) => {
-      const stats = calcStats(species, GM_LEVEL);
-      return {
-        playerId:  player.id,
-        speciesId: species.id,
-        level:     GM_LEVEL,
-        currentHp: stats.hp,
-        maxHp:     stats.hp,
-        attack:    stats.attack,
-        defense:   stats.defense,
-        speed:     stats.speed,
-        inTeam:    false,
-        teamSlot:  null as number | null,
-      };
-    }),
-  ];
-
-  if (allInserts.length > 0) await db.insert(capturedMonstersTable).values(allInserts);
-
-  // ── 4. Return token + player ─────────────────────────────────────────────
-  const token = generateToken(player.id);
-  res.json({ token, player: formatPlayer(player) });
-});
 
 export { formatPlayer };
 export default router;

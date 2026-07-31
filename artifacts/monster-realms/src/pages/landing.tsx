@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useGuestLogin, useRegisterPlayer } from '@workspace/api-client-react';
+import { useGuestLogin, useLoginPlayer, useRegisterPlayer } from '@workspace/api-client-react';
 import { setToken } from '@/lib/auth';
 import { useGameStore } from '@/store/game-store';
 import { CHARACTERS } from '@/lib/characters';
 import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
 import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
-import { Sparkles, ArrowRight, ArrowLeft, User, Package, Crown } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, User, Package } from 'lucide-react';
 
 // ─── SVG character preview ────────────────────────────────────────────────────
 
@@ -81,10 +81,10 @@ export default function Landing() {
   const [starterPack, setStarterPack] = useState<StarterMyth[]>([]);
   const [boxOpened, setBoxOpened] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const [gmLoading, setGmLoading] = useState(false);
 
   const guestLogin = useGuestLogin();
   const register = useRegisterPlayer();
+  const login = useLoginPlayer();
 
   const handleGuestPlay = async () => {
     try {
@@ -135,20 +135,17 @@ export default function Landing() {
     }
   };
 
-  const handleGmLogin = async () => {
-    setGmLoading(true);
+  const handleLogin = async () => {
     try {
-      const r = await fetch('/api/auth/gm-login', { method: 'POST' });
-      if (!r.ok) throw new Error('GM login failed');
-      const data = await r.json();
-      setToken(data.token);
-      setPlayer(data.player);
+      const response = await login.mutateAsync({
+        data: { username: username.trim(), password },
+      });
+      setToken(response.token);
+      setPlayer(response.player);
       setCharacterType(CHARACTERS[0]!.id);
       setLocation('/game');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setGmLoading(false);
+    } catch (error) {
+      console.error('Login failed:', error);
     }
   };
 
@@ -203,25 +200,12 @@ export default function Landing() {
             <div className="text-center">
               <button
                 className="text-xs text-muted-foreground underline underline-offset-2"
-                onClick={() => { setStep('register'); setIsRegistering(true); }}
+                onClick={() => { setStep('register'); setIsRegistering(false); }}
               >
                 Already have an account? Sign in
               </button>
             </div>
 
-            {/* ── Game Master shortcut ── */}
-            <div className="pt-2 border-t border-white/10">
-              <button
-                onClick={handleGmLogin}
-                disabled={gmLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 hover:bg-yellow-400/10 hover:border-yellow-400/50 transition-all duration-200 group disabled:opacity-50"
-              >
-                <Crown size={15} className="text-yellow-400 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-semibold text-yellow-300/80 group-hover:text-yellow-300">
-                  {gmLoading ? 'Entering GM mode…' : 'Game Master — skip to max'}
-                </span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -572,11 +556,13 @@ export default function Landing() {
             variant="default"
             size="lg"
             className="w-full glow-violet font-bold"
-            onClick={handleRegister}
-            disabled={!username.trim() || !password || register.isPending}
+            onClick={isRegistering ? handleRegister : handleLogin}
+            disabled={!username.trim() || !password || register.isPending || login.isPending}
             data-testid="button-register"
           >
-            {register.isPending ? 'Creating account...' : isRegistering ? 'Create & Play' : 'Sign In'}
+            {isRegistering
+              ? (register.isPending ? 'Creating account...' : 'Create & Play')
+              : (login.isPending ? 'Signing in...' : 'Sign In')}
           </Button>
 
           <div className="flex gap-3">
@@ -592,9 +578,9 @@ export default function Landing() {
           </div>
         </div>
 
-        {register.isError && (
+        {(isRegistering ? register.isError : login.isError) && (
           <p className="text-sm text-destructive text-center">
-            {(register.error as Error)?.message || 'Something went wrong.'}
+            {((isRegistering ? register.error : login.error) as Error)?.message || 'Something went wrong.'}
           </p>
         )}
       </div>
