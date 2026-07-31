@@ -143,16 +143,9 @@ export type MonsterSpeciesElement = typeof MonsterSpeciesElement[keyof typeof Mo
 export const MonsterSpeciesElement = {
   Fire: 'Fire',
   Water: 'Water',
-  Nature: 'Nature',
-  Electric: 'Electric',
-  Ice: 'Ice',
   Earth: 'Earth',
-  Air: 'Air',
-  Light: 'Light',
-  Dark: 'Dark',
-  Metal: 'Metal',
-  Crystal: 'Crystal',
-  Void: 'Void',
+  Storm: 'Storm',
+  Shadow: 'Shadow',
 } as const;
 
 export type MonsterSpeciesRarity = typeof MonsterSpeciesRarity[keyof typeof MonsterSpeciesRarity];

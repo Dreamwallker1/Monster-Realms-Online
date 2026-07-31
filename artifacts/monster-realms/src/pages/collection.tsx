@@ -19,13 +19,14 @@ export default function Collection() {
   const [search, setSearch] = useState('');
   const [selectedMonster, setSelectedMonster] = useState<CapturedMonster | null>(null);
   
-  const { data: collection, isLoading } = useGetPlayerCollection(player?.id || '', {
-    params: {
-      element: elementFilter || undefined,
-      rarity: rarityFilter || undefined,
+  const { data: collection, isLoading } = useGetPlayerCollection(
+    player?.id || '',
+    {
+      element: elementFilter && elementFilter !== 'all' ? elementFilter : undefined,
+      rarity: rarityFilter && rarityFilter !== 'all' ? rarityFilter : undefined,
     },
-    query: { enabled: !!player?.id },
-  });
+    { query: { enabled: !!player?.id } },
+  );
   
   const filteredCollection = collection?.filter((m) =>
     m.species.name.toLowerCase().includes(search.toLowerCase()) ||
