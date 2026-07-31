@@ -71,7 +71,7 @@ export default function Collection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Elements</SelectItem>
-              {['Fire', 'Water', 'Nature', 'Electric', 'Dark'].map((el) => (
+              {['Fire', 'Water', 'Earth', 'Storm', 'Shadow'].map((el) => (
                 <SelectItem key={el} value={el}>{el}</SelectItem>
               ))}
             </SelectContent>

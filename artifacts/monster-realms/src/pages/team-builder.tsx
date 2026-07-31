@@ -455,9 +455,11 @@ export default function TeamBuilder() {
   const { player } = useGameStore();
   const queryClient = useQueryClient();
 
-  const { data: collection = [], isLoading } = useGetPlayerCollection(player?.id ?? '', {
-    query: { enabled: !!player?.id },
-  });
+  const { data: collection = [], isLoading } = useGetPlayerCollection(
+    player?.id ?? '',
+    undefined,
+    { query: { enabled: !!player?.id } as any },
+  );
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);

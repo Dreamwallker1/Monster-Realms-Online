@@ -1,21 +1,14 @@
 // ─── 5-Element Type Chart ────────────────────────────────────────────────────
-// Ring cycle: Fire → Nature → Electric → Water → Fire
-// Dark: disrupts fire+nature, but is vulnerable to water+electric
-//
-//           Fire
-//          ↑    ↓
-//  Dark ←──    ──→ Nature
-//  │                  │
-//  Water ←── Electric ←┘
-//
+// Catalogue v3: Fire → Earth → Storm → Water → Fire.
+// Shadow disrupts fire+earth, but is vulnerable to water+storm.
 
 export const TYPE_CHART: Record<string, Record<string, number>> = {
-  //          vs Fire  vs Water  vs Nature  vs Electric  vs Dark
-  Fire:     { Fire: 0.5, Water: 0.5, Nature: 2.0, Electric: 1.0, Dark: 0.5 },
-  Water:    { Fire: 2.0, Water: 0.5, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
-  Nature:   { Fire: 0.5, Water: 1.0, Nature: 0.5, Electric: 2.0, Dark: 0.5 },
-  Electric: { Fire: 0.5, Water: 2.0, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
-  Dark:     { Fire: 1.5, Water: 0.5, Nature: 1.5, Electric: 0.5, Dark: 0.0 },
+  //          vs Fire  vs Water  vs Earth  vs Storm  vs Shadow
+  Fire:   { Fire: 0.5, Water: 0.5, Earth: 2.0, Storm: 1.0, Shadow: 0.5 },
+  Water:  { Fire: 2.0, Water: 0.5, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
+  Earth:  { Fire: 0.5, Water: 1.0, Earth: 0.5, Storm: 2.0, Shadow: 0.5 },
+  Storm:  { Fire: 0.5, Water: 2.0, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
+  Shadow: { Fire: 1.5, Water: 0.5, Earth: 1.5, Storm: 0.5, Shadow: 0.0 },
 };
 
 /** attacker's element dealing damage to defenderElement */
@@ -57,21 +50,21 @@ export function getMatchupText(mult: number): string {
   return '';
 }
 
-export const ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'] as const;
+export const ELEMENTS = ['Fire', 'Water', 'Earth', 'Storm', 'Shadow'] as const;
 export type ElementName = typeof ELEMENTS[number];
 
 export const ELEMENT_ICON: Record<string, string> = {
   Fire:     '🔥',
   Water:    '💧',
-  Nature:   '🌿',
-  Electric: '⚡',
-  Dark:     '🌑',
+  Earth:    '🪨',
+  Storm:    '⚡',
+  Shadow:   '🌑',
 };
 
 export const ELEMENT_COLOR: Record<string, string> = {
   Fire:     '#EF4444',
   Water:    '#38BDF8',
-  Nature:   '#22C55E',
-  Electric: '#EAB308',
-  Dark:     '#A855F7',
+  Earth:    '#CA8A04',
+  Storm:    '#A855F7',
+  Shadow:   '#6366F1',
 };

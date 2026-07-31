@@ -27,7 +27,7 @@ interface ParticleConfig {
 function buildParticles(element: string, speciesId: string, elColors: { primary: string; secondary: string; glow: string }): ParticleConfig[] {
   const particles: ParticleConfig[] = [];
 
-  if (element === 'Electric') {
+  if (element === 'Storm' || element === 'Electric') {
     // 8 sparks burst outward from center
     for (let i = 0; i < 8; i++) {
       const delay = seedRand(speciesId, i + 100) * 0.4;
@@ -51,7 +51,7 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
         },
       });
     }
-  } else if (element === 'Dark') {
+  } else if (element === 'Shadow' || element === 'Dark') {
     // 8 wisps swirl outward
     for (let i = 0; i < 8; i++) {
       const r = seedRand(speciesId, i + 50);
@@ -80,7 +80,7 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
       });
     }
   } else {
-    // Fire, Water, Nature — 10 particles rising upward
+    // Fire, Water, Earth — 10 particles rising upward
     const COUNT = 10;
     for (let i = 0; i < COUNT; i++) {
       const r0 = seedRand(speciesId, i);
@@ -109,7 +109,7 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
         br = '50%';
         shadow = `0 0 8px ${elColors.glow}`;
       } else {
-        // Nature — leaves
+        // Earth — drifting shards/leaves
         const lx = ((r0 - 0.5) * 60).toFixed(0) + 'px';
         const lr = ((r1 * 2 - 1) * 180).toFixed(0) + 'deg';
         particles.push({
@@ -158,6 +158,10 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
 const ELEMENT_FLAVOR: Record<string, { verb: string; exclaim: string }> = {
   Fire:     { verb: 'blazed into view',   exclaim: '🔥 Danger!' },
   Water:    { verb: 'emerged from the deep', exclaim: '💧 Careful!' },
+  Earth:    { verb: 'rose from the ancient ground', exclaim: '🪨 Found it!' },
+  Storm:    { verb: 'struck like lightning', exclaim: '⚡ Alert!' },
+  Shadow:   { verb: 'emerged from the shadows', exclaim: '🌑 Watch out!' },
+  // Legacy collection fallbacks
   Electric: { verb: 'struck like lightning', exclaim: '⚡ Alert!' },
   Nature:   { verb: 'crept out of the wilds', exclaim: '🌿 Found it!' },
   Dark:     { verb: 'emerged from the shadows', exclaim: '🌑 Watch out!' },

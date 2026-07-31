@@ -2,7 +2,7 @@ import type { MonsterSpeciesElement } from '@workspace/api-client-react';
 import { ELEMENT_COLORS } from '@/lib/element-colors';
 
 interface MonsterPortraitProps {
-  element: MonsterSpeciesElement;
+  element: MonsterSpeciesElement | 'Earth' | 'Storm' | 'Shadow';
   size?: 'sm' | 'md' | 'lg';
   shinyVariant?: string | null;
 }
@@ -29,6 +29,7 @@ export default function MonsterPortrait({ element, size = 'md', shinyVariant }: 
       case 'Nature':
         return `<path d="M 60 20 Q 70 35, 80 50 Q 70 65, 60 80 Q 50 65, 40 50 Q 50 35, 60 20" fill="${colors.primary}" />
                 <circle cx="60" cy="50" r="${12 * s}" fill="${colors.secondary}" />`;
+      case 'Storm':
       case 'Electric':
         return `<path d="M 50 20 L 70 45 L 60 45 L 70 80 L 50 55 L 60 55 Z" fill="${colors.primary}" />
                 <path d="M 50 20 L 70 45 L 60 45 L 70 80 L 50 55 L 60 55 Z" fill="${colors.secondary}" opacity="0.6" transform="translate(5,5)" />`;
@@ -45,6 +46,7 @@ export default function MonsterPortrait({ element, size = 'md', shinyVariant }: 
         return `<circle cx="60" cy="50" r="${25 * s}" fill="${colors.primary}" opacity="0.9" />
                 <circle cx="60" cy="50" r="${18 * s}" fill="${colors.secondary}" opacity="0.7" />
                 <circle cx="60" cy="50" r="${12 * s}" fill="#ffffff" opacity="0.9" />`;
+      case 'Shadow':
       case 'Dark':
         return `<circle cx="60" cy="50" r="${25 * s}" fill="${colors.primary}" />
                 <path d="M 60 25 A 25 25 0 0 1 85 50 A 20 20 0 0 0 60 30 Z" fill="${colors.secondary}" opacity="0.5" />`;

@@ -1,15 +1,17 @@
 import type { MonsterSpecies } from "@workspace/db";
 
 // Element effectiveness chart: attacker -> defender -> multiplier
-// 5-element ring: Fire → Nature → Electric → Water → Fire
-// Dark: disrupts fire+nature, weak to water+electric, immune to itself
+// Catalogue v3 keeps the original balance while renaming:
+// Nature → Earth, Electric → Storm, Dark → Shadow.
+// Fire → Earth → Storm → Water → Fire
+// Shadow disrupts fire+earth, is weak to water+storm, and is immune to itself.
 const ELEMENT_CHART: Record<string, Record<string, number>> = {
-  //             vs Fire  vs Water  vs Nature  vs Electric  vs Dark
-  Fire:     { Fire: 0.5, Water: 0.5, Nature: 2.0, Electric: 1.0, Dark: 0.5 },
-  Water:    { Fire: 2.0, Water: 0.5, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
-  Nature:   { Fire: 0.5, Water: 1.0, Nature: 0.5, Electric: 2.0, Dark: 0.5 },
-  Electric: { Fire: 0.5, Water: 2.0, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
-  Dark:     { Fire: 1.5, Water: 0.5, Nature: 1.5, Electric: 0.5, Dark: 0.0 },
+  //          vs Fire  vs Water  vs Earth  vs Storm  vs Shadow
+  Fire:   { Fire: 0.5, Water: 0.5, Earth: 2.0, Storm: 1.0, Shadow: 0.5 },
+  Water:  { Fire: 2.0, Water: 0.5, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
+  Earth:  { Fire: 0.5, Water: 1.0, Earth: 0.5, Storm: 2.0, Shadow: 0.5 },
+  Storm:  { Fire: 0.5, Water: 2.0, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
+  Shadow: { Fire: 1.5, Water: 0.5, Earth: 1.5, Storm: 0.5, Shadow: 0.0 },
 };
 
 export function getElementMultiplier(

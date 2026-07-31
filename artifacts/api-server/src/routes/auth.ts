@@ -70,8 +70,8 @@ function rollStarterRarity(slot: number): 'C' | 'B' | 'A' | 'S' {
 }
 
 async function grantStarterPack(playerId: string, element: string): Promise<StarterMythResult[]> {
-  const VALID_ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'];
-  const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Nature';
+  const VALID_ELEMENTS = ['Fire', 'Water', 'Earth', 'Storm', 'Shadow'];
+  const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Earth';
 
   // Fetch all species for the chosen element (one query instead of four)
   const allByElement = await db.select().from(monsterSpeciesTable)
@@ -379,7 +379,7 @@ router.post("/auth/gm-login", async (_req, res): Promise<void> => {
 
   const allSpecies = await db.select().from(monsterSpeciesTable);
 
-  const ELEMENTS = ["Fire", "Water", "Nature", "Electric", "Dark"];
+  const ELEMENTS = ["Fire", "Water", "Earth", "Storm", "Shadow"];
   const sTierSpecies = allSpecies.filter(s => s.rarity === "S");
 
   // Pick one S-tier per element for the active team (slots 0-5)

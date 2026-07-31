@@ -51,9 +51,9 @@ function CharacterSVG({ char, size = 80 }: { char: typeof CHARACTERS[0]; size?: 
 const ELEMENTS = [
   { id: 'Fire',     emoji: '🔥', flavor: 'Fierce & unstoppable' },
   { id: 'Water',    emoji: '💧', flavor: 'Fluid & enduring' },
-  { id: 'Nature',   emoji: '🌿', flavor: 'Patient & resilient' },
-  { id: 'Electric', emoji: '⚡', flavor: 'Fast & unpredictable' },
-  { id: 'Dark',     emoji: '🌑', flavor: 'Mysterious & cunning' },
+  { id: 'Earth',    emoji: '🪨', flavor: 'Patient & resilient' },
+  { id: 'Storm',    emoji: '⚡', flavor: 'Fast & unpredictable' },
+  { id: 'Shadow',   emoji: '🌑', flavor: 'Mysterious & cunning' },
 ];
 
 // ─── Step types ────────────────────────────────────────────────────────────────

@@ -28,7 +28,27 @@ import {
   type OrbRow,
   type CapturedMonsterInsert,
 } from "../lib/battleService.js";
-import { calculateCaptureChance } from "../lib/gameEngine.js";
+import { calculateCaptureChance, getElementMultiplier } from "../lib/gameEngine.js";
+
+describe("catalogue v3 element matchups", () => {
+  it("applies the renamed Earth and Storm cycle", () => {
+    assert.equal(getElementMultiplier("Fire", "Earth"), 2);
+    assert.equal(getElementMultiplier("Earth", "Storm"), 2);
+    assert.equal(getElementMultiplier("Storm", "Water"), 2);
+    assert.equal(getElementMultiplier("Water", "Fire"), 2);
+  });
+
+  it("applies Shadow strengths, weaknesses, and immunity", () => {
+    assert.equal(getElementMultiplier("Shadow", "Earth"), 1.5);
+    assert.equal(getElementMultiplier("Storm", "Shadow"), 1.5);
+    assert.equal(getElementMultiplier("Shadow", "Storm"), 0.5);
+    assert.equal(getElementMultiplier("Shadow", "Shadow"), 0);
+  });
+
+  it("keeps unknown legacy data neutral instead of crashing", () => {
+    assert.equal(getElementMultiplier("Unknown", "Fire"), 1);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Mock DB factory

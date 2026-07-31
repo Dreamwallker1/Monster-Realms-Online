@@ -36,6 +36,10 @@ const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
 const EL_CONFIG: Record<string, { color: string; glow: string; bg: string; icon: string }> = {
   Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.55)', bg: 'rgba(180,40,10,0.35)',  icon: '🔥' },
   Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.55)', bg: 'rgba(3,105,161,0.35)',  icon: '💧' },
+  Earth:    { color: '#CA8A04', glow: 'rgba(202,138,4,0.55)', bg: 'rgba(113,63,18,0.4)',     icon: '🪨' },
+  Storm:    { color: '#A855F7', glow: 'rgba(168,85,247,0.65)', bg: 'rgba(88,28,135,0.4)',    icon: '⚡' },
+  Shadow:   { color: '#6366F1', glow: 'rgba(99,102,241,0.55)', bg: 'rgba(30,27,75,0.5)',     icon: '🌑' },
+  // Legacy collection fallbacks
   Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.55)', bg: 'rgba(20,83,45,0.35)',   icon: '🌿' },
   Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.65)', bg: 'rgba(133,77,14,0.4)',   icon: '⚡' },
   Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.55)', bg: 'rgba(59,7,100,0.5)',   icon: '🌑' },
@@ -1032,7 +1036,8 @@ function ElementParticles({ element, side, particleScale }: {
   const count = Math.round(7 * particleScale);
 
   const chars: Record<string, string> = {
-    Fire: '🔥', Water: '💧', Nature: '🍃', Electric: '⚡', Dark: '✦',
+    Fire: '🔥', Water: '💧', Earth: '🪨', Storm: '⚡', Shadow: '✦',
+    Nature: '🍃', Electric: '⚡', Dark: '✦',
   };
   const char = chars[element] ?? '✦';
 

@@ -249,6 +249,10 @@ function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: nu
 const EL_HIT: Record<string, { color: string; glow: string }> = {
   Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.7)' },
   Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.7)' },
+  Earth:    { color: '#CA8A04', glow: 'rgba(202,138,4,0.7)' },
+  Storm:    { color: '#A855F7', glow: 'rgba(168,85,247,0.8)' },
+  Shadow:   { color: '#6366F1', glow: 'rgba(99,102,241,0.7)' },
+  // Legacy collection fallbacks
   Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.7)' },
   Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.8)' },
   Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.7)' },

@@ -1950,8 +1950,9 @@ export function MythSvgIcon({ mythId, element, rarity = 'C', size = 100, classNa
 
 function fallback(element: string): ArchetypeName {
   const defaults: Record<string, ArchetypeName> = {
-    Fire: 'FireWolf', Water: 'WaterCanine', Nature: 'ForestBeast',
-    Electric: 'LightningFox', Dark: 'ShadowCat',
+    Fire: 'FireWolf', Water: 'WaterCanine', Earth: 'ForestBeast',
+    Storm: 'LightningFox', Shadow: 'ShadowCat',
+    Nature: 'ForestBeast', Electric: 'LightningFox', Dark: 'ShadowCat',
   };
   return defaults[element] ?? 'FireWolf';
 }
