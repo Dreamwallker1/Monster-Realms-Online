@@ -426,6 +426,16 @@
   }
   .battle-float { animation: battle-float 2.8s ease-in-out infinite; }
 
+  @keyframes battle-grounded-idle {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(0) scale(1.012, 0.992); }
+  }
+
+  .battle-grounded-idle {
+    transform-origin: 50% 92%;
+    animation: battle-grounded-idle 2.8s ease-in-out infinite;
+  }
+
   @keyframes battle-idle-bob {
     0%, 100% { transform: translateY(0px); }
     50%       { transform: translateY(-5px); }
@@ -434,22 +444,22 @@
 
   .battle-combatant-wild {
     left: clamp(3%, 8vw, 10%);
-    bottom: 18%;
+    bottom: 7%;
   }
 
   .battle-combatant-player {
     right: clamp(3%, 8vw, 10%);
-    bottom: 18%;
+    bottom: 7%;
   }
 
   .battle-hit-wild {
     left: clamp(3%, 8vw, 10%);
-    bottom: 18%;
+    bottom: 7%;
   }
 
   .battle-hit-player {
     right: clamp(3%, 8vw, 10%);
-    bottom: 18%;
+    bottom: 7%;
   }
 
   .battle-ground-perspective {
@@ -468,7 +478,7 @@
     position: absolute;
     width: clamp(210px, 25vw, 430px);
     height: clamp(42px, 6vw, 82px);
-    bottom: 12%;
+    bottom: 2%;
     border-radius: 50%;
     z-index: 1;
     opacity: 0.72;
@@ -492,12 +502,12 @@
 
   @media (max-width: 760px) {
     .battle-combatant-wild,
-    .battle-hit-wild { left: 1.5%; bottom: 13%; }
+    .battle-hit-wild { left: 1.5%; bottom: 4%; }
 
     .battle-combatant-player,
-    .battle-hit-player { right: 1.5%; bottom: 13%; }
+    .battle-hit-player { right: 1.5%; bottom: 4%; }
 
-    .battle-stage-pool { bottom: 8%; width: 46vw; }
+    .battle-stage-pool { bottom: 0%; width: 46vw; }
   }
 
   @keyframes flarelynx-battle-breathe {

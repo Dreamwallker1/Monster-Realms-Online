@@ -564,7 +564,7 @@ function MythSprite({
       >
         <div
           key={animKey}
-          className={`battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
+          className={`battle-grounded-idle ${animKey > 0 ? 'hit-flash' : ''}`}
           style={{
             filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
             transition: isFainting ? 'opacity 0.35s ease-in, transform 0.35s ease-in' : undefined,
@@ -606,7 +606,7 @@ function MythSprite({
       {/* Ground shadow */}
       <div style={{
         width: renderedSize * (hasBattleArt ? 0.58 : 0.65), height: hasBattleArt ? 18 : 12,
-        borderRadius: '50%', marginTop: hasBattleArt ? -18 : 4,
+        borderRadius: '50%', marginTop: hasBattleArt ? -34 : -7,
         background: hasBattleArt
           ? 'radial-gradient(ellipse, rgba(0,0,0,0.68) 0%, rgba(97,24,8,0.28) 48%, transparent 78%)'
           : 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
