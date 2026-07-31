@@ -52,8 +52,8 @@ function matchesConfiguredGm(username: string, password: string): boolean {
   const configuredPassword = process.env.GM_PASSWORD;
   if (!configuredUsername || !configuredPassword || !isConfiguredGmUsername(username)) return false;
 
-  const supplied = Buffer.from(password);
-  const expected = Buffer.from(configuredPassword);
+  const supplied = Buffer.from(password.trim());
+  const expected = Buffer.from(configuredPassword.trim());
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 

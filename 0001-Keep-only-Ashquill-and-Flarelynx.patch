@@ -1,0 +1,1108 @@
+From a38b18c594e599d3f94afee2a226f0d8873a7589 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 14:27:37 +0200
+Subject: [PATCH] Keep only Ashquill and Flarelynx
+
+---
+ .../src/__tests__/battle-stats.test.ts        |   9 +-
+ artifacts/api-server/src/lib/monsterData.ts   | 385 +-----------------
+ artifacts/api-server/src/lib/regionData.ts    | 194 +--------
+ artifacts/api-server/src/routes/collection.ts |  12 +-
+ artifacts/api-server/src/routes/monsters.ts   |   9 +-
+ artifacts/api-server/src/routes/players.ts    |   6 +-
+ artifacts/api-server/src/routes/seed.ts       |  47 ++-
+ .../monster-realms/src/lib/myth-catalogue.ts  | 124 +-----
+ .../monster-realms/src/lib/region-info.ts     |  58 +--
+ 9 files changed, 114 insertions(+), 730 deletions(-)
+
+diff --git a/artifacts/api-server/src/__tests__/battle-stats.test.ts b/artifacts/api-server/src/__tests__/battle-stats.test.ts
+index 354cd4d..cead3bf 100644
+--- a/artifacts/api-server/src/__tests__/battle-stats.test.ts
++++ b/artifacts/api-server/src/__tests__/battle-stats.test.ts
+@@ -33,10 +33,13 @@ import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+ import { REGION_SEED_DATA } from "../lib/regionData.js";
+ 
+ describe("Flarelynx catalogue integration", () => {
+-  it("replaces Cinderclaw without changing the 25-myth catalogue size", () => {
+-    assert.equal(MONSTER_SEED_DATA.length, 25);
++  it("keeps only Ashquill and Flarelynx in the active catalogue", () => {
++    assert.equal(MONSTER_SEED_DATA.length, 2);
++    assert.deepEqual(
++      MONSTER_SEED_DATA.map((myth) => myth.id).sort(),
++      ["ashquill", "flarelynx"],
++    );
+     assert.ok(MONSTER_SEED_DATA.some((myth) => myth.id === "flarelynx"));
+-    assert.ok(!MONSTER_SEED_DATA.some((myth) => myth.id === "cinderclaw"));
+   });
+ 
+   it("keeps Flarelynx as a Fire C myth with three attacks", () => {
+diff --git a/artifacts/api-server/src/lib/monsterData.ts b/artifacts/api-server/src/lib/monsterData.ts
+index 7339848..2442577 100644
+--- a/artifacts/api-server/src/lib/monsterData.ts
++++ b/artifacts/api-server/src/lib/monsterData.ts
+@@ -1,18 +1,7 @@
+ import type { InsertMonsterSpecies } from "@workspace/db";
+ 
+-// ═══════════════════════════════════════════════════════════════════════════════
+-//  MYTHORA — Myth Species Catalogue  v3
+-//  5 Elements × 5 Myths = 25 total
+-//  Per element: C×2 · B×1 · A×1 · S×1
+-//  Skills per myth: 2 normal attacks + 1 ultimate (3 total)
+-// ═══════════════════════════════════════════════════════════════════════════════
+-
++// Active Litardia catalogue. New Myths are added here one at a time.
+ export const MONSTER_SEED_DATA: InsertMonsterSpecies[] = [
+-
+-  // ══════════════════════════════════════════════════════════════════════════
+-  //  FIRE  ·  2C · 1B · 1A · 1S
+-  // ══════════════════════════════════════════════════════════════════════════
+-
+   {
+     id: "ashquill", name: "Ashquill", element: "Fire", rarity: "C",
+     baseHp: 44, baseAttack: 43, baseDefense: 32, baseSpeed: 53,
+@@ -21,13 +10,12 @@ export const MONSTER_SEED_DATA: InsertMonsterSpecies[] = [
+     personality: "Defiant", weight: 5.6, height: 0.68, captureRate: 88,
+     evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+     skills: [
+-      { name: "Searing Peck", type: "normal",   element: "Fire", power: 42, accuracy: 97, description: "Darts forward and drives its heated obsidian beak into the target." },
+-      { name: "Ashen Gust",   type: "skill1",   element: "Fire", power: 62, accuracy: 90, description: "Beats its ragged wings to launch a cutting cloud of hot ash and ember shards." },
+-      { name: "Last Spark",   type: "ultimate", element: "Fire", power: 125, accuracy: 75, description: "Consumes the fire in its tail to become a black-red comet for one desperate strike." },
++      { name: "Searing Peck", type: "normal", element: "Fire", power: 42, accuracy: 97, description: "Darts forward and drives its heated obsidian beak into the target." },
++      { name: "Ashen Gust", type: "skill1", element: "Fire", power: 62, accuracy: 90, description: "Beats its ragged wings to launch a cutting cloud of hot ash and ember shards." },
++      { name: "Last Spark", type: "ultimate", element: "Fire", power: 125, accuracy: 75, description: "Consumes the fire in its tail to become a black-red comet for one desperate strike." },
+     ],
+     regionIds: ["volcanic-rift", "scorched-wastes"],
+   },
+-
+   {
+     id: "flarelynx", name: "Flarelynx", element: "Fire", rarity: "C",
+     baseHp: 46, baseAttack: 48, baseDefense: 38, baseSpeed: 52,
+@@ -36,371 +24,10 @@ export const MONSTER_SEED_DATA: InsertMonsterSpecies[] = [
+     personality: "Loyal", weight: 9.4, height: 0.62, captureRate: 85,
+     evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+     skills: [
+-      { name: "Ember Claw",       type: "normal",   element: "Fire", power: 44, accuracy: 96, description: "Strikes with heated claws before returning immediately to guard its partner." },
+-      { name: "Magma Pounce",     type: "skill1",   element: "Fire", power: 64, accuracy: 89, description: "Launches from a low stance and crashes into the target with magma-lit paws." },
++      { name: "Ember Claw", type: "normal", element: "Fire", power: 44, accuracy: 96, description: "Strikes with heated claws before returning immediately to guard its partner." },
++      { name: "Magma Pounce", type: "skill1", element: "Fire", power: 64, accuracy: 89, description: "Launches from a low stance and crashes into the target with magma-lit paws." },
+       { name: "Blazing Tailspin", type: "ultimate", element: "Fire", power: 128, accuracy: 73, description: "Whips its furnace tail into a controlled firestorm of flame and volcanic shards." },
+     ],
+     regionIds: ["volcanic-rift", "scorched-wastes"],
+   },
+-
+-  {
+-    id: "flamewing", name: "Flamewing", element: "Fire", rarity: "B",
+-    baseHp: 65, baseAttack: 64, baseDefense: 52, baseSpeed: 68,
+-    description: "A hawk whose wings trail living flame. Its dive-bombs can melt stone.",
+-    lore: "Flamewings migrate toward erupting volcanoes and have been known to nest inside lava tubes.",
+-    personality: "Bold", weight: 8.2, height: 0.9, captureRate: 60,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Wing Slash",    type: "normal",   element: "Fire", power: 58, accuracy: 94, description: "Swoops low and slices with razor-edged burning wings." },
+-      { name: "Ember Dive",    type: "skill1",   element: "Fire", power: 76, accuracy: 87, description: "Climbs high then plummets like a comet, exploding on impact." },
+-      { name: "Phoenix Strike",type: "ultimate", element: "Fire", power: 138, accuracy: 72, description: "Wraps body in white-hot fire and detonates in a phoenix-shaped burst." },
+-    ],
+-    regionIds: ["volcanic-rift", "scorched-wastes"],
+-  },
+-
+-  {
+-    id: "magmahorn", name: "Magmahorn", element: "Fire", rarity: "A",
+-    baseHp: 92, baseAttack: 86, baseDefense: 84, baseSpeed: 68,
+-    description: "A armored rhino with a magma-filled horn that cracks the earth on charge.",
+-    lore: "Magmahorns charge at 80 km/h. The resulting impact cracks bedrock and can start wildfires miles away.",
+-    personality: "Fearless", weight: 280.0, height: 1.8, captureRate: 35,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Horn Charge",   type: "normal",   element: "Fire", power: 72, accuracy: 92, description: "Lowers head and charges at full force, the magma horn cracking the ground on impact." },
+-      { name: "Magma Stomp",   type: "skill1",   element: "Fire", power: 88, accuracy: 84, description: "Rears up and slams both forefeet, sending a shockwave of molten rock." },
+-      { name: "Volcanic Slam", type: "ultimate", element: "Fire", power: 150, accuracy: 70, description: "Builds explosive pressure in its horn and detonates it in a column of lava." },
+-    ],
+-    regionIds: ["volcanic-rift", "scorched-wastes"],
+-  },
+-
+-  {
+-    id: "pyredrake", name: "Pyredrake", element: "Fire", rarity: "S",
+-    baseHp: 122, baseAttack: 118, baseDefense: 102, baseSpeed: 96,
+-    description: "An ancient dragon whose breath has never cooled. Its roar flattens mountains.",
+-    lore: "Pyredrakes are mythological catalysts — wherever one dwells, volcanic activity increases for a century.",
+-    personality: "Dominating", weight: 1800.0, height: 8.5, captureRate: 12,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Dragon Bite",   type: "normal",   element: "Fire", power: 88, accuracy: 94, description: "Snaps jaws superheated to 3000°C, melting whatever it touches." },
+-      { name: "Fire Breath",   type: "skill1",   element: "Fire", power: 105, accuracy: 86, description: "Exhales a focused beam of dragonfire that curves toward the target." },
+-      { name: "Pyroclasm",     type: "ultimate", element: "Fire", power: 168, accuracy: 68, description: "Rears skyward and calls down a cataclysmic eruption centered on the enemy." },
+-    ],
+-    regionIds: ["volcanic-rift", "scorched-wastes"],
+-  },
+-
+-  // ══════════════════════════════════════════════════════════════════════════
+-  //  WATER  ·  2C · 1B · 1A · 1S
+-  // ══════════════════════════════════════════════════════════════════════════
+-
+-  {
+-    id: "bubblefin", name: "Bubblefin", element: "Water", rarity: "C",
+-    baseHp: 48, baseAttack: 36, baseDefense: 44, baseSpeed: 48,
+-    description: "A pudgy fish surrounded by bouncing bubbles that pop with surprising force.",
+-    lore: "Bubblefins inflate their bubble auras when threatened. The exploding bubbles can fracture stone.",
+-    personality: "Cheerful", weight: 2.1, height: 0.25, captureRate: 90,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Bubble Shot",   type: "normal",   element: "Water", power: 40, accuracy: 98, description: "Fires a pressurized bubble that bursts on contact with stunning force." },
+-      { name: "Water Spin",    type: "skill1",   element: "Water", power: 60, accuracy: 91, description: "Rotates rapidly, launching a ring of razor-edged water in all directions." },
+-      { name: "Tidal Crash",   type: "ultimate", element: "Water", power: 122, accuracy: 76, description: "Summons a towering wall of water and hurls it down with crushing pressure." },
+-    ],
+-    regionIds: ["ocean-ruins", "deep-current"],
+-  },
+-
+-  {
+-    id: "wavecrest", name: "Wavecrest", element: "Water", rarity: "C",
+-    baseHp: 52, baseAttack: 38, baseDefense: 48, baseSpeed: 44,
+-    description: "A compact turtle whose shell creates powerful wake when spinning.",
+-    lore: "Wavecrests retract into their shells and spin at hurricane speeds to attack. Their shells are the hardest natural material known.",
+-    personality: "Steady", weight: 12.0, height: 0.45, captureRate: 86,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Shell Smash",   type: "normal",   element: "Water", power: 44, accuracy: 95, description: "Retracts and launches shell-first at full speed, hammering the target." },
+-      { name: "Water Pulse",   type: "skill1",   element: "Water", power: 62, accuracy: 90, description: "Fires a pulsing wave of pressurized water that staggers the opponent." },
+-      { name: "Tidal Wave",    type: "ultimate", element: "Water", power: 126, accuracy: 74, description: "Channels the tide and releases a colossal cresting wave." },
+-    ],
+-    regionIds: ["ocean-ruins", "deep-current"],
+-  },
+-
+-  {
+-    id: "tidalwing", name: "Tidalwing", element: "Water", rarity: "B",
+-    baseHp: 62, baseAttack: 58, baseDefense: 56, baseSpeed: 70,
+-    description: "A graceful manta ray that glides at wave height, striking with fin blades.",
+-    lore: "Tidalwings can leap from water and glide for kilometers. Their fin edges can cut steel.",
+-    personality: "Graceful", weight: 42.0, height: 1.4, captureRate: 58,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Fin Sweep",     type: "normal",   element: "Water", power: 56, accuracy: 94, description: "Glides low and scythes through with both wing-fins in a wide arc." },
+-      { name: "Water Jet",     type: "skill1",   element: "Water", power: 74, accuracy: 87, description: "Pressurizes water internally then releases it as a hyper-velocity jet." },
+-      { name: "Ocean Surge",   type: "ultimate", element: "Water", power: 140, accuracy: 71, description: "Calls upon deep ocean pressure and releases it in a spiraling detonation." },
+-    ],
+-    regionIds: ["ocean-ruins", "deep-current"],
+-  },
+-
+-  {
+-    id: "deepfang", name: "Deepfang", element: "Water", rarity: "A",
+-    baseHp: 86, baseAttack: 82, baseDefense: 76, baseSpeed: 84,
+-    description: "A serpent from abyssal depths whose coils can crush a ship's hull.",
+-    lore: "Deepfangs are almost never seen on the surface. Sailors consider a sighting the worst of omens.",
+-    personality: "Ancient", weight: 620.0, height: 6.5, captureRate: 32,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Fang Strike",   type: "normal",   element: "Water", power: 70, accuracy: 93, description: "Strikes with venom-coated fangs, the impact sending a shockwave of water." },
+-      { name: "Current Coil",  type: "skill1",   element: "Water", power: 86, accuracy: 84, description: "Wraps the target in coils riding a powerful current, crushing with momentum." },
+-      { name: "Abyss Torrent", type: "ultimate", element: "Water", power: 152, accuracy: 70, description: "Opens an abyssal rift and unleashes pressurized water from the ocean floor." },
+-    ],
+-    regionIds: ["ocean-ruins", "deep-current"],
+-  },
+-
+-  {
+-    id: "abyssalord", name: "Abyssalord", element: "Water", rarity: "S",
+-    baseHp: 128, baseAttack: 110, baseDefense: 114, baseSpeed: 88,
+-    description: "A leviathan of legend. Its body spans the width of a city, and its roar creates tsunamis.",
+-    lore: "Abyssalords are believed to be the original source of all water in the world.",
+-    personality: "Eternal", weight: 98000.0, height: 45.0, captureRate: 10,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Crushing Bite",   type: "normal",   element: "Water", power: 90, accuracy: 93, description: "Clamps down with jaws that generate ten thousand atmospheres of pressure." },
+-      { name: "Hydro Pulse",     type: "skill1",   element: "Water", power: 108, accuracy: 85, description: "Radiates a catastrophic pulse of focused water pressure." },
+-      { name: "Leviathan's Maw", type: "ultimate", element: "Water", power: 172, accuracy: 66, description: "Opens impossibly wide and swallows the battlefield in a dimensional tide." },
+-    ],
+-    regionIds: ["ocean-ruins", "deep-current"],
+-  },
+-
+-  // ══════════════════════════════════════════════════════════════════════════
+-  //  EARTH  ·  2C · 1B · 1A · 1S
+-  // ══════════════════════════════════════════════════════════════════════════
+-
+-  {
+-    id: "pebbleback", name: "Pebbleback", element: "Earth", rarity: "C",
+-    baseHp: 54, baseAttack: 34, baseDefense: 52, baseSpeed: 38,
+-    description: "A slow but ironclad tortoise with a mossy shell encrusted with boulders.",
+-    lore: "Pebblebacks are said to carry centuries of history on their shells. Each embedded stone tells a story.",
+-    personality: "Patient", weight: 28.0, height: 0.5, captureRate: 88,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Shell Bash",    type: "normal",   element: "Earth", power: 42, accuracy: 96, description: "Charges headlong, ramming its boulder-studded shell into the target." },
+-      { name: "Rock Toss",     type: "skill1",   element: "Earth", power: 60, accuracy: 90, description: "Flings a massive chunk of embedded rock with surprising velocity." },
+-      { name: "Stone Crush",   type: "ultimate", element: "Earth", power: 122, accuracy: 76, description: "Calls boulders from the earth and drops them in a cascading avalanche." },
+-    ],
+-    regionIds: ["ancient-forest", "verdant-meadows"],
+-  },
+-
+-  {
+-    id: "thornbriar", name: "Thornbriar", element: "Earth", rarity: "C",
+-    baseHp: 46, baseAttack: 44, baseDefense: 38, baseSpeed: 50,
+-    description: "A swift plant creature with razor thorns that can grow in an instant.",
+-    lore: "Thornbriars scatter their thorns and regrow them within seconds. Forests where they live are nearly impenetrable.",
+-    personality: "Wild", weight: 3.4, height: 0.55, captureRate: 86,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Thorn Whip",    type: "normal",   element: "Earth", power: 44, accuracy: 96, description: "Lashes out with a barbed vine whip that cracks with earth energy." },
+-      { name: "Root Strike",   type: "skill1",   element: "Earth", power: 64, accuracy: 89, description: "Drives hardened root spears from the ground under the target's feet." },
+-      { name: "Briar Storm",   type: "ultimate", element: "Earth", power: 128, accuracy: 73, description: "Explodes in a cyclone of razor thorns and living vines." },
+-    ],
+-    regionIds: ["ancient-forest", "verdant-meadows"],
+-  },
+-
+-  {
+-    id: "graniteclaw", name: "Graniteclaw", element: "Earth", rarity: "B",
+-    baseHp: 74, baseAttack: 62, baseDefense: 70, baseSpeed: 52,
+-    description: "A massive bear with granite-plated hide. Its roar shakes mountains.",
+-    lore: "Graniteclaws hibernate for 50-year cycles. When they wake, the resulting earthquakes reshape valleys.",
+-    personality: "Powerful", weight: 340.0, height: 2.2, captureRate: 55,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Claw Swipe",    type: "normal",   element: "Earth", power: 58, accuracy: 93, description: "Swipes with granite-edged claws in a sweeping arc that carves the ground." },
+-      { name: "Boulder Slam",  type: "skill1",   element: "Earth", power: 78, accuracy: 86, description: "Leaps high and crashes down, raising a shockwave of debris." },
+-      { name: "Earthshatter",  type: "ultimate", element: "Earth", power: 142, accuracy: 70, description: "Slams the ground with its full weight, splitting the earth in all directions." },
+-    ],
+-    regionIds: ["ancient-forest", "verdant-meadows"],
+-  },
+-
+-  {
+-    id: "crystalhorn", name: "Crystalhorn", element: "Earth", rarity: "A",
+-    baseHp: 84, baseAttack: 84, baseDefense: 74, baseSpeed: 80,
+-    description: "A magnificent unicorn with a crystal horn that focuses earth energy into beams.",
+-    lore: "Crystalhorn horns are called 'earth prisms.' They refract the planet's magnetic field into concentrated power.",
+-    personality: "Majestic", weight: 210.0, height: 1.7, captureRate: 30,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Horn Pierce",      type: "normal",   element: "Earth", power: 70, accuracy: 92, description: "Charges and drives its crystalline horn into the target, sending shockwaves through solid ground." },
+-      { name: "Crystal Barrage",  type: "skill1",   element: "Earth", power: 86, accuracy: 84, description: "Shatters crystals into shards that orbit and bombard the enemy." },
+-      { name: "Gemstone Nova",    type: "ultimate", element: "Earth", power: 150, accuracy: 70, description: "Focuses the planet's energy through its horn and releases a nova of pure crystal energy." },
+-    ],
+-    regionIds: ["ancient-forest", "verdant-meadows"],
+-  },
+-
+-  {
+-    id: "terravast", name: "Terravast", element: "Earth", rarity: "S",
+-    baseHp: 132, baseAttack: 108, baseDefense: 120, baseSpeed: 82,
+-    description: "A living mountain golem. When it walks, continents drift.",
+-    lore: "Ancient maps show Terravasts as geographical landmarks. Scholars believe they shaped the world's current landmasses.",
+-    personality: "Primordial", weight: 450000.0, height: 22.0, captureRate: 8,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Fist Slam",     type: "normal",   element: "Earth", power: 88, accuracy: 92, description: "Raises a mountain-sized fist and drops it with continental force." },
+-      { name: "Seismic Stomp", type: "skill1",   element: "Earth", power: 106, accuracy: 84, description: "Takes one step, generating a magnitude-9 shockwave in every direction." },
+-      { name: "World Breaker", type: "ultimate", element: "Earth", power: 175, accuracy: 65, description: "Draws up tectonic power and releases it in a catastrophic ground-splitting explosion." },
+-    ],
+-    regionIds: ["ancient-forest", "verdant-meadows"],
+-  },
+-
+-  // ══════════════════════════════════════════════════════════════════════════
+-  //  STORM  ·  2C · 1B · 1A · 1S
+-  // ══════════════════════════════════════════════════════════════════════════
+-
+-  {
+-    id: "zappet", name: "Zappet", element: "Storm", rarity: "C",
+-    baseHp: 40, baseAttack: 44, baseDefense: 30, baseSpeed: 62,
+-    description: "A hyperactive rabbit crackling with static. It moves in lightning-fast hops.",
+-    lore: "Zappets generate enough static in a single sprint to power a town. Trainers use them as portable generators.",
+-    personality: "Restless", weight: 1.8, height: 0.28, captureRate: 90,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Static Bite",   type: "normal",   element: "Storm", power: 42, accuracy: 98, description: "Leaps and chomps while discharging stored static in a burst of sparks." },
+-      { name: "Thunder Hop",   type: "skill1",   element: "Storm", power: 62, accuracy: 91, description: "Bounces off the air at impossibly high speed and crashes down with thunder." },
+-      { name: "Lightning Burst",type: "ultimate", element: "Storm", power: 126, accuracy: 75, description: "Compresses all stored electricity into one instant, detonating in a lightning cage." },
+-    ],
+-    regionIds: ["thunder-valley", "storm-peaks"],
+-  },
+-
+-  {
+-    id: "galecub", name: "Galecub", element: "Storm", rarity: "C",
+-    baseHp: 44, baseAttack: 46, baseDefense: 32, baseSpeed: 60,
+-    description: "A nimble fox that runs so fast it becomes a blur of wind and lightning.",
+-    lore: "Galecubs are impossible to catch by hand. Trainers use electromagnetic traps — their speed bends light.",
+-    personality: "Cunning", weight: 3.2, height: 0.38, captureRate: 87,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Wind Slash",    type: "normal",   element: "Storm", power: 44, accuracy: 96, description: "Accelerates to gale speed and slashes with wind-compressed claws." },
+-      { name: "Static Dash",   type: "skill1",   element: "Storm", power: 64, accuracy: 89, description: "Vanishes in a blur and reappears behind the target with a thunder strike." },
+-      { name: "Cyclone Strike",type: "ultimate", element: "Storm", power: 130, accuracy: 73, description: "Becomes a living cyclone and detonates outward in all directions." },
+-    ],
+-    regionIds: ["thunder-valley", "storm-peaks"],
+-  },
+-
+-  {
+-    id: "thunderwing", name: "Thunderwing", element: "Storm", rarity: "B",
+-    baseHp: 62, baseAttack: 66, baseDefense: 50, baseSpeed: 74,
+-    description: "A storm hawk with wings that crackle with constant lightning.",
+-    lore: "Thunderwings fly inside storm cells for weeks. Their wingtips permanently ionize the air around them.",
+-    personality: "Fierce", weight: 12.5, height: 1.0, captureRate: 56,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Talon Strike",  type: "normal",   element: "Storm", power: 58, accuracy: 94, description: "Stoops from altitude and tears through with electricity-charged talons." },
+-      { name: "Thunder Dive",  type: "skill1",   element: "Storm", power: 78, accuracy: 86, description: "Folds wings and dives like a living bolt, detonating on impact." },
+-      { name: "Storm Frenzy",  type: "ultimate", element: "Storm", power: 142, accuracy: 71, description: "Enters a storm frenzy, unleashing continuous lightning strikes in rapid succession." },
+-    ],
+-    regionIds: ["thunder-valley", "storm-peaks"],
+-  },
+-
+-  {
+-    id: "stormcrown", name: "Stormcrown", element: "Storm", rarity: "A",
+-    baseHp: 90, baseAttack: 90, baseDefense: 74, baseSpeed: 86,
+-    description: "A lion whose mane is a permanent storm cloud, throwing lightning at will.",
+-    lore: "Stormcrowns are worshipped as storm deities. A sleeping Stormcrown is the origin of many thunderstorms.",
+-    personality: "Regal", weight: 280.0, height: 1.9, captureRate: 28,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Thunder Roar",  type: "normal",   element: "Storm", power: 72, accuracy: 92, description: "Roars with the force of a thunderclap, sending an electrified shockwave." },
+-      { name: "Lightning Pounce",type: "skill1", element: "Storm", power: 88, accuracy: 83, description: "Becomes a bolt of lightning and pounces, slamming with electric force." },
+-      { name: "Tempest Wrath", type: "ultimate", element: "Storm", power: 154, accuracy: 69, description: "Calls the full tempest and releases it in an electrifying omnidirectional explosion." },
+-    ],
+-    regionIds: ["thunder-valley", "storm-peaks"],
+-  },
+-
+-  {
+-    id: "vortexwyrm", name: "Vortexwyrm", element: "Storm", rarity: "S",
+-    baseHp: 118, baseAttack: 120, baseDefense: 94, baseSpeed: 112,
+-    description: "A storm dragon that exists as pure wind and lightning. It has never been seen fully still.",
+-    lore: "Vortexwyrms are said to be born from the intersection of three simultaneous storms. No one has ever found one sleeping.",
+-    personality: "Untameable", weight: 0.0, height: 12.0, captureRate: 8,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Wind Fang",        type: "normal",   element: "Storm", power: 90, accuracy: 93, description: "Materializes from the wind and bites down with jaws made of compressed cyclone force." },
+-      { name: "Vortex Slam",      type: "skill1",   element: "Storm", power: 108, accuracy: 85, description: "Becomes a vortex and slams its full mass into the target, reversing gravity locally." },
+-      { name: "Hurricane Annihilation", type: "ultimate", element: "Storm", power: 172, accuracy: 65, description: "Creates a sustained hurricane and channels all its energy into one annihilating strike." },
+-    ],
+-    regionIds: ["thunder-valley", "storm-peaks"],
+-  },
+-
+-  // ══════════════════════════════════════════════════════════════════════════
+-  //  SHADOW  ·  2C · 1B · 1A · 1S
+-  // ══════════════════════════════════════════════════════════════════════════
+-
+-  {
+-    id: "gloomite", name: "Gloomite", element: "Shadow", rarity: "C",
+-    baseHp: 42, baseAttack: 44, baseDefense: 32, baseSpeed: 54,
+-    description: "A sprite-like creature that feeds on light, leaving trails of absolute darkness.",
+-    lore: "Gloomites extinguish torches by passing through them. In large numbers they can black out entire towns.",
+-    personality: "Mischievous", weight: 0.4, height: 0.3, captureRate: 88,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Shadow Claw",   type: "normal",   element: "Shadow", power: 42, accuracy: 97, description: "Slashes with claws made of solidified darkness that negate light on contact." },
+-      { name: "Dark Pulse",    type: "skill1",   element: "Shadow", power: 62, accuracy: 90, description: "Emits a wave of dark energy that crushes reality between two points." },
+-      { name: "Void Burst",    type: "ultimate", element: "Shadow", power: 124, accuracy: 75, description: "Tears open a pocket void and pulls everything into it before collapsing." },
+-    ],
+-    regionIds: ["shadow-marsh", "void-realm"],
+-  },
+-
+-  {
+-    id: "veilpaw", name: "Veilpaw", element: "Shadow", rarity: "C",
+-    baseHp: 46, baseAttack: 46, baseDefense: 36, baseSpeed: 56,
+-    description: "A panther cub that phases between dimensions. It attacks before being seen.",
+-    lore: "Veilpaws choose their trainers by appearing suddenly without warning. To be chosen is considered an honor and an omen.",
+-    personality: "Mysterious", weight: 4.2, height: 0.4, captureRate: 85,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Phantom Scratch",type: "normal",  element: "Shadow", power: 44, accuracy: 96, description: "Phases through dimensions and rakes with claws from an unexpected angle." },
+-      { name: "Shadow Lunge",  type: "skill1",   element: "Shadow", power: 64, accuracy: 89, description: "Dissolves into shadow and reforms at full velocity inside the target's guard." },
+-      { name: "Dark Shroud",   type: "ultimate", element: "Shadow", power: 128, accuracy: 73, description: "Wraps the battlefield in absolute dark and strikes from every shadow simultaneously." },
+-    ],
+-    regionIds: ["shadow-marsh", "void-realm"],
+-  },
+-
+-  {
+-    id: "duskfang", name: "Duskfang", element: "Shadow", rarity: "B",
+-    baseHp: 64, baseAttack: 70, baseDefense: 52, baseSpeed: 64,
+-    description: "A shadow wolf whose body dissolves at the edges into permanent twilight.",
+-    lore: "Duskfangs hunt in packs, but their shadow-bodies phase through each other. No barrier can stop a Duskfang that has set its target.",
+-    personality: "Relentless", weight: 38.0, height: 0.95, captureRate: 55,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Fang Slash",    type: "normal",   element: "Shadow", power: 58, accuracy: 94, description: "Bites and twists with shadow-edged fangs, tearing through light and matter." },
+-      { name: "Shadow Dash",   type: "skill1",   element: "Shadow", power: 76, accuracy: 87, description: "Becomes a shadow and dashes through everything in its path, solidifying on impact." },
+-      { name: "Nightmare Bite",type: "ultimate", element: "Shadow", power: 140, accuracy: 72, description: "Phases into the nightmare dimension and bites from all directions at once." },
+-    ],
+-    regionIds: ["shadow-marsh", "void-realm"],
+-  },
+-
+-  {
+-    id: "nightshade", name: "Nightshade", element: "Shadow", rarity: "A",
+-    baseHp: 82, baseAttack: 92, baseDefense: 68, baseSpeed: 84,
+-    description: "A shadow serpent of enormous length. Its gaze induces despair.",
+-    lore: "A single look into Nightshade's eyes has driven philosophers mad. Its scales absorb magic completely.",
+-    personality: "Sinister", weight: 520.0, height: 7.2, captureRate: 30,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Venom Strike",  type: "normal",   element: "Shadow", power: 70, accuracy: 92, description: "Strikes with shadow-venom fangs that dissolve defenses on contact." },
+-      { name: "Dark Coil",     type: "skill1",   element: "Shadow", power: 88, accuracy: 83, description: "Wraps the target in coils of living shadow that drain energy with every squeeze." },
+-      { name: "Shadow Nova",   type: "ultimate", element: "Shadow", power: 152, accuracy: 70, description: "Expands shadow presence to fill the arena and contracts it in a devastating nova." },
+-    ],
+-    regionIds: ["shadow-marsh", "void-realm"],
+-  },
+-
+-  {
+-    id: "voidreign", name: "Voidreign", element: "Shadow", rarity: "S",
+-    baseHp: 120, baseAttack: 122, baseDefense: 100, baseSpeed: 102,
+-    description: "An entity of pure void that predates the world. It cannot truly be described.",
+-    lore: "Voidreign is not a creature but a concept made physical — the absence of everything that has ever existed.",
+-    personality: "Absolute", weight: -1.0, height: -1.0, captureRate: 8,
+-    evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+-    skills: [
+-      { name: "Void Touch",    type: "normal",   element: "Shadow", power: 90, accuracy: 93, description: "Reaches out with a tendril of void that erases whatever it contacts from existence." },
+-      { name: "Dark Consumption",type: "skill1", element: "Shadow", power: 108, accuracy: 85, description: "Opens a dark maw and consumes a portion of the target, including their will to fight." },
+-      { name: "Oblivion",      type: "ultimate", element: "Shadow", power: 176, accuracy: 64, description: "Calls the void itself and unmakes everything in range, leaving only silence." },
+-    ],
+-    regionIds: ["shadow-marsh", "void-realm"],
+-  },
+ ];
+diff --git a/artifacts/api-server/src/lib/regionData.ts b/artifacts/api-server/src/lib/regionData.ts
+index 9c5d31b..3461c38 100644
+--- a/artifacts/api-server/src/lib/regionData.ts
++++ b/artifacts/api-server/src/lib/regionData.ts
+@@ -1,186 +1,16 @@
+ import type { InsertRegion } from "@workspace/db";
+ 
++const FIRE_MYTHS = ["ashquill", "flarelynx"];
++
+ export const REGION_SEED_DATA: InsertRegion[] = [
+-  {
+-    id: "verdant-meadows",
+-    name: "Verdant Meadows",
+-    biome: "Meadow",
+-    description: "A lush park surrounded by ancient trees. The main gathering ground for new myth hunters.",
+-    requiredExplorerLevel: 1,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Nature C
+-      "leaflet", "sprouti", "brambix", "cloverit", "fernkit",
+-      // Nature B
+-      "bloombo", "fernix", "grasspin",
+-      // Nature A
+-      "leafenix", "wildbud",
+-      // Nature S
+-      "verdantis",
+-    ],
+-  },
+-  {
+-    id: "volcanic-rift",
+-    name: "Volcanic Rift",
+-    biome: "Volcano",
+-    description: "Scorched rock, lava vents, and eternal heat. Fire myths thrive here.",
+-    requiredExplorerLevel: 5,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Fire C
+-      "ashquill", "flarelynx",
+-      // Fire B / A / S
+-      "flamewing", "magmahorn", "pyredrake",
+-    ],
+-  },
+-  {
+-    id: "scorched-wastes",
+-    name: "Scorched Wastes",
+-    biome: "Wasteland",
+-    description: "Ancient lava fields cooled to obsidian flatlands. Rare fire myths roam here.",
+-    requiredExplorerLevel: 10,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Fire C
+-      "ashquill", "flarelynx",
+-      // Fire B / A / S
+-      "flamewing", "magmahorn", "pyredrake",
+-    ],
+-  },
+-  {
+-    id: "ocean-ruins",
+-    name: "Ocean Ruins",
+-    biome: "Coastal",
+-    description: "A sunken ancient city at the ocean's edge. Tides wash over crumbling monuments.",
+-    requiredExplorerLevel: 5,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Water C
+-      "puddleo", "droppi", "fintee", "splashy", "ripplowl", "tinwave",
+-      // Water B
+-      "shellion", "wavenix", "bubblio",
+-      // Water A
+-      "coralux", "tidalor",
+-      // Water S
+-      "aquarion",
+-    ],
+-  },
+-  {
+-    id: "deep-current",
+-    name: "Deep Current",
+-    biome: "Ocean Trench",
+-    description: "The deep ocean floor where sunlight never reaches. Ancient water myths dwell here.",
+-    requiredExplorerLevel: 15,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Water C
+-      "puddleo", "fintee", "octazur", "tinwave", "driplet",
+-      // Water B
+-      "wavenix", "nereel", "glaciero", "kelpheon",
+-      // Water A
+-      "marinel", "hydralisk",
+-      // Water S
+-      "leviaqua",
+-    ],
+-  },
+-  {
+-    id: "ancient-forest",
+-    name: "Ancient Forest",
+-    biome: "Forest",
+-    description: "A forest where every tree is older than recorded civilization. Something watches.",
+-    requiredExplorerLevel: 10,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Nature C
+-      "leaflet", "buddle", "mossy", "twiglet",
+-      // Nature B
+-      "vinegor", "thornbel", "seedleaf",
+-      // Nature A
+-      "mossfern", "rootora", "wildbud",
+-      // Nature S
+-      "florazar",
+-    ],
+-  },
+-  {
+-    id: "thunder-valley",
+-    name: "Thunder Valley",
+-    biome: "Storm Plains",
+-    description: "Lightning strikes the earth thousands of times per day. Electric myths evolved here.",
+-    requiredExplorerLevel: 8,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Electric C
+-      "zaplet", "zipbee", "boltin", "sparkit", "charglet", "voltspark",
+-      // Electric B
+-      "shockip", "elekio", "statichu",
+-      // Electric A
+-      "thundkit",
+-      // Electric S
+-      "voltiger",
+-    ],
+-  },
+-  {
+-    id: "storm-peaks",
+-    name: "Storm Peaks",
+-    biome: "Mountain Storm",
+-    description: "Mountain peaks permanently wrapped in electrical storms. The most powerful electric myths dwell at the summit.",
+-    requiredExplorerLevel: 18,
+-    width: 45,
+-    height: 45,
+-    monsterSpeciesIds: [
+-      // Electric C
+-      "zaplet", "electrix", "wattspy",
+-      // Electric B
+-      "voltyk", "amphare", "joltoll", "statichu",
+-      // Electric A
+-      "sparko", "lumirae", "chargeon",
+-      // Electric S
+-      "zapdrix", "voltiger",
+-    ],
+-  },
+-  {
+-    id: "shadow-marsh",
+-    name: "Shadow Marsh",
+-    biome: "Dark Marsh",
+-    description: "Sunlight has never reached the marsh floor. Dark myths hunt in the permanent twilight.",
+-    requiredExplorerLevel: 8,
+-    width: 50,
+-    height: 50,
+-    monsterSpeciesIds: [
+-      // Dark C
+-      "darkit", "inko", "shadeek", "nyxie", "scuppi", "shadowpup",
+-      // Dark B
+-      "grimclaw", "spectrix", "eclipseer", "murkrowl",
+-      // Dark A
+-      "shadowlurk", "duskhowl", "voidraven",
+-      // Dark S
+-      "umbraeon",
+-    ],
+-  },
+-  {
+-    id: "void-realm",
+-    name: "Void Realm",
+-    biome: "Dimensional Rift",
+-    description: "A breach between dimensions where the most powerful dark myths phase in and out of existence.",
+-    requiredExplorerLevel: 20,
+-    width: 40,
+-    height: 40,
+-    monsterSpeciesIds: [
+-      // Dark C
+-      "darkit", "gloombat", "wispurr",
+-      // Dark B
+-      "nightfang", "dreadimp", "eclipseer",
+-      // Dark A
+-      "maligno", "voidraven",
+-      // Dark S
+-      "noctiris",
+-    ],
+-  },
++  { id: "verdant-meadows", name: "Verdant Meadows", biome: "Meadow", description: "A lush park surrounded by ancient trees.", requiredExplorerLevel: 1, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "volcanic-rift", name: "Volcanic Rift", biome: "Volcano", description: "Scorched rock, lava vents, and eternal heat. Fire myths thrive here.", requiredExplorerLevel: 5, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
++  { id: "scorched-wastes", name: "Scorched Wastes", biome: "Wasteland", description: "Ancient lava fields cooled to obsidian flatlands.", requiredExplorerLevel: 10, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
++  { id: "ocean-ruins", name: "Ocean Ruins", biome: "Coastal", description: "A sunken ancient city at the ocean's edge.", requiredExplorerLevel: 5, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "deep-current", name: "Deep Current", biome: "Ocean Trench", description: "The deep ocean floor where sunlight never reaches.", requiredExplorerLevel: 15, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "ancient-forest", name: "Ancient Forest", biome: "Forest", description: "A forest where every tree is older than recorded civilization.", requiredExplorerLevel: 10, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "thunder-valley", name: "Thunder Valley", biome: "Storm Plains", description: "Lightning strikes the earth thousands of times per day.", requiredExplorerLevel: 8, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "storm-peaks", name: "Storm Peaks", biome: "Mountain Storm", description: "Mountain peaks permanently wrapped in electrical storms.", requiredExplorerLevel: 18, width: 45, height: 45, monsterSpeciesIds: [] },
++  { id: "shadow-marsh", name: "Shadow Marsh", biome: "Dark Marsh", description: "Sunlight has never reached the marsh floor.", requiredExplorerLevel: 8, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "void-realm", name: "Void Realm", biome: "Dimensional Rift", description: "A breach between dimensions.", requiredExplorerLevel: 20, width: 40, height: 40, monsterSpeciesIds: [] },
+ ];
+diff --git a/artifacts/api-server/src/routes/collection.ts b/artifacts/api-server/src/routes/collection.ts
+index 3bbfc47..fbbc614 100644
+--- a/artifacts/api-server/src/routes/collection.ts
++++ b/artifacts/api-server/src/routes/collection.ts
+@@ -26,8 +26,10 @@ import {
+   UpdateCapturedMonsterResponse,
+ } from "@workspace/api-zod";
+ import { calculateWildStats } from "../lib/gameEngine.js";
++import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+ 
+ const router: IRouter = Router();
++const ACTIVE_SPECIES_IDS = new Set(MONSTER_SEED_DATA.map((species) => species.id));
+ 
+ export function formatCapturedMonster(
+   c: CapturedMonster,
+@@ -79,7 +81,9 @@ router.get(
+       )
+       .where(eq(capturedMonstersTable.playerId, params.data.playerId));
+ 
+-    let results = rows.filter((r) => r.monster_species);
++    let results = rows.filter(
++      (r) => r.monster_species && ACTIVE_SPECIES_IDS.has(r.captured_monsters.speciesId),
++    );
+ 
+     if (query.data.element) {
+       results = results.filter(
+@@ -121,6 +125,10 @@ router.post(
+       res.status(400).json({ error: body.error.message });
+       return;
+     }
++    if (!ACTIVE_SPECIES_IDS.has(body.data.speciesId)) {
++      res.status(404).json({ error: "Monster species not found" });
++      return;
++    }
+ 
+     const [species] = await db
+       .select()
+@@ -195,7 +203,7 @@ router.get(
+           eq(capturedMonstersTable.playerId, params.data.playerId),
+         ),
+       );
+-    if (!row || !row.monster_species) {
++    if (!row || !row.monster_species || !ACTIVE_SPECIES_IDS.has(row.captured_monsters.speciesId)) {
+       res.status(404).json({ error: "Monster not found" });
+       return;
+     }
+diff --git a/artifacts/api-server/src/routes/monsters.ts b/artifacts/api-server/src/routes/monsters.ts
+index 4589abc..694decb 100644
+--- a/artifacts/api-server/src/routes/monsters.ts
++++ b/artifacts/api-server/src/routes/monsters.ts
+@@ -8,8 +8,11 @@ import {
+   ListMonsterSpeciesQueryParams,
+   ListMonsterSpeciesResponse,
+ } from "@workspace/api-zod";
++import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+ 
+ const router: IRouter = Router();
++const ACTIVE_SPECIES_IDS = MONSTER_SEED_DATA.map((species) => species.id);
++const ACTIVE_SPECIES_SET = new Set(ACTIVE_SPECIES_IDS);
+ 
+ function formatSpecies(s: typeof monsterSpeciesTable.$inferSelect) {
+   return {
+@@ -45,7 +48,7 @@ router.get("/monsters", async (req, res): Promise<void> => {
+     return;
+   }
+ 
+-  const conditions: SQL[] = [];
++  const conditions: SQL[] = [inArray(monsterSpeciesTable.id, ACTIVE_SPECIES_IDS)];
+   if (queryParams.data.element) {
+     conditions.push(eq(monsterSpeciesTable.element, queryParams.data.element));
+   }
+@@ -71,6 +74,10 @@ router.get("/monsters/:speciesId", async (req, res): Promise<void> => {
+     res.status(400).json({ error: params.error.message });
+     return;
+   }
++  if (!ACTIVE_SPECIES_SET.has(params.data.speciesId)) {
++    res.status(404).json({ error: "Monster species not found" });
++    return;
++  }
+ 
+   const [species] = await db
+     .select()
+diff --git a/artifacts/api-server/src/routes/players.ts b/artifacts/api-server/src/routes/players.ts
+index b39be57..0823af0 100644
+--- a/artifacts/api-server/src/routes/players.ts
++++ b/artifacts/api-server/src/routes/players.ts
+@@ -25,8 +25,10 @@ import {
+   GetPlayerRadarResponse,
+ } from "@workspace/api-zod";
+ import { formatCapturedMonster } from "./collection.js";
++import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+ 
+ const router: IRouter = Router();
++const ACTIVE_SPECIES_IDS = new Set(MONSTER_SEED_DATA.map((species) => species.id));
+ 
+ // GET /players/:playerId
+ router.get("/players/:playerId", async (req, res): Promise<void> => {
+@@ -135,7 +137,7 @@ router.get(
+       );
+ 
+     const formatted = teamMembers
+-      .filter((r) => r.monster_species)
++      .filter((r) => r.monster_species && ACTIVE_SPECIES_IDS.has(r.captured_monsters.speciesId))
+       .map((r) => formatCapturedMonster(r.captured_monsters, r.monster_species!))
+       .sort((a, b) => (a.teamSlot ?? 99) - (b.teamSlot ?? 99));
+ 
+@@ -197,7 +199,7 @@ router.put(
+       );
+ 
+     const formatted = teamMembers
+-      .filter((r) => r.monster_species)
++      .filter((r) => r.monster_species && ACTIVE_SPECIES_IDS.has(r.captured_monsters.speciesId))
+       .map((r) => formatCapturedMonster(r.captured_monsters, r.monster_species!))
+       .sort((a, b) => (a.teamSlot ?? 99) - (b.teamSlot ?? 99));
+ 
+diff --git a/artifacts/api-server/src/routes/seed.ts b/artifacts/api-server/src/routes/seed.ts
+index 896b159..cae064a 100644
+--- a/artifacts/api-server/src/routes/seed.ts
++++ b/artifacts/api-server/src/routes/seed.ts
+@@ -1,11 +1,56 @@
+ import { Router, type IRouter } from "express";
+ import { db } from "@workspace/db";
+-import { monsterSpeciesTable, regionsTable, capturedMonstersTable, battlesTable } from "@workspace/db";
++import {
++  monsterSpeciesTable,
++  regionsTable,
++  capturedMonstersTable,
++  battlesTable,
++  playersTable,
++  tournamentsTable,
++} from "@workspace/db";
++import { ilike, ne, notInArray } from "drizzle-orm";
+ import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+ import { REGION_SEED_DATA } from "../lib/regionData.js";
+ 
+ const router: IRouter = Router();
+ 
++// POST /admin/cleanup-to-gm — Dev-only, destructive one-time cleanup.
++// Keeps the configured DREAMMASTER player account and the active Myth catalogue.
++router.post("/admin/cleanup-to-gm", async (_req, res): Promise<void> => {
++  if (process.env.NODE_ENV === "production") {
++    res.status(403).json({ error: "Admin cleanup is not available in production" });
++    return;
++  }
++
++  const gmUsername = process.env.GM_USERNAME ?? "DREAMMASTER";
++  const [gmPlayer] = await db
++    .select({ id: playersTable.id, username: playersTable.username })
++    .from(playersTable)
++    .where(ilike(playersTable.username, gmUsername));
++
++  if (!gmPlayer) {
++    res.status(409).json({ error: `GM player ${gmUsername} was not found; nothing was deleted` });
++    return;
++  }
++
++  const activeSpeciesIds = MONSTER_SEED_DATA.map((species) => species.id);
++
++  await db.transaction(async (tx) => {
++    // Tournament matches reference players without cascade, so remove tournaments first.
++    await tx.delete(tournamentsTable);
++    await tx.delete(battlesTable);
++    await tx.delete(capturedMonstersTable);
++    await tx.delete(playersTable).where(ne(playersTable.id, gmPlayer.id));
++    await tx.delete(monsterSpeciesTable).where(notInArray(monsterSpeciesTable.id, activeSpeciesIds));
++  });
++
++  res.json({
++    message: "Cleanup complete. Only the GM player and active Myths remain.",
++    gmUsername: gmPlayer.username,
++    activeMyths: activeSpeciesIds,
++  });
++});
++
+ // POST /seed — Dev-only endpoint to populate game data
+ router.post("/seed", async (_req, res): Promise<void> => {
+   if (process.env.NODE_ENV === "production") {
+diff --git a/artifacts/monster-realms/src/lib/myth-catalogue.ts b/artifacts/monster-realms/src/lib/myth-catalogue.ts
+index 7980534..6968af4 100644
+--- a/artifacts/monster-realms/src/lib/myth-catalogue.ts
++++ b/artifacts/monster-realms/src/lib/myth-catalogue.ts
+@@ -1,4 +1,4 @@
+-// Static catalogue of all 100 myths — used by Myths Tree without an API call
++// Client-side catalogue mirrors the active server catalogue.
+ export interface MythEntry {
+   id: string;
+   name: string;
+@@ -12,118 +12,18 @@ export interface MythEntry {
+ }
+ 
+ export const ALL_MYTHS: MythEntry[] = [
+-  // ── Fire ────────────────────────────────────────────────────────────────────
+-  { id:'cinder-pup',      name:'Cinder Pup',       element:'Fire', rarity:'C', description:'A small pup whose tail never stops smoldering.',          baseHp:42, baseAttack:38, baseDefense:34, baseSpeed:52 },
+-  { id:'flame-wisp',      name:'Flame Wisp',        element:'Fire', rarity:'C', description:'A drifting orb of pure fire that pulses with living light.',baseHp:38, baseAttack:48, baseDefense:28, baseSpeed:60 },
+-  { id:'ash-lizard',      name:'Ash Lizard',        element:'Fire', rarity:'C', description:'A lizard coated in grey ash that hides its inner heat.',   baseHp:52, baseAttack:42, baseDefense:48, baseSpeed:40 },
+-  { id:'ember-crab',      name:'Ember Crab',        element:'Fire', rarity:'C', description:'A crab whose shell glows red-hot and claws release steam.', baseHp:56, baseAttack:36, baseDefense:52, baseSpeed:36 },
+-  { id:'scorch-moth',     name:'Scorch Moth',       element:'Fire', rarity:'C', description:'A moth with wing patterns that resemble tongues of flame.',  baseHp:40, baseAttack:50, baseDefense:30, baseSpeed:58 },
+-  { id:'pyro-toad',       name:'Pyro Toad',         element:'Fire', rarity:'C', description:'A wide toad that expels combustible gas from its glands.',  baseHp:50, baseAttack:44, baseDefense:44, baseSpeed:38 },
+-  { id:'torch-kit',       name:'Torch Kit',         element:'Fire', rarity:'C', description:'A small fox kit whose bushy tail burns perpetually.',        baseHp:44, baseAttack:46, baseDefense:32, baseSpeed:54 },
+-  { id:'blaze-sprite',    name:'Blaze Sprite',      element:'Fire', rarity:'C', description:'A mischievous sprite made of pure animated flame.',          baseHp:36, baseAttack:52, baseDefense:26, baseSpeed:62 },
+-  { id:'magmar-wolf',     name:'Magmar Wolf',       element:'Fire', rarity:'B', description:'A wolf whose coat is woven from cooled lava threads.',       baseHp:68, baseAttack:62, baseDefense:54, baseSpeed:68 },
+-  { id:'inferno-bat',     name:'Inferno Bat',       element:'Fire', rarity:'B', description:'A bat that echolocates with supersonic fire pulses.',        baseHp:62, baseAttack:68, baseDefense:46, baseSpeed:76 },
+-  { id:'lava-serpent',    name:'Lava Serpent',      element:'Fire', rarity:'B', description:'A serpent that swims through magma as easily as water.',     baseHp:72, baseAttack:66, baseDefense:58, baseSpeed:60 },
+-  { id:'char-wyvern',     name:'Char Wyvern',       element:'Fire', rarity:'B', description:'A small wyvern with wings that trail lines of char.',        baseHp:74, baseAttack:70, baseDefense:52, baseSpeed:66 },
+-  { id:'forge-golem',     name:'Forge Golem',       element:'Fire', rarity:'B', description:'A golem assembled from slag metal, powered by lava core.',   baseHp:88, baseAttack:58, baseDefense:78, baseSpeed:38 },
+-  { id:'scorched-mantis', name:'Scorched Mantis',   element:'Fire', rarity:'B', description:'A praying mantis whose arms are edged with razor flame.',    baseHp:64, baseAttack:76, baseDefense:48, baseSpeed:72 },
+-  { id:'volcanus',        name:'Volcanus',           element:'Fire', rarity:'A', description:'A great maned lion forged in the heart of a dormant volcano.',baseHp:102,baseAttack:94, baseDefense:80, baseSpeed:86 },
+-  { id:'pyro-titan',      name:'Pyro Titan',        element:'Fire', rarity:'A', description:'A towering humanoid construct of living obsidian and fire.',  baseHp:110,baseAttack:98, baseDefense:90, baseSpeed:70 },
+-  { id:'magma-basilisk',  name:'Magma Basilisk',    element:'Fire', rarity:'A', description:'A basilisk whose gaze turns stone to molten rock.',           baseHp:98, baseAttack:100,baseDefense:86, baseSpeed:78 },
+-  { id:'cinder-phoenix',  name:'Cinder Phoenix',    element:'Fire', rarity:'A', description:'A phoenix reborn in volcanic cinders rather than ashes.',     baseHp:94, baseAttack:104,baseDefense:72, baseSpeed:98 },
+-  { id:'ignis-seraph',    name:'Ignis Seraph',      element:'Fire', rarity:'S', description:'A divine being whose wings burn with the light of creation.', baseHp:130,baseAttack:122,baseDefense:100,baseSpeed:118 },
+-  { id:'helios-wyrm',     name:'Helios Wyrm',       element:'Fire', rarity:'S', description:'An ancient wyrm born from the sun itself. Its scales radiate solar heat.',baseHp:140,baseAttack:130,baseDefense:110,baseSpeed:108 },
+-
+-  // ── Water ───────────────────────────────────────────────────────────────────
+-  { id:'tide-pup',        name:'Tide Pup',          element:'Water', rarity:'C', description:'A cheerful pup that surfs on waves using its flat, finned tail.',   baseHp:44, baseAttack:36, baseDefense:38, baseSpeed:50 },
+-  { id:'coral-sprite',    name:'Coral Sprite',      element:'Water', rarity:'C', description:'A tiny sprite that lives inside coral formations.',                  baseHp:38, baseAttack:42, baseDefense:32, baseSpeed:56 },
+-  { id:'mist-jellyfish',  name:'Mist Jellyfish',    element:'Water', rarity:'C', description:'A translucent jellyfish that drifts on sea breezes.',                baseHp:40, baseAttack:44, baseDefense:30, baseSpeed:54 },
+-  { id:'brook-turtle',    name:'Brook Turtle',      element:'Water', rarity:'C', description:'A freshwater turtle with a mossy shell and steady demeanor.',        baseHp:58, baseAttack:34, baseDefense:54, baseSpeed:34 },
+-  { id:'stream-otter',    name:'Stream Otter',      element:'Water', rarity:'C', description:'A playful otter that can hold its breath for hours.',                baseHp:46, baseAttack:40, baseDefense:36, baseSpeed:56 },
+-  { id:'wave-imp',        name:'Wave Imp',          element:'Water', rarity:'C', description:'A mischievous imp that knocks swimmers off balance.',                 baseHp:42, baseAttack:46, baseDefense:34, baseSpeed:52 },
+-  { id:'puddle-toad',     name:'Puddle Toad',       element:'Water', rarity:'C', description:'A plump toad that fills itself with water for defense.',              baseHp:54, baseAttack:32, baseDefense:52, baseSpeed:30 },
+-  { id:'reef-hatchling',  name:'Reef Hatchling',    element:'Water', rarity:'C', description:'A colorful fish hatchling that guards reef territories.',             baseHp:40, baseAttack:44, baseDefense:36, baseSpeed:52 },
+-  { id:'surge-hound',     name:'Surge Hound',       element:'Water', rarity:'B', description:'A large hound that surges through ocean currents effortlessly.',      baseHp:72, baseAttack:64, baseDefense:56, baseSpeed:70 },
+-  { id:'deep-ray',        name:'Deep Ray',          element:'Water', rarity:'B', description:'A manta ray that patrols deep ocean trenches.',                       baseHp:68, baseAttack:60, baseDefense:66, baseSpeed:60 },
+-  { id:'abyssal-eel',     name:'Abyssal Eel',       element:'Water', rarity:'B', description:'An eel from the crushing deep with bio-luminescent lures.',           baseHp:66, baseAttack:72, baseDefense:52, baseSpeed:68 },
+-  { id:'sea-golem',       name:'Sea Golem',         element:'Water', rarity:'B', description:'A golem shaped from compressed coral and ocean stone.',               baseHp:90, baseAttack:56, baseDefense:84, baseSpeed:34 },
+-  { id:'aqua-guardian',   name:'Aqua Guardian',     element:'Water', rarity:'B', description:'An ancient guardian spirit bound to protect ocean shrines.',          baseHp:76, baseAttack:64, baseDefense:72, baseSpeed:52 },
+-  { id:'storm-crab',      name:'Storm Crab',        element:'Water', rarity:'B', description:'A massive crab that calls down rain clouds with its claws.',          baseHp:84, baseAttack:68, baseDefense:78, baseSpeed:40 },
+-  { id:'tempest-leviathan',name:'Tempest Leviathan',element:'Water', rarity:'A', description:'A sea serpent that creates storms with its passage.',                 baseHp:108,baseAttack:96, baseDefense:86, baseSpeed:82 },
+-  { id:'ocean-titan',     name:'Ocean Titan',       element:'Water', rarity:'A', description:'A titan whose body is an entire reef ecosystem.',                     baseHp:118,baseAttack:90, baseDefense:104,baseSpeed:68 },
+-  { id:'tide-colossus',   name:'Tide Colossus',     element:'Water', rarity:'A', description:'A colossus of ocean stone that can part entire seas.',                baseHp:122,baseAttack:88, baseDefense:110,baseSpeed:60 },
+-  { id:'abyss-wyrm',      name:'Abyss Wyrm',        element:'Water', rarity:'A', description:'A wyrm from the lightless trenches, older than the ocean floor.',     baseHp:104,baseAttack:102,baseDefense:92, baseSpeed:78 },
+-  { id:'poseidon-serpent',name:'Poseidon Serpent',  element:'Water', rarity:'S', description:'A mythical sea serpent said to be the ocean personified.',             baseHp:136,baseAttack:128,baseDefense:108,baseSpeed:102 },
+-  { id:'thalassa-deity',  name:'Thalassa Deity',    element:'Water', rarity:'S', description:'The ocean deity itself, keeper of all aquatic myths.',                 baseHp:144,baseAttack:124,baseDefense:118,baseSpeed:96  },
+-
+-  // ── Nature ──────────────────────────────────────────────────────────────────
+-  { id:'seed-sprite',     name:'Seed Sprite',       element:'Nature', rarity:'C', description:'A tiny sprite born from the first seed of a forest.',      baseHp:40, baseAttack:36, baseDefense:36, baseSpeed:50 },
+-  { id:'leaf-ferret',     name:'Leaf Ferret',       element:'Nature', rarity:'C', description:'A ferret that glides between trees on its leaf-like ears.',  baseHp:42, baseAttack:42, baseDefense:34, baseSpeed:54 },
+-  { id:'vine-pup',        name:'Vine Pup',          element:'Nature', rarity:'C', description:'A pup whose body is woven from living vines.',              baseHp:44, baseAttack:38, baseDefense:40, baseSpeed:46 },
+-  { id:'moss-crab',       name:'Moss Crab',         element:'Nature', rarity:'C', description:'A crab covered in deep green moss that photosynthesizes.',  baseHp:56, baseAttack:32, baseDefense:56, baseSpeed:30 },
+-  { id:'petal-bee',       name:'Petal Bee',         element:'Nature', rarity:'C', description:'A large bee whose wings scatter healing pollen.',           baseHp:38, baseAttack:46, baseDefense:30, baseSpeed:58 },
+-  { id:'root-mole',       name:'Root Mole',         element:'Nature', rarity:'C', description:'A mole that tunnels through root systems to surprise foes.', baseHp:50, baseAttack:40, baseDefense:46, baseSpeed:38 },
+-  { id:'fern-hatchling',  name:'Fern Hatchling',    element:'Nature', rarity:'C', description:'A hatchling wrapped in fern fronds that camouflage it.',    baseHp:42, baseAttack:38, baseDefense:40, baseSpeed:48 },
+-  { id:'sprout-sprite',   name:'Sprout Sprite',     element:'Nature', rarity:'C', description:'An energetic sprite with a sprouting plant growing on its head.',baseHp:36,baseAttack:44, baseDefense:30, baseSpeed:56 },
+-  { id:'bloom-guardian',  name:'Bloom Guardian',    element:'Nature', rarity:'B', description:'A guardian spirit that blossoms with the seasons.',          baseHp:70, baseAttack:58, baseDefense:66, baseSpeed:52 },
+-  { id:'thorn-wolf',      name:'Thorn Wolf',        element:'Nature', rarity:'B', description:'A wolf whose fur has grown into interlocking thorn-barbs.',  baseHp:74, baseAttack:68, baseDefense:60, baseSpeed:62 },
+-  { id:'grove-hawk',      name:'Grove Hawk',        element:'Nature', rarity:'B', description:'A hawk that nests only in ancient trees; its talons channel nature.',baseHp:62,baseAttack:72, baseDefense:52, baseSpeed:76 },
+-  { id:'briar-golem',     name:'Briar Golem',       element:'Nature', rarity:'B', description:'A golem built from interlocked briar thorns and roots.',     baseHp:88, baseAttack:58, baseDefense:80, baseSpeed:36 },
+-  { id:'spore-bat',       name:'Spore Bat',         element:'Nature', rarity:'B', description:'A bat that drops hallucinogenic spores on prey below.',      baseHp:64, baseAttack:66, baseDefense:54, baseSpeed:70 },
+-  { id:'canopy-serpent',  name:'Canopy Serpent',    element:'Nature', rarity:'B', description:'A serpent that lives in treetops, dropping on unsuspecting prey.',baseHp:68,baseAttack:70, baseDefense:56, baseSpeed:66 },
+-  { id:'ancient-treant',  name:'Ancient Treant',    element:'Nature', rarity:'A', description:'A treant that has lived for millennia; its roots reach deep.', baseHp:120,baseAttack:88, baseDefense:108,baseSpeed:44 },
+-  { id:'verdant-titan',   name:'Verdant Titan',     element:'Nature', rarity:'A', description:'A titan formed from the collective will of a dense forest.',  baseHp:112,baseAttack:94, baseDefense:96, baseSpeed:58 },
+-  { id:'thorn-colossus',  name:'Thorn Colossus',    element:'Nature', rarity:'A', description:'A colossus armored in overlapping thorn-plates.',            baseHp:106,baseAttack:96, baseDefense:100,baseSpeed:50 },
+-  { id:'gaia-wyrm',       name:'Gaia Wyrm',         element:'Nature', rarity:'A', description:'A wyrm that carries an entire ecosystem on its back.',       baseHp:100,baseAttack:98, baseDefense:88, baseSpeed:72 },
+-  { id:'sylvan-deity',    name:'Sylvan Deity',      element:'Nature', rarity:'S', description:'The spirit of the primeval forest given physical form.',      baseHp:132,baseAttack:120,baseDefense:106,baseSpeed:108 },
+-  { id:'earthmother',     name:'Earthmother',       element:'Nature', rarity:'S', description:'The personification of the living earth herself.',            baseHp:142,baseAttack:118,baseDefense:120,baseSpeed:90  },
+-
+-  // ── Electric ────────────────────────────────────────────────────────────────
+-  { id:'spark-kit',       name:'Spark Kit',         element:'Electric', rarity:'C', description:'A kit that discharges static electricity when excited.',     baseHp:40, baseAttack:46, baseDefense:30, baseSpeed:56 },
+-  { id:'zap-moth',        name:'Zap Moth',          element:'Electric', rarity:'C', description:'A moth that navigates by electric field instead of light.',   baseHp:38, baseAttack:50, baseDefense:28, baseSpeed:58 },
+-  { id:'volt-hatchling',  name:'Volt Hatchling',    element:'Electric', rarity:'C', description:'A hatchling still charged from the electric egg it hatched from.',baseHp:42,baseAttack:44, baseDefense:34, baseSpeed:52 },
+-  { id:'arc-sprite',      name:'Arc Sprite',        element:'Electric', rarity:'C', description:'A sprite formed from a trapped lightning bolt.',              baseHp:36, baseAttack:52, baseDefense:26, baseSpeed:62 },
+-  { id:'static-crab',     name:'Static Crab',       element:'Electric', rarity:'C', description:'A crab whose shell accumulates massive static charges.',      baseHp:54, baseAttack:38, baseDefense:52, baseSpeed:32 },
+-  { id:'buzz-bee',        name:'Buzz Bee',          element:'Electric', rarity:'C', description:'A bee whose wings vibrate fast enough to generate arcs.',     baseHp:38, baseAttack:48, baseDefense:30, baseSpeed:60 },
+-  { id:'jolt-lizard',     name:'Jolt Lizard',       element:'Electric', rarity:'C', description:'A lizard that stores electric charge in its frill.',          baseHp:46, baseAttack:44, baseDefense:38, baseSpeed:50 },
+-  { id:'charge-pup',      name:'Charge Pup',        element:'Electric', rarity:'C', description:'A pup that headbutts objects to release built-up charge.',    baseHp:44, baseAttack:46, baseDefense:36, baseSpeed:50 },
+-  { id:'thunder-wolf',    name:'Thunder Wolf',      element:'Electric', rarity:'B', description:'A wolf that can outrun lightning by running alongside it.',    baseHp:70, baseAttack:68, baseDefense:54, baseSpeed:78 },
+-  { id:'storm-bat',       name:'Storm Bat',         element:'Electric', rarity:'B', description:'A bat that rides thunderstorms and dives like a living bolt.',  baseHp:64, baseAttack:72, baseDefense:50, baseSpeed:76 },
+-  { id:'plasma-ray',      name:'Plasma Ray',        element:'Electric', rarity:'B', description:'A manta-like creature that glides on plasma discharge.',       baseHp:66, baseAttack:70, baseDefense:54, baseSpeed:66 },
+-  { id:'storm-serpent',   name:'Storm Serpent',     element:'Electric', rarity:'B', description:'A serpent that coils around lightning rods to feed.',          baseHp:68, baseAttack:68, baseDefense:56, baseSpeed:70 },
+-  { id:'arc-golem',       name:'Arc Golem',         element:'Electric', rarity:'B', description:'A golem of cloud-stuff held together by constant arcing.',     baseHp:84, baseAttack:60, baseDefense:76, baseSpeed:44 },
+-  { id:'lightning-hawk',  name:'Lightning Hawk',    element:'Electric', rarity:'B', description:'A hawk that dives at terminal velocity, ionizing the air.',     baseHp:62, baseAttack:76, baseDefense:50, baseSpeed:82 },
+-  { id:'storm-colossus',  name:'Storm Colossus',    element:'Electric', rarity:'A', description:'A colossus that strides through storm clouds.',                 baseHp:108,baseAttack:96, baseDefense:86, baseSpeed:74 },
+-  { id:'galvanos',        name:'Galvanos',           element:'Electric', rarity:'A', description:'A proud lion-myth whose roar is a clap of thunder.',           baseHp:100,baseAttack:100,baseDefense:82, baseSpeed:90 },
+-  { id:'tempest-titan',   name:'Tempest Titan',     element:'Electric', rarity:'A', description:'A titan that generates permanent storms wherever it walks.',    baseHp:112,baseAttack:98, baseDefense:88, baseSpeed:76 },
+-  { id:'arc-leviathan',   name:'Arc Leviathan',     element:'Electric', rarity:'A', description:'A leviathan whose body is a continuous chain of lightning.',    baseHp:104,baseAttack:102,baseDefense:80, baseSpeed:86 },
+-  { id:'zeus-wyrm',       name:'Zeus Wyrm',         element:'Electric', rarity:'S', description:'A wyrm said to be the embodiment of the sky\'s wrath.',        baseHp:132,baseAttack:128,baseDefense:98, baseSpeed:114 },
+-  { id:'thunder-deity',   name:'Thunder Deity',     element:'Electric', rarity:'S', description:'The living god of storms, worshipped by coastal civilizations.',  baseHp:138,baseAttack:132,baseDefense:104,baseSpeed:110 },
+-
+-  // ── Dark ────────────────────────────────────────────────────────────────────
+-  { id:'shadow-imp',      name:'Shadow Imp',        element:'Dark', rarity:'C', description:'A mischievous imp that lives in cast shadows.',                  baseHp:38, baseAttack:48, baseDefense:28, baseSpeed:60 },
+-  { id:'gloom-wisp',      name:'Gloom Wisp',        element:'Dark', rarity:'C', description:'A wisp that absorbs light from its surroundings.',               baseHp:36, baseAttack:50, baseDefense:26, baseSpeed:62 },
+-  { id:'dusk-ferret',     name:'Dusk Ferret',       element:'Dark', rarity:'C', description:'A ferret active at dusk, using low light to its advantage.',     baseHp:42, baseAttack:44, baseDefense:34, baseSpeed:56 },
+-  { id:'night-crab',      name:'Night Crab',        element:'Dark', rarity:'C', description:'A crab with a shell dark as a moonless sky.',                    baseHp:54, baseAttack:36, baseDefense:54, baseSpeed:30 },
+-  { id:'umbra-moth',      name:'Umbra Moth',        element:'Dark', rarity:'C', description:'A moth whose wings absorb all light, leaving true darkness.',    baseHp:38, baseAttack:50, baseDefense:28, baseSpeed:60 },
+-  { id:'murk-toad',       name:'Murk Toad',         element:'Dark', rarity:'C', description:'A toad that secretes void-tinted toxins.',                       baseHp:50, baseAttack:42, baseDefense:44, baseSpeed:36 },
+-  { id:'dark-sprite',     name:'Dark Sprite',       element:'Dark', rarity:'C', description:'A sprite born in absolute darkness, never seen in daylight.',    baseHp:36, baseAttack:52, baseDefense:26, baseSpeed:62 },
+-  { id:'shade-hatchling', name:'Shade Hatchling',   element:'Dark', rarity:'C', description:'A hatchling that hatched in darkness and learned to wield it.',  baseHp:40, baseAttack:46, baseDefense:32, baseSpeed:54 },
+-  { id:'void-stalker',    name:'Void Stalker',      element:'Dark', rarity:'B', description:'A panther that moves between voids with ease.',                  baseHp:68, baseAttack:72, baseDefense:54, baseSpeed:80 },
+-  { id:'nightmare-specter',name:'Nightmare Specter',element:'Dark', rarity:'B', description:'A specter that feeds on fear and amplifies nightmares.',          baseHp:60, baseAttack:76, baseDefense:46, baseSpeed:78 },
+-  { id:'shadow-bat',      name:'Shadow Bat',        element:'Dark', rarity:'B', description:'A bat that phases through walls using shadow tunneling.',         baseHp:62, baseAttack:70, baseDefense:50, baseSpeed:76 },
+-  { id:'dusk-serpent',    name:'Dusk Serpent',      element:'Dark', rarity:'B', description:'A serpent whose scales shift between shadow and substance.',      baseHp:66, baseAttack:68, baseDefense:56, baseSpeed:70 },
+-  { id:'gloom-golem',     name:'Gloom Golem',       element:'Dark', rarity:'B', description:'A golem assembled from solidified darkness.',                    baseHp:86, baseAttack:58, baseDefense:80, baseSpeed:36 },
+-  { id:'eclipse-hawk',    name:'Eclipse Hawk',      element:'Dark', rarity:'B', description:'A hawk that can blot out the sun with its wingspan.',             baseHp:64, baseAttack:74, baseDefense:52, baseSpeed:80 },
+-  { id:'abyssal-wraith',  name:'Abyssal Wraith',    element:'Dark', rarity:'A', description:'A wraith born from the collective despair of lost souls.',       baseHp:94, baseAttack:102,baseDefense:70, baseSpeed:98 },
+-  { id:'void-titan',      name:'Void Titan',        element:'Dark', rarity:'A', description:'A titan whose body is a pocket of unstable void.',               baseHp:106,baseAttack:96, baseDefense:90, baseSpeed:78 },
+-  { id:'dark-colossus',   name:'Dark Colossus',     element:'Dark', rarity:'A', description:'A colossus armored in plates of hardened shadow.',               baseHp:114,baseAttack:92, baseDefense:102,baseSpeed:62 },
+-  { id:'shadow-leviathan',name:'Shadow Leviathan',  element:'Dark', rarity:'A', description:'A leviathan that pulls ships into the shadow realm.',             baseHp:108,baseAttack:100,baseDefense:86, baseSpeed:80 },
+-  { id:'erebus-entity',   name:'Erebus Entity',     element:'Dark', rarity:'S', description:'An entity from the primordial dark before the first light.',     baseHp:134,baseAttack:126,baseDefense:108,baseSpeed:106 },
+-  { id:'void-deity',      name:'Void Deity',        element:'Dark', rarity:'S', description:'The god of the void: silent, inevitable, all-consuming.',        baseHp:140,baseAttack:130,baseDefense:116,baseSpeed:98  },
++  {
++    id: 'ashquill', name: 'Ashquill', element: 'Fire', rarity: 'C',
++    description: 'A lean ash-born raptor whose ragged feathers ignite when it spreads its wings.',
++    baseHp: 44, baseAttack: 43, baseDefense: 32, baseSpeed: 53,
++  },
++  {
++    id: 'flarelynx', name: 'Flarelynx', element: 'Fire', rarity: 'C',
++    description: 'A young volcanic lynx whose magma-cracked paws ignite the instant it senses danger.',
++    baseHp: 46, baseAttack: 48, baseDefense: 38, baseSpeed: 52,
++  },
+ ];
+ 
+-/** Quick lookup by ID */
+ export const MYTH_BY_ID: Record<string, MythEntry> = Object.fromEntries(
+-  ALL_MYTHS.map((m) => [m.id, m]),
++  ALL_MYTHS.map((myth) => [myth.id, myth]),
+ );
+diff --git a/artifacts/monster-realms/src/lib/region-info.ts b/artifacts/monster-realms/src/lib/region-info.ts
+index a41b3c2..a05bd44 100644
+--- a/artifacts/monster-realms/src/lib/region-info.ts
++++ b/artifacts/monster-realms/src/lib/region-info.ts
+@@ -43,11 +43,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🌿',
+     accentColor: '#6edd70',
+     // regionData.ts → verdant-meadows → monsterSpeciesIds
+-    speciesIds: [
+-      'seed-sprite', 'leaf-ferret', 'vine-pup', 'moss-crab', 'petal-bee',
+-      'root-mole', 'fern-hatchling', 'sprout-sprite',
+-      'bloom-guardian', 'grove-hawk',
+-    ],
++    speciesIds: [],
+   },
+ 
+   'volcanic-rift': {
+@@ -57,9 +53,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🔥',
+     accentColor: '#ff6620',
+     // regionData.ts → volcanic-rift → monsterSpeciesIds
+-    speciesIds: [
+-      'ashquill', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
+-    ],
++    speciesIds: ['ashquill', 'flarelynx'],
+   },
+ 
+   'ocean-ruins': {
+@@ -69,10 +63,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '💧',
+     accentColor: '#40c8cc',
+     // regionData.ts → ocean-ruins → monsterSpeciesIds
+-    speciesIds: [
+-      'tide-pup', 'coral-sprite', 'brook-turtle', 'wave-imp', 'reef-hatchling',
+-      'surge-hound', 'sea-golem', 'aqua-guardian', 'storm-crab',
+-    ],
++    speciesIds: [],
+   },
+ 
+   'shadow-marsh': {
+@@ -82,11 +73,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🌑',
+     accentColor: '#9060cc',
+     // regionData.ts → shadow-marsh → monsterSpeciesIds
+-    speciesIds: [
+-      'shadow-imp', 'gloom-wisp', 'dusk-ferret', 'night-crab',
+-      'umbra-moth', 'murk-toad',
+-      'void-stalker', 'shadow-bat', 'dusk-serpent', 'gloom-golem', 'eclipse-hawk',
+-    ],
++    speciesIds: [],
+   },
+ 
+   'ancient-forest': {
+@@ -96,11 +83,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🌲',
+     accentColor: '#44cc66',
+     // regionData.ts → ancient-forest → monsterSpeciesIds
+-    speciesIds: [
+-      'seed-sprite', 'leaf-ferret', 'vine-pup', 'fern-hatchling',
+-      'bloom-guardian', 'thorn-wolf', 'briar-golem', 'spore-bat', 'canopy-serpent',
+-      'ancient-treant', 'verdant-titan', 'thorn-colossus', 'gaia-wyrm',
+-    ],
++    speciesIds: [],
+   },
+ 
+   'thunder-valley': {
+@@ -110,11 +93,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '⚡',
+     accentColor: '#eeee30',
+     // regionData.ts → thunder-valley → monsterSpeciesIds
+-    speciesIds: [
+-      'spark-kit', 'zap-moth', 'volt-hatchling', 'arc-sprite',
+-      'static-crab', 'buzz-bee', 'jolt-lizard', 'charge-pup',
+-      'thunder-wolf', 'storm-bat', 'storm-serpent', 'arc-golem', 'lightning-hawk',
+-    ],
++    speciesIds: [],
+   },
+ 
+   // ── High-level server regions (not on the movement map; reachable via API) ─
+@@ -126,9 +105,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🌋',
+     accentColor: '#cc4400',
+     // regionData.ts → scorched-wastes → monsterSpeciesIds
+-    speciesIds: [
+-      'ashquill', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
+-    ],
++    speciesIds: ['ashquill', 'flarelynx'],
+   },
+ 
+   'deep-current': {
+@@ -138,12 +115,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🌊',
+     accentColor: '#2266cc',
+     // regionData.ts → deep-current → monsterSpeciesIds
+-    speciesIds: [
+-      'mist-jellyfish', 'stream-otter', 'puddle-toad',
+-      'deep-ray', 'abyssal-eel',
+-      'tempest-leviathan', 'ocean-titan', 'tide-colossus', 'abyss-wyrm',
+-      'poseidon-serpent', 'thalassa-deity',
+-    ],
++    speciesIds: [],
+   },
+ 
+   'storm-peaks': {
+@@ -153,12 +125,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🌩️',
+     accentColor: '#aaaaff',
+     // regionData.ts → storm-peaks → monsterSpeciesIds
+-    speciesIds: [
+-      'volt-hatchling', 'static-crab', 'jolt-lizard',
+-      'plasma-ray', 'storm-serpent',
+-      'storm-colossus', 'galvanos', 'tempest-titan', 'arc-leviathan',
+-      'zeus-wyrm', 'thunder-deity',
+-    ],
++    speciesIds: [],
+   },
+ 
+   'void-realm': {
+@@ -168,12 +135,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
+     element: '🕳️',
+     accentColor: '#8800cc',
+     // regionData.ts → void-realm → monsterSpeciesIds
+-    speciesIds: [
+-      'dark-sprite', 'shade-hatchling', 'dusk-ferret',
+-      'nightmare-specter',
+-      'abyssal-wraith', 'void-titan', 'dark-colossus', 'shadow-leviathan',
+-      'erebus-entity', 'void-deity',
+-    ],
++    speciesIds: [],
+   },
+ };
+ 
+-- 
+2.51.1
+

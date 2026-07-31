@@ -1,0 +1,108 @@
+From e2ce11049857dfeb8e3e91522bac466a3d3e4008 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 13:10:55 +0200
+Subject: [PATCH] Ground battle myths and align shadows
+
+---
+ .../src/components/game/BattleOverlay.tsx     |  4 +--
+ artifacts/monster-realms/src/index.css        | 26 +++++++++++++------
+ 2 files changed, 20 insertions(+), 10 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index dd6abe2..9dd47a5 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -564,7 +564,7 @@ function MythSprite({
+       >
+         <div
+           key={animKey}
+-          className={`battle-float ${animKey > 0 ? 'hit-flash' : ''}`}
++          className={`battle-grounded-idle ${animKey > 0 ? 'hit-flash' : ''}`}
+           style={{
+             filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
+             transition: isFainting ? 'opacity 0.35s ease-in, transform 0.35s ease-in' : undefined,
+@@ -606,7 +606,7 @@ function MythSprite({
+       {/* Ground shadow */}
+       <div style={{
+         width: renderedSize * (hasBattleArt ? 0.58 : 0.65), height: hasBattleArt ? 18 : 12,
+-        borderRadius: '50%', marginTop: hasBattleArt ? -18 : 4,
++        borderRadius: '50%', marginTop: hasBattleArt ? -34 : -7,
+         background: hasBattleArt
+           ? 'radial-gradient(ellipse, rgba(0,0,0,0.68) 0%, rgba(97,24,8,0.28) 48%, transparent 78%)'
+           : 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index ca109ea..bd4d3f1 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -426,6 +426,16 @@
+   }
+   .battle-float { animation: battle-float 2.8s ease-in-out infinite; }
+ 
++  @keyframes battle-grounded-idle {
++    0%, 100% { transform: translateY(0) scale(1); }
++    50% { transform: translateY(0) scale(1.012, 0.992); }
++  }
++
++  .battle-grounded-idle {
++    transform-origin: 50% 92%;
++    animation: battle-grounded-idle 2.8s ease-in-out infinite;
++  }
++
+   @keyframes battle-idle-bob {
+     0%, 100% { transform: translateY(0px); }
+     50%       { transform: translateY(-5px); }
+@@ -434,22 +444,22 @@
+ 
+   .battle-combatant-wild {
+     left: clamp(3%, 8vw, 10%);
+-    bottom: 18%;
++    bottom: 7%;
+   }
+ 
+   .battle-combatant-player {
+     right: clamp(3%, 8vw, 10%);
+-    bottom: 18%;
++    bottom: 7%;
+   }
+ 
+   .battle-hit-wild {
+     left: clamp(3%, 8vw, 10%);
+-    bottom: 18%;
++    bottom: 7%;
+   }
+ 
+   .battle-hit-player {
+     right: clamp(3%, 8vw, 10%);
+-    bottom: 18%;
++    bottom: 7%;
+   }
+ 
+   .battle-ground-perspective {
+@@ -468,7 +478,7 @@
+     position: absolute;
+     width: clamp(210px, 25vw, 430px);
+     height: clamp(42px, 6vw, 82px);
+-    bottom: 12%;
++    bottom: 2%;
+     border-radius: 50%;
+     z-index: 1;
+     opacity: 0.72;
+@@ -492,12 +502,12 @@
+ 
+   @media (max-width: 760px) {
+     .battle-combatant-wild,
+-    .battle-hit-wild { left: 1.5%; bottom: 13%; }
++    .battle-hit-wild { left: 1.5%; bottom: 4%; }
+ 
+     .battle-combatant-player,
+-    .battle-hit-player { right: 1.5%; bottom: 13%; }
++    .battle-hit-player { right: 1.5%; bottom: 4%; }
+ 
+-    .battle-stage-pool { bottom: 8%; width: 46vw; }
++    .battle-stage-pool { bottom: 0%; width: 46vw; }
+   }
+ 
+   @keyframes flarelynx-battle-breathe {
+-- 
+2.51.1
+
