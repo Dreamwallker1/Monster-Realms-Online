@@ -432,6 +432,35 @@
   }
   .battle-idle-bob { animation: battle-idle-bob 2s ease-in-out infinite; }
 
+  @keyframes flarelynx-battle-breathe {
+    0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 10px 10px rgba(0,0,0,0.45)) drop-shadow(0 0 7px rgba(249,72,18,0.35)); }
+    50% { transform: translateY(-3px) scale(1.018, 0.992); filter: drop-shadow(0 13px 12px rgba(0,0,0,0.38)) drop-shadow(0 0 13px rgba(255,91,24,0.58)); }
+  }
+
+  .flarelynx-battle-sprite {
+    transform-origin: 52% 84%;
+    animation: flarelynx-battle-breathe 2.8s ease-in-out infinite;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  @keyframes flarelynx-battle-ember {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.55); }
+    25% { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(9px, -42px) scale(0.1); }
+  }
+
+  .flarelynx-battle-ember {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: #ffb020;
+    box-shadow: 0 0 7px #ff5b18, 0 0 13px rgba(255,53,0,0.75);
+    animation: flarelynx-battle-ember 1.85s ease-out infinite;
+    pointer-events: none;
+  }
+
   @keyframes battle-entrance {
     0%   { opacity: 0; transform: scale(0.85) translateY(20px); }
     60%  { opacity: 1; transform: scale(1.03) translateY(-3px); }

@@ -542,13 +542,15 @@ function HitReactionOverlay({ speciesId, element, animKey }: {
 // ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
 function MythSprite({
-  speciesId, element, rarity = 'C', size = 110, shakeKey, isFainting = false,
+  speciesId, element, rarity = 'C', size = 110, shakeKey, isFainting = false, facing = 'right',
 }: {
   speciesId: string; element: string; rarity?: string;
-  size?: number; shakeKey: number; isFainting?: boolean;
+  size?: number; shakeKey: number; isFainting?: boolean; facing?: 'left' | 'right';
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
+  const hasBattleArt = speciesId === 'flarelynx';
+  const renderedSize = hasBattleArt ? Math.round(size * 2.15) : size;
 
   useEffect(() => {
     if (shakeKey > 0) setAnimKey((k) => k + 1);
@@ -558,7 +560,7 @@ function MythSprite({
     <div className="flex flex-col items-center">
       <div
         className="relative"
-        style={{ width: size, height: size }}
+        style={{ width: renderedSize, height: renderedSize }}
       >
         <div
           key={animKey}
@@ -570,14 +572,44 @@ function MythSprite({
             transform: isFainting ? 'translateY(18px) scale(0.85)' : undefined,
           }}
         >
-          <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
+          {hasBattleArt ? (
+            <div
+              className="relative w-full h-full"
+              style={{ transform: facing === 'left' ? 'scaleX(-1)' : undefined }}
+            >
+              <img
+                src="/myths/flarelynx-battle.webp"
+                alt="Flarelynx ready for battle"
+                width={renderedSize}
+                height={renderedSize}
+                className="flarelynx-battle-sprite w-full h-full object-contain"
+                draggable={false}
+              />
+              {[0, 1, 2].map((ember) => (
+                <span
+                  key={ember}
+                  className="flarelynx-battle-ember"
+                  style={{
+                    left: `${25 + ember * 23}%`,
+                    bottom: `${20 + (ember % 2) * 17}%`,
+                    animationDelay: `${ember * 0.55}s`,
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
+          )}
         </div>
         <HitReactionOverlay speciesId={speciesId} element={element} animKey={animKey} />
       </div>
       {/* Ground shadow */}
       <div style={{
-        width: size * 0.65, height: 12, borderRadius: '50%', marginTop: 4,
-        background: 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
+        width: renderedSize * (hasBattleArt ? 0.58 : 0.65), height: hasBattleArt ? 18 : 12,
+        borderRadius: '50%', marginTop: hasBattleArt ? -18 : 4,
+        background: hasBattleArt
+          ? 'radial-gradient(ellipse, rgba(0,0,0,0.68) 0%, rgba(97,24,8,0.28) 48%, transparent 78%)'
+          : 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
         transition: isFainting ? 'opacity 0.35s ease-in' : undefined,
         opacity: isFainting ? 0 : 1,
       }} />
@@ -1601,6 +1633,7 @@ export default function BattleOverlay() {
               size={110}
               shakeKey={wildShake}
               isFainting={faintCinematic?.side === 'wild'}
+              facing="right"
             />
           </div>
           </div> {/* ← close stagger wrapper */}
@@ -1629,6 +1662,7 @@ export default function BattleOverlay() {
               size={110}
               shakeKey={playerShake}
               isFainting={faintCinematic?.side === 'player'}
+              facing="left"
             />
           </div>
           </div> {/* ← close stagger wrapper */}
