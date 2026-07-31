@@ -1,0 +1,423 @@
+From 277dc6eb3ea00e72613bed33c310312f7fc69f12 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 09:54:10 +0200
+Subject: [PATCH] Add interactive myth inventory cards
+
+---
+ .../monster-realms/src/pages/team-builder.tsx | 313 +++++++++++++++---
+ 1 file changed, 268 insertions(+), 45 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/pages/team-builder.tsx b/artifacts/monster-realms/src/pages/team-builder.tsx
+index 52ca1ae..5c485ee 100644
+--- a/artifacts/monster-realms/src/pages/team-builder.tsx
++++ b/artifacts/monster-realms/src/pages/team-builder.tsx
+@@ -8,7 +8,11 @@ import {
+ } from '@workspace/api-client-react';
+ import { getElementColors } from '@/lib/element-colors';
+ import { getMonsterEmoji } from '@/lib/monster-emoji';
+-import { ArrowLeft, Plus, X, Swords, Sparkles, Zap, Shield, Wind, Heart } from 'lucide-react';
++import { MythSvgIcon } from '@/lib/myth-svgs';
++import {
++  ArrowLeft, Plus, X, Swords, Sparkles, Shield, Heart,
++  Flame, RotateCcw, BookOpen, Dumbbell,
++} from 'lucide-react';
+ import { Button } from '@/components/ui/button';
+ import { useQueryClient } from '@tanstack/react-query';
+ import { getGetPlayerTeamQueryKey } from '@workspace/api-client-react';
+@@ -104,6 +108,36 @@ function StatRow({
+   );
+ }
+ 
++type CardTraits = {
++  courage: number;
++  strength: number;
++  endurance: number;
++  ferocity: number;
++};
++
++function getCardTraits(monster: any): CardTraits {
++  const rarityBonus: Record<string, number> = { C: 0, B: 8, A: 16, S: 25 };
++  const level = monster.level ?? 1;
++  const bonus = rarityBonus[monster.species?.rarity ?? 'C'] ?? 0;
++  const skills = monster.species?.skills ?? [];
++  const peakSkill = Math.max(0, ...skills.map((skill: any) => skill.power ?? 0));
++
++  const cap = (value: number) => Math.max(1, Math.min(100, Math.round(value)));
++  return {
++    courage: cap(32 + level * 2 + bonus + (monster.friendship ?? 0) / 8),
++    strength: cap((monster.attack ?? 0) * 0.78 + bonus * 0.45),
++    endurance: cap((monster.defense ?? 0) * 0.62 + (monster.maxHp ?? 0) * 0.1),
++    ferocity: cap((monster.speed ?? 0) * 0.52 + peakSkill * 0.24),
++  };
++}
++
++const TRAIT_CONFIG = [
++  { key: 'courage', label: 'CES', fullLabel: 'CESARET', color: '#EF4444', icon: Heart },
++  { key: 'strength', label: 'GÜÇ', fullLabel: 'GÜÇ', color: '#F97316', icon: Dumbbell },
++  { key: 'endurance', label: 'DAY', fullLabel: 'DAYANIKLILIK', color: '#60A5FA', icon: Shield },
++  { key: 'ferocity', label: 'YIR', fullLabel: 'YIRTICILIK', color: '#C084FC', icon: Flame },
++] as const;
++
+ // ─── Shimmer overlay (S-tier only) ────────────────────────────────────────────
+ function ShimmerOverlay() {
+   return (
+@@ -154,17 +188,14 @@ interface MythCardProps {
+   monster: any;
+   selected: boolean;
+   disabled: boolean;
+-  onToggle: () => void;
++  onOpen: () => void;
+ }
+ 
+-function MythCard({ monster, selected, disabled, onToggle }: MythCardProps) {
++function MythCard({ monster, selected, disabled, onOpen }: MythCardProps) {
+   const rarity = (monster.species?.rarity ?? 'C') as keyof typeof QUALITY_CONFIG;
+   const cfg    = QUALITY_CONFIG[rarity] ?? QUALITY_CONFIG.C;
+   const elem   = getElementColors(monster.species?.element ?? '');
+-  const emoji  = getMonsterEmoji(
+-    monster.species?.id ?? monster.speciesId ?? '',
+-    monster.species?.element ?? '',
+-  );
++  const traits = getCardTraits(monster);
+ 
+   const selectedShadow = selected
+     ? `0 0 0 2.5px ${elem.primary}, 0 0 32px ${elem.glow}, 0 0 64px ${elem.glow.replace('0.', '0.3')}, 0 10px 40px rgba(0,0,0,0.7)`
+@@ -172,17 +203,17 @@ function MythCard({ monster, selected, disabled, onToggle }: MythCardProps) {
+ 
+   return (
+     <motion.button
+-      onClick={() => !disabled && onToggle()}
+-      whileHover={!disabled ? { scale: 1.035, rotateY: 3, rotateX: -2, y: -3 } : {}}
+-      whileTap={!disabled ? { scale: 0.975 } : {}}
++      onClick={onOpen}
++      whileHover={{ scale: 1.035, rotateY: 3, rotateX: -2, y: -3 }}
++      whileTap={{ scale: 0.975 }}
+       transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+       className="relative w-full text-left rounded-[18px] overflow-hidden focus:outline-none"
+       style={{
+         background: cfg.bg,
+         boxShadow: selectedShadow,
+         border: `1.5px solid ${selected ? elem.primary : cfg.border}`,
+-        cursor: disabled && !selected ? 'not-allowed' : 'pointer',
+-        opacity: disabled && !selected ? 0.38 : 1,
++        cursor: 'pointer',
++        opacity: disabled && !selected ? 0.62 : 1,
+         perspective: '800px',
+         transformStyle: 'preserve-3d',
+       }}
+@@ -268,9 +299,9 @@ function MythCard({ monster, selected, disabled, onToggle }: MythCardProps) {
+             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+           />
+         )}
+-        {/* Emoji */}
++        {/* Myth portrait */}
+         <motion.div
+-          className="text-6xl relative z-10 leading-none select-none"
++          className="relative z-10 leading-none select-none"
+           style={{ filter: `drop-shadow(0 4px 12px ${elem.glow.replace('0.4', '0.7')})` }}
+           animate={rarity === 'S' ? {
+             y: [0, -3, 0],
+@@ -282,7 +313,12 @@ function MythCard({ monster, selected, disabled, onToggle }: MythCardProps) {
+           } : {}}
+           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+         >
+-          {emoji}
++          <MythSvgIcon
++            mythId={monster.species?.id ?? monster.speciesId ?? ''}
++            element={monster.species?.element ?? ''}
++            rarity={rarity}
++            size={92}
++          />
+         </motion.div>
+       </div>
+ 
+@@ -316,36 +352,19 @@ function MythCard({ monster, selected, disabled, onToggle }: MythCardProps) {
+         {/* Divider */}
+         <div className="h-px rounded-full opacity-20" style={{ background: cfg.headerLine }} />
+ 
+-        {/* Stats */}
++        {/* Card traits — PvP meanings will be connected later */}
+         <div className="space-y-1.5">
+-          <StatRow
+-            icon={<Heart size={10} />}
+-            label="HP"
+-            value={monster.maxHp}
+-            color="#22C55E"
+-            track={cfg.statTrack}
+-          />
+-          <StatRow
+-            icon={<Zap size={10} />}
+-            label="ATK"
+-            value={monster.attack}
+-            color={elem.primary}
+-            track={cfg.statTrack}
+-          />
+-          <StatRow
+-            icon={<Shield size={10} />}
+-            label="DEF"
+-            value={monster.defense}
+-            color="#60A5FA"
+-            track={cfg.statTrack}
+-          />
+-          <StatRow
+-            icon={<Wind size={10} />}
+-            label="SPD"
+-            value={monster.speed}
+-            color="#C084FC"
+-            track={cfg.statTrack}
+-          />
++          {TRAIT_CONFIG.map(({ key, label, color, icon: Icon }) => (
++            <StatRow
++              key={key}
++              icon={<Icon size={10} />}
++              label={label}
++              value={traits[key]}
++              max={100}
++              color={color}
++              track={cfg.statTrack}
++            />
++          ))}
+         </div>
+ 
+         {/* Skills */}
+@@ -383,10 +402,200 @@ function MythCard({ monster, selected, disabled, onToggle }: MythCardProps) {
+           </motion.div>
+         )}
+       </AnimatePresence>
++
++      <div className="absolute bottom-2 right-2 text-[8px] font-bold text-white/25 flex items-center gap-1">
++        <BookOpen size={9} />
++        KARTI AÇ
++      </div>
+     </motion.button>
+   );
+ }
+ 
++function CardDetailModal({
++  monster,
++  selected,
++  teamFull,
++  onClose,
++  onToggleTeam,
++}: {
++  monster: any;
++  selected: boolean;
++  teamFull: boolean;
++  onClose: () => void;
++  onToggleTeam: () => void;
++}) {
++  const [flipped, setFlipped] = useState(false);
++  const rarity = (monster.species?.rarity ?? 'C') as keyof typeof QUALITY_CONFIG;
++  const cfg = QUALITY_CONFIG[rarity] ?? QUALITY_CONFIG.C;
++  const elem = getElementColors(monster.species?.element ?? '');
++  const traits = getCardTraits(monster);
++  const name = monster.nickname ?? monster.species?.name ?? 'Unknown Myth';
++  const story = monster.species?.lore ?? monster.species?.description ?? 'Its story has not yet been recorded.';
++
++  return (
++    <motion.div
++      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
++      initial={{ opacity: 0 }}
++      animate={{ opacity: 1 }}
++      exit={{ opacity: 0 }}
++      onClick={onClose}
++      style={{ background: 'rgba(0,2,10,0.88)', backdropFilter: 'blur(12px)' }}
++    >
++      <motion.div
++        initial={{ scale: 0.72, y: 80 }}
++        animate={{ scale: 1, y: 0 }}
++        exit={{ scale: 0.8, y: 50, opacity: 0 }}
++        transition={{ type: 'spring', stiffness: 190, damping: 20 }}
++        className="w-full max-w-sm"
++        onClick={(event) => event.stopPropagation()}
++      >
++        <div
++          className="relative w-full cursor-pointer"
++          style={{ height: 570, perspective: 1400 }}
++          onClick={() => setFlipped((value) => !value)}
++        >
++          <motion.div
++            className="relative w-full h-full"
++            animate={{ rotateY: flipped ? 180 : 0 }}
++            transition={{ duration: 0.58, ease: [0.2, 0.8, 0.2, 1] }}
++            style={{ transformStyle: 'preserve-3d' }}
++          >
++            {/* Front */}
++            <div
++              className="absolute inset-0 rounded-[26px] overflow-hidden border p-5"
++              style={{
++                backfaceVisibility: 'hidden',
++                background: cfg.bg,
++                borderColor: elem.primary,
++                boxShadow: `0 0 0 1px ${cfg.border}, 0 0 50px ${elem.glow}, 0 28px 80px rgba(0,0,0,0.8)`,
++              }}
++            >
++              <div className="absolute inset-0 pointer-events-none" style={{ background: cfg.topGlow }} />
++              {cfg.shimmer && <ShimmerOverlay />}
++
++              <div className="relative h-full flex flex-col">
++                <div className="flex items-center justify-between">
++                  <span className="font-black text-sm px-3 py-1 rounded-full" style={{ background: cfg.badgeBg, color: cfg.badgeText }}>
++                    {rarity} · {cfg.badgeLabel}
++                  </span>
++                  <span className="font-black text-sm text-white/70">LV. {monster.level}</span>
++                </div>
++
++                <div className="text-center mt-3">
++                  <h2 className="text-3xl font-black tracking-tight uppercase">{name}</h2>
++                  <span
++                    className="inline-flex mt-1 text-xs font-black tracking-[0.18em] px-3 py-1 rounded-full"
++                    style={{ color: elem.primary, background: `${elem.primary}20`, border: `1px solid ${elem.primary}55` }}
++                  >
++                    {monster.species?.element}
++                  </span>
++                </div>
++
++                <div className="flex-1 flex items-center justify-center min-h-0 py-2">
++                  <MythSvgIcon
++                    mythId={monster.species?.id ?? monster.speciesId ?? ''}
++                    element={monster.species?.element ?? ''}
++                    rarity={rarity}
++                    size={210}
++                  />
++                </div>
++
++                <div className="text-center mb-3">
++                  <span className="text-xs font-black tracking-[0.2em]" style={{ color: elem.primary }}>
++                    {monster.species?.personality ?? 'UNKNOWN'}
++                  </span>
++                </div>
++
++                <div className="grid grid-cols-2 gap-2">
++                  {TRAIT_CONFIG.map(({ key, fullLabel, color, icon: Icon }) => (
++                    <div key={key} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 flex items-center gap-2">
++                      <Icon size={17} style={{ color }} />
++                      <div>
++                        <div className="text-[8px] font-bold tracking-widest text-white/40">{fullLabel}</div>
++                        <div className="text-lg leading-none font-black" style={{ color }}>{traits[key]}</div>
++                      </div>
++                    </div>
++                  ))}
++                </div>
++
++                <div className="mt-3 flex items-center justify-center gap-2 text-[9px] font-bold text-white/30">
++                  <RotateCcw size={11} />
++                  HİKÂYE İÇİN KARTA DOKUN
++                </div>
++              </div>
++            </div>
++
++            {/* Back */}
++            <div
++              className="absolute inset-0 rounded-[26px] overflow-hidden border p-7"
++              style={{
++                backfaceVisibility: 'hidden',
++                transform: 'rotateY(180deg)',
++                background: 'linear-gradient(150deg, #080b12 0%, #150b08 50%, #05070c 100%)',
++                borderColor: elem.primary,
++                boxShadow: `0 0 0 1px ${cfg.border}, 0 0 50px ${elem.glow}, 0 28px 80px rgba(0,0,0,0.8)`,
++              }}
++            >
++              <div className="h-full flex flex-col items-center text-center">
++                <span className="text-[10px] font-black tracking-[0.28em]" style={{ color: elem.primary }}>
++                  {rarity} CLASS · {monster.species?.element}
++                </span>
++                <h2 className="text-3xl font-black uppercase mt-3">{name}</h2>
++                <div className="h-px w-32 my-5" style={{ background: `linear-gradient(90deg, transparent, ${elem.primary}, transparent)` }} />
++
++                <div
++                  className="w-36 h-36 rounded-full flex items-center justify-center border mb-6"
++                  style={{ borderColor: `${elem.primary}55`, background: `radial-gradient(circle, ${elem.glow}, transparent 68%)` }}
++                >
++                  <MythSvgIcon
++                    mythId={monster.species?.id ?? monster.speciesId ?? ''}
++                    element={monster.species?.element ?? ''}
++                    rarity={rarity}
++                    size={128}
++                  />
++                </div>
++
++                <BookOpen size={18} style={{ color: elem.primary }} />
++                <p className="mt-4 text-sm leading-7 text-white/68">{story}</p>
++
++                <div className="mt-auto">
++                  <span className="text-[10px] font-black tracking-[0.2em] text-white/35">
++                    {monster.species?.personality ?? 'UNKNOWN'}
++                  </span>
++                  <div className="mt-4 flex items-center justify-center gap-2 text-[9px] font-bold text-white/30">
++                    <RotateCcw size={11} />
++                    ÖN YÜZE DÖNMEK İÇİN DOKUN
++                  </div>
++                </div>
++              </div>
++            </div>
++          </motion.div>
++        </div>
++
++        <div className="flex gap-3 mt-5">
++          <Button
++            variant="outline"
++            onClick={onClose}
++            className="h-12 px-5 rounded-xl border-white/15 bg-black/30"
++          >
++            Kapat
++          </Button>
++          <Button
++            onClick={onToggleTeam}
++            disabled={!selected && teamFull}
++            className="h-12 flex-1 rounded-xl font-black tracking-wide"
++            style={{
++              background: selected ? 'linear-gradient(135deg,#7f1d1d,#dc2626)' : `linear-gradient(135deg,${elem.secondary},${elem.primary})`,
++            }}
++          >
++            {selected ? 'TAKIMDAN ÇIKAR' : teamFull ? 'TAKIM DOLU' : 'TAKIMA EKLE'}
++          </Button>
++        </div>
++      </motion.div>
++    </motion.div>
++  );
++}
++
+ // ─── Team Slot ────────────────────────────────────────────────────────────────
+ function TeamSlot({ monster, slot, onRemove }: { monster?: any; slot: number; onRemove: () => void }) {
+   const elem  = monster ? getElementColors(monster.species?.element ?? '') : null;
+@@ -464,6 +673,7 @@ export default function TeamBuilder() {
+   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+   const [saving, setSaving] = useState(false);
+   const [filter, setFilter] = useState<string>('all');
++  const [focusedMonster, setFocusedMonster] = useState<any | null>(null);
+ 
+   const { mutateAsync: saveTeam } = useUpdatePlayerTeam();
+ 
+@@ -698,7 +908,7 @@ export default function TeamBuilder() {
+                     monster={monster}
+                     selected={selectedIds.includes(monster.id)}
+                     disabled={selectedIds.length >= 3 && !selectedIds.includes(monster.id)}
+-                    onToggle={() => toggleMonster(monster.id)}
++                    onOpen={() => setFocusedMonster(monster)}
+                   />
+                 </motion.div>
+               ))}
+@@ -716,6 +926,19 @@ export default function TeamBuilder() {
+           </motion.p>
+         )}
+       </div>
++
++      <AnimatePresence>
++        {focusedMonster && (
++          <CardDetailModal
++            key={focusedMonster.id}
++            monster={focusedMonster}
++            selected={selectedIds.includes(focusedMonster.id)}
++            teamFull={selectedIds.length >= 3}
++            onClose={() => setFocusedMonster(null)}
++            onToggleTeam={() => toggleMonster(focusedMonster.id)}
++          />
++        )}
++      </AnimatePresence>
+     </div>
+   );
+ }
+-- 
+2.51.1
+

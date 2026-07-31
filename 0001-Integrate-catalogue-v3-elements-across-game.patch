@@ -1,0 +1,424 @@
+From c18cba0585638ae19416d4c745c1a1e1013a1776 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 08:11:26 +0200
+Subject: [PATCH] Integrate catalogue v3 elements across game
+
+---
+ .../src/__tests__/battle-stats.test.ts        | 22 ++++++++++-
+ artifacts/api-server/src/lib/gameEngine.ts    | 18 +++++----
+ artifacts/api-server/src/routes/auth.ts       |  6 +--
+ .../src/__tests__/type-chart.test.ts          | 26 +++++++++++++
+ .../battle/MythEntranceCinematic.tsx          |  4 ++
+ .../components/battle/MythFaintCinematic.tsx  |  4 ++
+ .../src/components/battle/SkillCinematic.tsx  |  7 +++-
+ .../src/components/game/BattleOverlay.tsx     |  4 ++
+ .../src/components/game/EncounterPopup.tsx    | 12 ++++--
+ .../src/components/game/MonsterPortrait.tsx   |  4 +-
+ .../monster-realms/src/lib/myth-svgs.tsx      |  5 ++-
+ .../monster-realms/src/lib/type-chart.ts      | 37 ++++++++-----------
+ .../monster-realms/src/pages/collection.tsx   |  2 +-
+ .../monster-realms/src/pages/landing.tsx      |  6 +--
+ .../monster-realms/src/pages/team-builder.tsx |  8 ++--
+ 15 files changed, 116 insertions(+), 49 deletions(-)
+ create mode 100644 artifacts/monster-realms/src/__tests__/type-chart.test.ts
+
+diff --git a/artifacts/api-server/src/__tests__/battle-stats.test.ts b/artifacts/api-server/src/__tests__/battle-stats.test.ts
+index 24bbd92..a369243 100644
+--- a/artifacts/api-server/src/__tests__/battle-stats.test.ts
++++ b/artifacts/api-server/src/__tests__/battle-stats.test.ts
+@@ -28,7 +28,27 @@ import {
+   type OrbRow,
+   type CapturedMonsterInsert,
+ } from "../lib/battleService.js";
+-import { calculateCaptureChance } from "../lib/gameEngine.js";
++import { calculateCaptureChance, getElementMultiplier } from "../lib/gameEngine.js";
++
++describe("catalogue v3 element matchups", () => {
++  it("applies the renamed Earth and Storm cycle", () => {
++    assert.equal(getElementMultiplier("Fire", "Earth"), 2);
++    assert.equal(getElementMultiplier("Earth", "Storm"), 2);
++    assert.equal(getElementMultiplier("Storm", "Water"), 2);
++    assert.equal(getElementMultiplier("Water", "Fire"), 2);
++  });
++
++  it("applies Shadow strengths, weaknesses, and immunity", () => {
++    assert.equal(getElementMultiplier("Shadow", "Earth"), 1.5);
++    assert.equal(getElementMultiplier("Storm", "Shadow"), 1.5);
++    assert.equal(getElementMultiplier("Shadow", "Storm"), 0.5);
++    assert.equal(getElementMultiplier("Shadow", "Shadow"), 0);
++  });
++
++  it("keeps unknown legacy data neutral instead of crashing", () => {
++    assert.equal(getElementMultiplier("Unknown", "Fire"), 1);
++  });
++});
+ 
+ // ---------------------------------------------------------------------------
+ // Mock DB factory
+diff --git a/artifacts/api-server/src/lib/gameEngine.ts b/artifacts/api-server/src/lib/gameEngine.ts
+index 7896c6e..2b7c2a4 100644
+--- a/artifacts/api-server/src/lib/gameEngine.ts
++++ b/artifacts/api-server/src/lib/gameEngine.ts
+@@ -1,15 +1,17 @@
+ import type { MonsterSpecies } from "@workspace/db";
+ 
+ // Element effectiveness chart: attacker -> defender -> multiplier
+-// 5-element ring: Fire → Nature → Electric → Water → Fire
+-// Dark: disrupts fire+nature, weak to water+electric, immune to itself
++// Catalogue v3 keeps the original balance while renaming:
++// Nature → Earth, Electric → Storm, Dark → Shadow.
++// Fire → Earth → Storm → Water → Fire
++// Shadow disrupts fire+earth, is weak to water+storm, and is immune to itself.
+ const ELEMENT_CHART: Record<string, Record<string, number>> = {
+-  //             vs Fire  vs Water  vs Nature  vs Electric  vs Dark
+-  Fire:     { Fire: 0.5, Water: 0.5, Nature: 2.0, Electric: 1.0, Dark: 0.5 },
+-  Water:    { Fire: 2.0, Water: 0.5, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
+-  Nature:   { Fire: 0.5, Water: 1.0, Nature: 0.5, Electric: 2.0, Dark: 0.5 },
+-  Electric: { Fire: 0.5, Water: 2.0, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
+-  Dark:     { Fire: 1.5, Water: 0.5, Nature: 1.5, Electric: 0.5, Dark: 0.0 },
++  //          vs Fire  vs Water  vs Earth  vs Storm  vs Shadow
++  Fire:   { Fire: 0.5, Water: 0.5, Earth: 2.0, Storm: 1.0, Shadow: 0.5 },
++  Water:  { Fire: 2.0, Water: 0.5, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
++  Earth:  { Fire: 0.5, Water: 1.0, Earth: 0.5, Storm: 2.0, Shadow: 0.5 },
++  Storm:  { Fire: 0.5, Water: 2.0, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
++  Shadow: { Fire: 1.5, Water: 0.5, Earth: 1.5, Storm: 0.5, Shadow: 0.0 },
+ };
+ 
+ export function getElementMultiplier(
+diff --git a/artifacts/api-server/src/routes/auth.ts b/artifacts/api-server/src/routes/auth.ts
+index 5fd1628..b6f45ed 100644
+--- a/artifacts/api-server/src/routes/auth.ts
++++ b/artifacts/api-server/src/routes/auth.ts
+@@ -70,8 +70,8 @@ function rollStarterRarity(slot: number): 'C' | 'B' | 'A' | 'S' {
+ }
+ 
+ async function grantStarterPack(playerId: string, element: string): Promise<StarterMythResult[]> {
+-  const VALID_ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'];
+-  const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Nature';
++  const VALID_ELEMENTS = ['Fire', 'Water', 'Earth', 'Storm', 'Shadow'];
++  const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Earth';
+ 
+   // Fetch all species for the chosen element (one query instead of four)
+   const allByElement = await db.select().from(monsterSpeciesTable)
+@@ -379,7 +379,7 @@ router.post("/auth/gm-login", async (_req, res): Promise<void> => {
+ 
+   const allSpecies = await db.select().from(monsterSpeciesTable);
+ 
+-  const ELEMENTS = ["Fire", "Water", "Nature", "Electric", "Dark"];
++  const ELEMENTS = ["Fire", "Water", "Earth", "Storm", "Shadow"];
+   const sTierSpecies = allSpecies.filter(s => s.rarity === "S");
+ 
+   // Pick one S-tier per element for the active team (slots 0-5)
+diff --git a/artifacts/monster-realms/src/__tests__/type-chart.test.ts b/artifacts/monster-realms/src/__tests__/type-chart.test.ts
+new file mode 100644
+index 0000000..0499d84
+--- /dev/null
++++ b/artifacts/monster-realms/src/__tests__/type-chart.test.ts
+@@ -0,0 +1,26 @@
++import { describe, expect, it } from 'vitest';
++import {
++  ELEMENTS,
++  getStrengths,
++  getTypeMultiplier,
++  getWeaknesses,
++} from '@/lib/type-chart';
++
++describe('catalogue v3 type chart', () => {
++  it('contains exactly the five active catalogue elements', () => {
++    expect(ELEMENTS).toEqual(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']);
++  });
++
++  it('matches the server-side elemental cycle', () => {
++    expect(getTypeMultiplier('Fire', 'Earth')).toBe(2);
++    expect(getTypeMultiplier('Earth', 'Storm')).toBe(2);
++    expect(getTypeMultiplier('Storm', 'Water')).toBe(2);
++    expect(getTypeMultiplier('Water', 'Fire')).toBe(2);
++  });
++
++  it('reports Shadow matchups consistently', () => {
++    expect(getStrengths('Shadow')).toEqual(['Fire', 'Earth']);
++    expect(getWeaknesses('Shadow')).toEqual(['Water', 'Storm']);
++    expect(getTypeMultiplier('Shadow', 'Shadow')).toBe(0);
++  });
++});
+diff --git a/artifacts/monster-realms/src/components/battle/MythEntranceCinematic.tsx b/artifacts/monster-realms/src/components/battle/MythEntranceCinematic.tsx
+index 89b5912..91b79bf 100644
+--- a/artifacts/monster-realms/src/components/battle/MythEntranceCinematic.tsx
++++ b/artifacts/monster-realms/src/components/battle/MythEntranceCinematic.tsx
+@@ -58,6 +58,10 @@ const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
+ const EL: Record<string, { color: string; glow: string }> = {
+   Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.6)' },
+   Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.6)' },
++  Earth:    { color: '#CA8A04', glow: 'rgba(202,138,4,0.6)' },
++  Storm:    { color: '#A855F7', glow: 'rgba(168,85,247,0.7)' },
++  Shadow:   { color: '#6366F1', glow: 'rgba(99,102,241,0.6)' },
++  // Legacy collection fallbacks
+   Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.6)' },
+   Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.7)' },
+   Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.6)' },
+diff --git a/artifacts/monster-realms/src/components/battle/MythFaintCinematic.tsx b/artifacts/monster-realms/src/components/battle/MythFaintCinematic.tsx
+index e49bb75..7245d9c 100644
+--- a/artifacts/monster-realms/src/components/battle/MythFaintCinematic.tsx
++++ b/artifacts/monster-realms/src/components/battle/MythFaintCinematic.tsx
+@@ -57,6 +57,10 @@ const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
+ const EL: Record<string, { color: string; glow: string }> = {
+   Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.6)' },
+   Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.6)' },
++  Earth:    { color: '#CA8A04', glow: 'rgba(202,138,4,0.6)' },
++  Storm:    { color: '#A855F7', glow: 'rgba(168,85,247,0.7)' },
++  Shadow:   { color: '#6366F1', glow: 'rgba(99,102,241,0.6)' },
++  // Legacy collection fallbacks
+   Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.6)' },
+   Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.7)' },
+   Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.6)' },
+diff --git a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+index a8a76d8..691e969 100644
+--- a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
++++ b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+@@ -36,6 +36,10 @@ const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
+ const EL_CONFIG: Record<string, { color: string; glow: string; bg: string; icon: string }> = {
+   Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.55)', bg: 'rgba(180,40,10,0.35)',  icon: '🔥' },
+   Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.55)', bg: 'rgba(3,105,161,0.35)',  icon: '💧' },
++  Earth:    { color: '#CA8A04', glow: 'rgba(202,138,4,0.55)', bg: 'rgba(113,63,18,0.4)',     icon: '🪨' },
++  Storm:    { color: '#A855F7', glow: 'rgba(168,85,247,0.65)', bg: 'rgba(88,28,135,0.4)',    icon: '⚡' },
++  Shadow:   { color: '#6366F1', glow: 'rgba(99,102,241,0.55)', bg: 'rgba(30,27,75,0.5)',     icon: '🌑' },
++  // Legacy collection fallbacks
+   Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.55)', bg: 'rgba(20,83,45,0.35)',   icon: '🌿' },
+   Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.65)', bg: 'rgba(133,77,14,0.4)',   icon: '⚡' },
+   Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.55)', bg: 'rgba(59,7,100,0.5)',   icon: '🌑' },
+@@ -1032,7 +1036,8 @@ function ElementParticles({ element, side, particleScale }: {
+   const count = Math.round(7 * particleScale);
+ 
+   const chars: Record<string, string> = {
+-    Fire: '🔥', Water: '💧', Nature: '🍃', Electric: '⚡', Dark: '✦',
++    Fire: '🔥', Water: '💧', Earth: '🪨', Storm: '⚡', Shadow: '✦',
++    Nature: '🍃', Electric: '⚡', Dark: '✦',
+   };
+   const char = chars[element] ?? '✦';
+ 
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index f33ff9d..aff536b 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -249,6 +249,10 @@ function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: nu
+ const EL_HIT: Record<string, { color: string; glow: string }> = {
+   Fire:     { color: '#FF6B35', glow: 'rgba(255,107,53,0.7)' },
+   Water:    { color: '#38BDF8', glow: 'rgba(56,189,248,0.7)' },
++  Earth:    { color: '#CA8A04', glow: 'rgba(202,138,4,0.7)' },
++  Storm:    { color: '#A855F7', glow: 'rgba(168,85,247,0.8)' },
++  Shadow:   { color: '#6366F1', glow: 'rgba(99,102,241,0.7)' },
++  // Legacy collection fallbacks
+   Nature:   { color: '#4ADE80', glow: 'rgba(74,222,128,0.7)' },
+   Electric: { color: '#FDE047', glow: 'rgba(253,224,71,0.8)' },
+   Dark:     { color: '#C084FC', glow: 'rgba(192,132,252,0.7)' },
+diff --git a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+index a8d1359..2040ff9 100644
+--- a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
++++ b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+@@ -27,7 +27,7 @@ interface ParticleConfig {
+ function buildParticles(element: string, speciesId: string, elColors: { primary: string; secondary: string; glow: string }): ParticleConfig[] {
+   const particles: ParticleConfig[] = [];
+ 
+-  if (element === 'Electric') {
++  if (element === 'Storm' || element === 'Electric') {
+     // 8 sparks burst outward from center
+     for (let i = 0; i < 8; i++) {
+       const delay = seedRand(speciesId, i + 100) * 0.4;
+@@ -51,7 +51,7 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
+         },
+       });
+     }
+-  } else if (element === 'Dark') {
++  } else if (element === 'Shadow' || element === 'Dark') {
+     // 8 wisps swirl outward
+     for (let i = 0; i < 8; i++) {
+       const r = seedRand(speciesId, i + 50);
+@@ -80,7 +80,7 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
+       });
+     }
+   } else {
+-    // Fire, Water, Nature — 10 particles rising upward
++    // Fire, Water, Earth — 10 particles rising upward
+     const COUNT = 10;
+     for (let i = 0; i < COUNT; i++) {
+       const r0 = seedRand(speciesId, i);
+@@ -109,7 +109,7 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
+         br = '50%';
+         shadow = `0 0 8px ${elColors.glow}`;
+       } else {
+-        // Nature — leaves
++        // Earth — drifting shards/leaves
+         const lx = ((r0 - 0.5) * 60).toFixed(0) + 'px';
+         const lr = ((r1 * 2 - 1) * 180).toFixed(0) + 'deg';
+         particles.push({
+@@ -158,6 +158,10 @@ function buildParticles(element: string, speciesId: string, elColors: { primary:
+ const ELEMENT_FLAVOR: Record<string, { verb: string; exclaim: string }> = {
+   Fire:     { verb: 'blazed into view',   exclaim: '🔥 Danger!' },
+   Water:    { verb: 'emerged from the deep', exclaim: '💧 Careful!' },
++  Earth:    { verb: 'rose from the ancient ground', exclaim: '🪨 Found it!' },
++  Storm:    { verb: 'struck like lightning', exclaim: '⚡ Alert!' },
++  Shadow:   { verb: 'emerged from the shadows', exclaim: '🌑 Watch out!' },
++  // Legacy collection fallbacks
+   Electric: { verb: 'struck like lightning', exclaim: '⚡ Alert!' },
+   Nature:   { verb: 'crept out of the wilds', exclaim: '🌿 Found it!' },
+   Dark:     { verb: 'emerged from the shadows', exclaim: '🌑 Watch out!' },
+diff --git a/artifacts/monster-realms/src/components/game/MonsterPortrait.tsx b/artifacts/monster-realms/src/components/game/MonsterPortrait.tsx
+index 8f8d691..fa4548b 100644
+--- a/artifacts/monster-realms/src/components/game/MonsterPortrait.tsx
++++ b/artifacts/monster-realms/src/components/game/MonsterPortrait.tsx
+@@ -2,7 +2,7 @@ import type { MonsterSpeciesElement } from '@workspace/api-client-react';
+ import { ELEMENT_COLORS } from '@/lib/element-colors';
+ 
+ interface MonsterPortraitProps {
+-  element: MonsterSpeciesElement;
++  element: MonsterSpeciesElement | 'Earth' | 'Storm' | 'Shadow';
+   size?: 'sm' | 'md' | 'lg';
+   shinyVariant?: string | null;
+ }
+@@ -29,6 +29,7 @@ export default function MonsterPortrait({ element, size = 'md', shinyVariant }:
+       case 'Nature':
+         return `<path d="M 60 20 Q 70 35, 80 50 Q 70 65, 60 80 Q 50 65, 40 50 Q 50 35, 60 20" fill="${colors.primary}" />
+                 <circle cx="60" cy="50" r="${12 * s}" fill="${colors.secondary}" />`;
++      case 'Storm':
+       case 'Electric':
+         return `<path d="M 50 20 L 70 45 L 60 45 L 70 80 L 50 55 L 60 55 Z" fill="${colors.primary}" />
+                 <path d="M 50 20 L 70 45 L 60 45 L 70 80 L 50 55 L 60 55 Z" fill="${colors.secondary}" opacity="0.6" transform="translate(5,5)" />`;
+@@ -45,6 +46,7 @@ export default function MonsterPortrait({ element, size = 'md', shinyVariant }:
+         return `<circle cx="60" cy="50" r="${25 * s}" fill="${colors.primary}" opacity="0.9" />
+                 <circle cx="60" cy="50" r="${18 * s}" fill="${colors.secondary}" opacity="0.7" />
+                 <circle cx="60" cy="50" r="${12 * s}" fill="#ffffff" opacity="0.9" />`;
++      case 'Shadow':
+       case 'Dark':
+         return `<circle cx="60" cy="50" r="${25 * s}" fill="${colors.primary}" />
+                 <path d="M 60 25 A 25 25 0 0 1 85 50 A 20 20 0 0 0 60 30 Z" fill="${colors.secondary}" opacity="0.5" />`;
+diff --git a/artifacts/monster-realms/src/lib/myth-svgs.tsx b/artifacts/monster-realms/src/lib/myth-svgs.tsx
+index b688b0e..a95bbaa 100644
+--- a/artifacts/monster-realms/src/lib/myth-svgs.tsx
++++ b/artifacts/monster-realms/src/lib/myth-svgs.tsx
+@@ -1950,8 +1950,9 @@ export function MythSvgIcon({ mythId, element, rarity = 'C', size = 100, classNa
+ 
+ function fallback(element: string): ArchetypeName {
+   const defaults: Record<string, ArchetypeName> = {
+-    Fire: 'FireWolf', Water: 'WaterCanine', Nature: 'ForestBeast',
+-    Electric: 'LightningFox', Dark: 'ShadowCat',
++    Fire: 'FireWolf', Water: 'WaterCanine', Earth: 'ForestBeast',
++    Storm: 'LightningFox', Shadow: 'ShadowCat',
++    Nature: 'ForestBeast', Electric: 'LightningFox', Dark: 'ShadowCat',
+   };
+   return defaults[element] ?? 'FireWolf';
+ }
+diff --git a/artifacts/monster-realms/src/lib/type-chart.ts b/artifacts/monster-realms/src/lib/type-chart.ts
+index fcd20fc..0909bf8 100644
+--- a/artifacts/monster-realms/src/lib/type-chart.ts
++++ b/artifacts/monster-realms/src/lib/type-chart.ts
+@@ -1,21 +1,14 @@
+ // ─── 5-Element Type Chart ────────────────────────────────────────────────────
+-// Ring cycle: Fire → Nature → Electric → Water → Fire
+-// Dark: disrupts fire+nature, but is vulnerable to water+electric
+-//
+-//           Fire
+-//          ↑    ↓
+-//  Dark ←──    ──→ Nature
+-//  │                  │
+-//  Water ←── Electric ←┘
+-//
++// Catalogue v3: Fire → Earth → Storm → Water → Fire.
++// Shadow disrupts fire+earth, but is vulnerable to water+storm.
+ 
+ export const TYPE_CHART: Record<string, Record<string, number>> = {
+-  //          vs Fire  vs Water  vs Nature  vs Electric  vs Dark
+-  Fire:     { Fire: 0.5, Water: 0.5, Nature: 2.0, Electric: 1.0, Dark: 0.5 },
+-  Water:    { Fire: 2.0, Water: 0.5, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
+-  Nature:   { Fire: 0.5, Water: 1.0, Nature: 0.5, Electric: 2.0, Dark: 0.5 },
+-  Electric: { Fire: 0.5, Water: 2.0, Nature: 0.5, Electric: 0.5, Dark: 1.5 },
+-  Dark:     { Fire: 1.5, Water: 0.5, Nature: 1.5, Electric: 0.5, Dark: 0.0 },
++  //          vs Fire  vs Water  vs Earth  vs Storm  vs Shadow
++  Fire:   { Fire: 0.5, Water: 0.5, Earth: 2.0, Storm: 1.0, Shadow: 0.5 },
++  Water:  { Fire: 2.0, Water: 0.5, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
++  Earth:  { Fire: 0.5, Water: 1.0, Earth: 0.5, Storm: 2.0, Shadow: 0.5 },
++  Storm:  { Fire: 0.5, Water: 2.0, Earth: 0.5, Storm: 0.5, Shadow: 1.5 },
++  Shadow: { Fire: 1.5, Water: 0.5, Earth: 1.5, Storm: 0.5, Shadow: 0.0 },
+ };
+ 
+ /** attacker's element dealing damage to defenderElement */
+@@ -57,21 +50,21 @@ export function getMatchupText(mult: number): string {
+   return '';
+ }
+ 
+-export const ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'] as const;
++export const ELEMENTS = ['Fire', 'Water', 'Earth', 'Storm', 'Shadow'] as const;
+ export type ElementName = typeof ELEMENTS[number];
+ 
+ export const ELEMENT_ICON: Record<string, string> = {
+   Fire:     '🔥',
+   Water:    '💧',
+-  Nature:   '🌿',
+-  Electric: '⚡',
+-  Dark:     '🌑',
++  Earth:    '🪨',
++  Storm:    '⚡',
++  Shadow:   '🌑',
+ };
+ 
+ export const ELEMENT_COLOR: Record<string, string> = {
+   Fire:     '#EF4444',
+   Water:    '#38BDF8',
+-  Nature:   '#22C55E',
+-  Electric: '#EAB308',
+-  Dark:     '#A855F7',
++  Earth:    '#CA8A04',
++  Storm:    '#A855F7',
++  Shadow:   '#6366F1',
+ };
+diff --git a/artifacts/monster-realms/src/pages/collection.tsx b/artifacts/monster-realms/src/pages/collection.tsx
+index 8d71902..222e597 100644
+--- a/artifacts/monster-realms/src/pages/collection.tsx
++++ b/artifacts/monster-realms/src/pages/collection.tsx
+@@ -71,7 +71,7 @@ export default function Collection() {
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Elements</SelectItem>
+-              {['Fire', 'Water', 'Nature', 'Electric', 'Dark'].map((el) => (
++              {['Fire', 'Water', 'Earth', 'Storm', 'Shadow'].map((el) => (
+                 <SelectItem key={el} value={el}>{el}</SelectItem>
+               ))}
+             </SelectContent>
+diff --git a/artifacts/monster-realms/src/pages/landing.tsx b/artifacts/monster-realms/src/pages/landing.tsx
+index 464ddcd..41f2c06 100644
+--- a/artifacts/monster-realms/src/pages/landing.tsx
++++ b/artifacts/monster-realms/src/pages/landing.tsx
+@@ -51,9 +51,9 @@ function CharacterSVG({ char, size = 80 }: { char: typeof CHARACTERS[0]; size?:
+ const ELEMENTS = [
+   { id: 'Fire',     emoji: '🔥', flavor: 'Fierce & unstoppable' },
+   { id: 'Water',    emoji: '💧', flavor: 'Fluid & enduring' },
+-  { id: 'Nature',   emoji: '🌿', flavor: 'Patient & resilient' },
+-  { id: 'Electric', emoji: '⚡', flavor: 'Fast & unpredictable' },
+-  { id: 'Dark',     emoji: '🌑', flavor: 'Mysterious & cunning' },
++  { id: 'Earth',    emoji: '🪨', flavor: 'Patient & resilient' },
++  { id: 'Storm',    emoji: '⚡', flavor: 'Fast & unpredictable' },
++  { id: 'Shadow',   emoji: '🌑', flavor: 'Mysterious & cunning' },
+ ];
+ 
+ // ─── Step types ────────────────────────────────────────────────────────────────
+diff --git a/artifacts/monster-realms/src/pages/team-builder.tsx b/artifacts/monster-realms/src/pages/team-builder.tsx
+index 5cf55ba..52ca1ae 100644
+--- a/artifacts/monster-realms/src/pages/team-builder.tsx
++++ b/artifacts/monster-realms/src/pages/team-builder.tsx
+@@ -455,9 +455,11 @@ export default function TeamBuilder() {
+   const { player } = useGameStore();
+   const queryClient = useQueryClient();
+ 
+-  const { data: collection = [], isLoading } = useGetPlayerCollection(player?.id ?? '', {
+-    query: { enabled: !!player?.id },
+-  });
++  const { data: collection = [], isLoading } = useGetPlayerCollection(
++    player?.id ?? '',
++    undefined,
++    { query: { enabled: !!player?.id } as any },
++  );
+ 
+   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+   const [saving, setSaving] = useState(false);
+-- 
+2.51.1
+

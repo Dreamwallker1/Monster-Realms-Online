@@ -1,0 +1,155 @@
+From cd9fe5ee3c2f7ef08790b746b96e6397a668d94b Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 09:56:47 +0200
+Subject: [PATCH] Animate myth cards with 2.5D portraits
+
+---
+ .../monster-realms/src/pages/team-builder.tsx | 116 +++++++++++++++++-
+ 1 file changed, 110 insertions(+), 6 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/pages/team-builder.tsx b/artifacts/monster-realms/src/pages/team-builder.tsx
+index 5c485ee..6772308 100644
+--- a/artifacts/monster-realms/src/pages/team-builder.tsx
++++ b/artifacts/monster-realms/src/pages/team-builder.tsx
+@@ -159,6 +159,111 @@ function ShimmerOverlay() {
+   );
+ }
+ 
++function LivingMythPortrait({
++  monster,
++  rarity,
++  size,
++  interactive = false,
++}: {
++  monster: any;
++  rarity: string;
++  size: number;
++  interactive?: boolean;
++}) {
++  const [tilt, setTilt] = useState({ x: 0, y: 0 });
++  const speciesId = monster.species?.id ?? monster.speciesId ?? '';
++  const element = monster.species?.element ?? '';
++  const elem = getElementColors(element);
++  const isFlarelynx = speciesId === 'flarelynx';
++
++  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
++    if (!interactive) return;
++    const rect = event.currentTarget.getBoundingClientRect();
++    const px = (event.clientX - rect.left) / rect.width - 0.5;
++    const py = (event.clientY - rect.top) / rect.height - 0.5;
++    setTilt({ x: py * -9, y: px * 11 });
++  }
++
++  return (
++    <div
++      className="relative flex items-center justify-center"
++      style={{ width: size, height: size, perspective: 900 }}
++      onPointerMove={handlePointerMove}
++      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
++    >
++      <style>{`
++        @keyframes myth-ember-rise {
++          0% { transform: translate3d(0, 12px, 0) scale(.55); opacity: 0; }
++          25% { opacity: .9; }
++          100% { transform: translate3d(var(--ember-x), -70px, 26px) scale(1.1); opacity: 0; }
++        }
++        @keyframes myth-fire-pulse {
++          0%, 100% { opacity: .28; transform: scale(.92); }
++          50% { opacity: .58; transform: scale(1.08); }
++        }
++      `}</style>
++
++      <motion.div
++        className="absolute rounded-full pointer-events-none"
++        style={{
++          width: size * 0.78,
++          height: size * 0.78,
++          background: `radial-gradient(circle, ${elem.glow} 0%, transparent 68%)`,
++          filter: isFlarelynx ? 'blur(4px)' : 'blur(8px)',
++        }}
++        animate={{ scale: [0.94, 1.08, 0.94], opacity: [0.35, 0.7, 0.35] }}
++        transition={{ duration: isFlarelynx ? 1.8 : 2.8, repeat: Infinity, ease: 'easeInOut' }}
++      />
++
++      {isFlarelynx && Array.from({ length: 7 }).map((_, index) => (
++        <span
++          key={index}
++          className="absolute rounded-full pointer-events-none"
++          style={{
++            width: 2 + (index % 3),
++            height: 2 + (index % 3),
++            left: `${22 + index * 9}%`,
++            bottom: `${12 + (index % 2) * 8}%`,
++            background: index % 2 ? '#F97316' : '#FBBF24',
++            boxShadow: '0 0 7px #F97316',
++            '--ember-x': `${(index % 2 ? 1 : -1) * (8 + index * 2)}px`,
++            animation: `myth-ember-rise ${1.35 + index * 0.11}s ease-out ${index * 0.18}s infinite`,
++          } as React.CSSProperties}
++        />
++      ))}
++
++      <motion.div
++        className="relative z-10"
++        animate={{
++          rotateX: tilt.x,
++          rotateY: tilt.y,
++          y: [0, -3, 0],
++          scale: [1, isFlarelynx ? 1.018 : 1.01, 1],
++        }}
++        transition={{
++          rotateX: { type: 'spring', stiffness: 180, damping: 18 },
++          rotateY: { type: 'spring', stiffness: 180, damping: 18 },
++          y: { duration: isFlarelynx ? 2.2 : 3, repeat: Infinity, ease: 'easeInOut' },
++          scale: { duration: isFlarelynx ? 2.2 : 3, repeat: Infinity, ease: 'easeInOut' },
++        }}
++        style={{
++          transformStyle: 'preserve-3d',
++          filter: isFlarelynx
++            ? 'drop-shadow(0 12px 18px rgba(0,0,0,.65)) drop-shadow(0 0 10px rgba(249,115,22,.35))'
++            : undefined,
++        }}
++      >
++        <MythSvgIcon
++          mythId={speciesId}
++          element={element}
++          rarity={rarity}
++          size={size}
++        />
++      </motion.div>
++    </div>
++  );
++}
++
+ // ─── Skills pills ─────────────────────────────────────────────────────────────
+ function SkillPills({ skills, elemColor }: { skills?: any[]; elemColor: string }) {
+   if (!skills || skills.length === 0) return null;
+@@ -313,9 +418,8 @@ function MythCard({ monster, selected, disabled, onOpen }: MythCardProps) {
+           } : {}}
+           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+         >
+-          <MythSvgIcon
+-            mythId={monster.species?.id ?? monster.speciesId ?? ''}
+-            element={monster.species?.element ?? ''}
++          <LivingMythPortrait
++            monster={monster}
+             rarity={rarity}
+             size={92}
+           />
+@@ -492,11 +596,11 @@ function CardDetailModal({
+                 </div>
+ 
+                 <div className="flex-1 flex items-center justify-center min-h-0 py-2">
+-                  <MythSvgIcon
+-                    mythId={monster.species?.id ?? monster.speciesId ?? ''}
+-                    element={monster.species?.element ?? ''}
++                  <LivingMythPortrait
++                    monster={monster}
+                     rarity={rarity}
+                     size={210}
++                    interactive
+                   />
+                 </div>
+ 
+-- 
+2.51.1
+
