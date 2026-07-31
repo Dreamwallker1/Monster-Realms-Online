@@ -1447,7 +1447,7 @@ export default function BattleOverlay() {
     <div className="fixed inset-0 z-50 flex flex-col battle-screen-in" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden battle-arena">
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
@@ -1456,17 +1456,22 @@ export default function BattleOverlay() {
         <div
           className="absolute left-0 right-0 bottom-0"
           style={{
-            height: '42%',
+            height: '38%',
             background: theme.groundGrad,
             borderTop: `2px solid ${theme.groundLine}`,
           }}
         />
 
         {/* Horizon decorations */}
-        <div className="absolute left-0 right-0" style={{ bottom: '42%' }}>
+        <div className="absolute left-0 right-0" style={{ bottom: '38%' }}>
           {theme.hasTrees && <ForestSilhouette color={theme.treeColor} />}
           {theme.hasRocks && !theme.hasTrees && <RockSilhouette color={theme.rockColor} />}
         </div>
+
+        {/* Arena depth — subtle perspective and combatant staging pools */}
+        <div className="battle-ground-perspective" aria-hidden="true" />
+        <div className="battle-stage-pool battle-stage-pool-wild" aria-hidden="true" />
+        <div className="battle-stage-pool battle-stage-pool-player" aria-hidden="true" />
 
         {/* Wild HP plate — upper left */}
         <div className="absolute top-4 left-4 battle-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -1582,7 +1587,7 @@ export default function BattleOverlay() {
         <div
           className="absolute battle-entrance battle-idle-bob"
           style={{
-            bottom: '42%',
+            bottom: '38%',
             left: '50%',
             transform: 'translateX(-50%)',
             animationDelay: '0.2s',
@@ -1598,8 +1603,8 @@ export default function BattleOverlay() {
 
         {/* Wild Myth — LEFT FRONT */}
         <div
-          className="absolute flex flex-col items-center battle-entrance"
-          style={{ bottom: '36%', left: '8%', animationDelay: '0.05s', zIndex: 2 }}
+          className="absolute flex flex-col items-center battle-entrance battle-combatant-wild"
+          style={{ animationDelay: '0.05s', zIndex: 2 }}
         >
           {/* Stagger wrapper — re-keyed when wild takes a hit */}
           <div key={`wstagger-${wildShake}`} className={wildShake > 0 ? 'hit-stagger-right' : ''}>
@@ -1630,7 +1635,7 @@ export default function BattleOverlay() {
               speciesId={wildMonster.species.id}
               element={wildMonster.species.element}
               rarity={wildMonster.species.rarity}
-              size={110}
+              size={132}
               shakeKey={wildShake}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
@@ -1642,8 +1647,8 @@ export default function BattleOverlay() {
         {/* Player Myth — RIGHT FRONT */}
         <div
           key={switchAnimKey}
-          className="absolute flex flex-col items-center battle-entrance"
-          style={{ bottom: '36%', right: '8%', animationDelay: '0.1s', zIndex: 2 }}
+          className="absolute flex flex-col items-center battle-entrance battle-combatant-player"
+          style={{ animationDelay: '0.1s', zIndex: 2 }}
         >
           {/* Stagger wrapper — re-keyed when player myth takes a hit */}
           <div key={`pstagger-${playerShake}`} className={playerShake > 0 ? 'hit-stagger-left' : ''}>
@@ -1659,7 +1664,7 @@ export default function BattleOverlay() {
               speciesId={playerMonster.species.id}
               element={playerMonster.species.element}
               rarity={playerMonster.species.rarity}
-              size={110}
+              size={132}
               shakeKey={playerShake}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"
@@ -1691,9 +1696,8 @@ export default function BattleOverlay() {
         {/* ── Hit flash overlays — brief white radial burst at defender ─── */}
         <div
           key={`hfw-${hitFlashWild}`}
-          className={`absolute pointer-events-none rounded-full ${hitFlashWild > 0 ? 'hit-white-flash' : ''}`}
+          className={`absolute pointer-events-none rounded-full battle-hit-wild ${hitFlashWild > 0 ? 'hit-white-flash' : ''}`}
           style={{
-            left: '8%', bottom: '36%',
             transform: 'translate(-10%, 10%)',
             width: 150, height: 150,
             background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 40%, transparent 100%)',
@@ -1703,9 +1707,8 @@ export default function BattleOverlay() {
         />
         <div
           key={`hfp-${hitFlashPlayer}`}
-          className={`absolute pointer-events-none rounded-full ${hitFlashPlayer > 0 ? 'hit-white-flash' : ''}`}
+          className={`absolute pointer-events-none rounded-full battle-hit-player ${hitFlashPlayer > 0 ? 'hit-white-flash' : ''}`}
           style={{
-            right: '8%', bottom: '36%',
             transform: 'translate(10%, 10%)',
             width: 150, height: 150,
             background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 40%, transparent 100%)',
@@ -1713,6 +1716,8 @@ export default function BattleOverlay() {
             opacity: 0,
           }}
         />
+
+        <div className="battle-arena-vignette" aria-hidden="true" />
 
         {/* ── Floating damage numbers ─────────────────────────────────── */}
         {damageFloats.map(f => (
