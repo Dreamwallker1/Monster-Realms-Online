@@ -1,8 +1,9 @@
 export const BATTLE_FOCUS_EVENT = 'litardia:battle-focus';
 export const BATTLE_FOCUS_READY_EVENT = 'litardia:battle-focus-ready';
 export const BATTLE_RELEASE_EVENT = 'litardia:battle-release';
+export const BATTLE_OPEN_EVENT = 'litardia:battle-open';
 
-export function waitForBattleFocus(timeoutMs = 1400): Promise<void> {
+export function waitForBattleFocus(timeoutMs = 2600): Promise<void> {
   return new Promise((resolve) => {
     let settled = false;
     const finish = () => {

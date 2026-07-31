@@ -8,6 +8,7 @@ import { ELEMENT_ICON } from '@/lib/type-chart';
 import { Swords, AlertTriangle } from 'lucide-react';
 import {
   BATTLE_FOCUS_EVENT,
+  BATTLE_OPEN_EVENT,
   waitForBattleFocus,
 } from '@/lib/battle-transition-events';
 
@@ -251,6 +252,7 @@ export default function EncounterPopup() {
         },
       }));
       await cameraReady;
+      window.dispatchEvent(new Event(BATTLE_OPEN_EVENT));
       startBattle(battle.id, battle);
     } catch (err) {
       console.error('Failed to start battle:', err);

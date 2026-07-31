@@ -1463,30 +1463,33 @@ export default function BattleOverlay() {
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
+        <div className="battle-sky-bloom" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
+        <div className="battle-horizon-haze" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
 
         {/* Ground */}
         <div
           className="absolute left-0 right-0 bottom-0"
           style={{
-            height: '38%',
+            height: '46%',
             background: theme.groundGrad,
             borderTop: `2px solid ${theme.groundLine}`,
           }}
         />
 
         {/* Horizon decorations */}
-        <div className="absolute left-0 right-0" style={{ bottom: '38%' }}>
+        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '46%' }}>
           {theme.hasTrees && <ForestSilhouette color={theme.treeColor} />}
           {theme.hasRocks && !theme.hasTrees && <RockSilhouette color={theme.rockColor} />}
         </div>
 
         {/* Arena depth — subtle perspective and combatant staging pools */}
         <div className="battle-ground-perspective" aria-hidden="true" />
+        <div className="battle-foreground-ridge" aria-hidden="true" />
         <div className="battle-stage-pool battle-stage-pool-wild" aria-hidden="true" />
         <div className="battle-stage-pool battle-stage-pool-player" aria-hidden="true" />
 
         {/* Wild HP plate — upper left */}
-        <div className="absolute top-4 left-4 battle-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="absolute top-5 left-5 battle-slide-up battle-hp-anchor battle-hp-anchor-left" style={{ animationDelay: '0.75s' }}>
           <HpPlate
             name={wildMonster.species.name}
             level={wildMonster.level}
@@ -1581,7 +1584,7 @@ export default function BattleOverlay() {
         </div>
 
         {/* Player myth HP plate — upper right */}
-        <div className="absolute top-4 right-4 battle-slide-up" style={{ animationDelay: '0.15s' }}>
+        <div className="absolute top-5 right-5 battle-slide-up battle-hp-anchor battle-hp-anchor-right" style={{ animationDelay: '0.8s' }}>
           <HpPlate
             name={playerMonster.species.name}
             level={playerMonster.level}
@@ -1599,14 +1602,14 @@ export default function BattleOverlay() {
         <div
           className="absolute battle-entrance battle-idle-bob"
           style={{
-            bottom: '38%',
-            left: '50%',
+            bottom: '34%',
+            left: '68%',
             transform: 'translateX(-50%)',
             animationDelay: '0.2s',
             zIndex: 1,
           }}
         >
-          <CharacterFront char={char} size={78} />
+          <CharacterFront char={char} size={92} />
           <div style={{
             width: 48, height: 8, borderRadius: '50%', marginTop: 2, marginLeft: 'auto', marginRight: 'auto',
             background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 80%)',
@@ -1647,7 +1650,7 @@ export default function BattleOverlay() {
               speciesId={wildMonster.species.id}
               element={wildMonster.species.element}
               rarity={wildMonster.species.rarity}
-              size={180}
+              size={250}
               shakeKey={wildShake}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
@@ -1676,7 +1679,7 @@ export default function BattleOverlay() {
               speciesId={playerMonster.species.id}
               element={playerMonster.species.element}
               rarity={playerMonster.species.rarity}
-              size={180}
+              size={250}
               shakeKey={playerShake}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"

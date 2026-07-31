@@ -641,10 +641,10 @@ export default class WorldScene extends Phaser.Scene {
     const focusY = this.playerY * TILE_SIZE + TILE_SIZE / 2;
 
     camera.stopFollow();
-    camera.pan(focusX, focusY, 880, 'Cubic.easeInOut', true);
-    camera.zoomTo(2.2, 880, 'Cubic.easeInOut', true, (_camera, progress) => {
+    camera.pan(focusX, focusY, 1650, 'Sine.easeInOut', true);
+    camera.zoomTo(2.65, 1650, 'Sine.easeInOut', true, (_camera, progress) => {
       if (progress >= 1) {
-        camera.shake(120, 0.0025);
+        camera.shake(180, 0.0018);
         window.dispatchEvent(new Event(BATTLE_FOCUS_READY_EVENT));
       }
     });
@@ -653,7 +653,7 @@ export default class WorldScene extends Phaser.Scene {
   private releaseBattleCamera() {
     if (!this.playerContainer) return;
     const camera = this.cameras.main;
-    camera.zoomTo(1, 520, 'Cubic.easeOut', true, (_camera, progress) => {
+    camera.zoomTo(1, 850, 'Sine.easeInOut', true, (_camera, progress) => {
       if (progress >= 1 && this.playerContainer) {
         camera.startFollow(this.playerContainer, true, 0.1, 0.1);
         this.battleFocusActive = false;

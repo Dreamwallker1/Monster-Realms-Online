@@ -9,6 +9,7 @@ import BattleOverlay from '@/components/game/BattleOverlay';
 import DPad from '@/components/game/DPad';
 import RegionBanner from '@/components/game/RegionBanner';
 import MinimapOverlay from '@/components/game/MinimapOverlay';
+import BattleTransitionVeil from '@/components/game/BattleTransitionVeil';
 import { useGameStore } from '@/store/game-store';
 import { useGetMe, useExploreTile, type ExploreInput } from '@workspace/api-client-react';
 import { getToken } from '@/lib/auth';
@@ -178,6 +179,7 @@ export default function Game() {
       <GameHUD />
       <GameSidebar />
       <EncounterPopup />
+      <BattleTransitionVeil />
       <BattleOverlay />
     </div>
   );
