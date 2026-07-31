@@ -112,7 +112,7 @@ export const MONSTER_EMOJI: Record<string, string> = {
 
   // ── v3 Fire ────────────────────────────────────────────────────────────────
   'emberpup':    '🐺🔥',
-  'cinderclaw':  '🐱🔥',
+  'flarelynx':   '🐈‍⬛🔥',
   'flamewing':   '🦅🔥',
   'magmahorn':   '🦏🌋',
   'pyredrake':   '🐉🌋',

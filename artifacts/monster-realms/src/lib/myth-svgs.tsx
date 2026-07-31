@@ -1901,6 +1901,19 @@ export interface MythSvgProps {
 const RARITY_SCALE: Record<string, number> = { S: 1.18, A: 1.0, B: 0.88, C: 0.75 };
 
 export function MythSvgIcon({ mythId, element, rarity = 'C', size = 100, className }: MythSvgProps) {
+  if (mythId === 'flarelynx') {
+    return (
+      <img
+        src="/myths/flarelynx.webp"
+        alt="Flarelynx"
+        width={size}
+        height={size}
+        className={className}
+        style={{ objectFit: 'contain', borderRadius: '18%' }}
+      />
+    );
+  }
+
   const archetype = (MYTH_ARCHETYPE[mythId] ?? fallback(element)) as ArchetypeName;
   const [p, s, a] = getMythColors(mythId, element);
   const scale = RARITY_SCALE[rarity] ?? 1.0;

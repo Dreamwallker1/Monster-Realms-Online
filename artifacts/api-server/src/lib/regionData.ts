@@ -30,13 +30,9 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     height: 50,
     monsterSpeciesIds: [
       // Fire C
-      "sparkub", "flammi", "torchip", "kindleo", "firette",
-      // Fire B
-      "flareonix", "magmaroo", "lavabit", "pyrehorn",
-      // Fire A
-      "blazion", "volcanix", "fireclaw",
-      // Fire S
-      "pyrorax",
+      "emberpup", "flarelynx",
+      // Fire B / A / S
+      "flamewing", "magmahorn", "pyredrake",
     ],
   },
   {
@@ -49,13 +45,9 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     height: 50,
     monsterSpeciesIds: [
       // Fire C
-      "sparkub", "torchip", "blazibit", "seatpur", "emberkit",
-      // Fire B
-      "flareonix", "cinderoar", "burnyx", "pyrehorn",
-      // Fire A
-      "blazion", "emberwolf", "fireclaw",
-      // Fire S
-      "infernix",
+      "emberpup", "flarelynx",
+      // Fire B / A / S
+      "flamewing", "magmahorn", "pyredrake",
     ],
   },
   {

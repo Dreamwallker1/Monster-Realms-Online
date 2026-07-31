@@ -29,6 +29,31 @@ import {
   type CapturedMonsterInsert,
 } from "../lib/battleService.js";
 import { calculateCaptureChance, getElementMultiplier } from "../lib/gameEngine.js";
+import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+import { REGION_SEED_DATA } from "../lib/regionData.js";
+
+describe("Flarelynx catalogue integration", () => {
+  it("replaces Cinderclaw without changing the 25-myth catalogue size", () => {
+    assert.equal(MONSTER_SEED_DATA.length, 25);
+    assert.ok(MONSTER_SEED_DATA.some((myth) => myth.id === "flarelynx"));
+    assert.ok(!MONSTER_SEED_DATA.some((myth) => myth.id === "cinderclaw"));
+  });
+
+  it("keeps Flarelynx as a Fire C myth with three attacks", () => {
+    const flarelynx = MONSTER_SEED_DATA.find((myth) => myth.id === "flarelynx");
+    assert.equal(flarelynx?.element, "Fire");
+    assert.equal(flarelynx?.rarity, "C");
+    assert.equal(flarelynx?.personality, "Loyal");
+    assert.equal(flarelynx?.skills.length, 3);
+  });
+
+  it("allows Flarelynx to spawn in both of its declared regions", () => {
+    for (const regionId of ["volcanic-rift", "scorched-wastes"]) {
+      const region = REGION_SEED_DATA.find((item) => item.id === regionId);
+      assert.ok(region?.monsterSpeciesIds.includes("flarelynx"));
+    }
+  });
+});
 
 describe("catalogue v3 element matchups", () => {
   it("applies the renamed Earth and Storm cycle", () => {
