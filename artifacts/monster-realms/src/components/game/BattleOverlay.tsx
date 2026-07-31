@@ -15,6 +15,7 @@ import OrbCinematic from '@/components/battle/OrbCinematic';
 import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components/battle/MythEntranceCinematic';
 import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
+import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -967,6 +968,12 @@ export default function BattleOverlay() {
   const [showWildEntrance, setShowWildEntrance]     = useState(false);
   const seenBattleId = useRef<string | null>(null);
   const prevSwitchAnimKey = useRef(0);
+
+  useEffect(() => {
+    if (!battle.active) {
+      window.dispatchEvent(new Event(BATTLE_RELEASE_EVENT));
+    }
+  }, [battle.active]);
 
   // ── Faint cinematic state ─────────────────────────────────────────────────
   const [faintCinematic, setFaintCinematic] = useState<{
@@ -2136,7 +2143,7 @@ export default function BattleOverlay() {
         )}
       </div>
 
-      {/* ── PvP Arena Entry Cinematic (covers full screen on battle start) ─── */}
+      {/* ── Battlefield entry cinematic (covers full screen on battle start) ─── */}
       {showBattleIntro && (
         <div
           className="absolute inset-0 battle-intro-overlay flex flex-col items-center justify-center"
@@ -2147,21 +2154,21 @@ export default function BattleOverlay() {
 
           <div className="battle-intro-content text-center" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.55em', color: '#FCA5A5', marginBottom: 18 }}>
-              PVP ARENA
+              {regionId === 'pvp-arena' ? 'PVP ARENA' : 'WILD ENCOUNTER'}
             </div>
             <div style={{
               fontSize: 54, fontWeight: 900, letterSpacing: '0.1em', lineHeight: 1,
               color: '#fff',
               textShadow: '0 0 60px rgba(239,68,68,0.75), 0 0 120px rgba(239,68,68,0.35), 0 4px 12px rgba(0,0,0,0.95)',
             }}>
-              BATTLE
+              BATTLEFIELD
             </div>
             <div style={{
               fontSize: 54, fontWeight: 900, letterSpacing: '0.1em', lineHeight: 1.05,
               color: '#fff',
               textShadow: '0 0 60px rgba(239,68,68,0.75), 0 0 120px rgba(239,68,68,0.35), 0 4px 12px rgba(0,0,0,0.95)',
             }}>
-              START!
+              LOCKED
             </div>
             {/* Crossed swords accent */}
             <div className="battle-intro-swords flex items-center justify-center gap-4 mt-6">

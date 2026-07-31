@@ -12,6 +12,11 @@ import {
 } from '@/lib/terrain';
 import { getCharacter, type CharacterConfig } from '@/lib/characters';
 import { MRO_MOVE_EVENT } from '@/lib/dpad-events';
+import {
+  BATTLE_FOCUS_EVENT,
+  BATTLE_FOCUS_READY_EVENT,
+  BATTLE_RELEASE_EVENT,
+} from '@/lib/battle-transition-events';
 import type { ExploreInput } from '@workspace/api-client-react';
 
 const TILE_SIZE  = 32;
@@ -41,6 +46,7 @@ export default class WorldScene extends Phaser.Scene {
   private characterType = 'kai';
   private exploredTiles: Set<string> = new Set();
   private otherPlayerContainers: Map<string, Phaser.GameObjects.Container> = new Map();
+  private battleFocusActive = false;
 
   private onMove?: (input: ExploreInput) => void;
   private onRadarUpdate?: () => void;
@@ -115,9 +121,16 @@ export default class WorldScene extends Phaser.Scene {
       this.moveInDirection(dx, dy);
     };
     window.addEventListener(MRO_MOVE_EVENT, onDpadMove);
+
+    const onBattleFocus = () => this.focusBattleCamera();
+    const onBattleRelease = () => this.releaseBattleCamera();
+    window.addEventListener(BATTLE_FOCUS_EVENT, onBattleFocus);
+    window.addEventListener(BATTLE_RELEASE_EVENT, onBattleRelease);
     // Remove listener when scene shuts down / restarts to avoid duplicates
     this.events.once('shutdown', () => {
       window.removeEventListener(MRO_MOVE_EVENT, onDpadMove);
+      window.removeEventListener(BATTLE_FOCUS_EVENT, onBattleFocus);
+      window.removeEventListener(BATTLE_RELEASE_EVENT, onBattleRelease);
     });
 
     this.revealNearbyTiles();
@@ -570,6 +583,7 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Called from keyboard handler and from the React D-pad overlay */
   public moveInDirection(dx: number, dy: number) {
+    if (this.battleFocusActive) return;
     const newX = this.playerX + dx;
     const newY = this.playerY + dy;
 
@@ -616,6 +630,35 @@ export default class WorldScene extends Phaser.Scene {
     const regionId = getRegionIdForPosition(this.playerX, this.playerY);
     this.onMove?.({ direction: apiDir ?? 'up', regionId, posX: this.playerX, posY: this.playerY });
     this.revealNearbyTiles();
+  }
+
+  private focusBattleCamera() {
+    if (!this.playerContainer || this.battleFocusActive) return;
+    this.battleFocusActive = true;
+
+    const camera = this.cameras.main;
+    const focusX = this.playerX * TILE_SIZE + TILE_SIZE / 2;
+    const focusY = this.playerY * TILE_SIZE + TILE_SIZE / 2;
+
+    camera.stopFollow();
+    camera.pan(focusX, focusY, 880, 'Cubic.easeInOut', true);
+    camera.zoomTo(2.2, 880, 'Cubic.easeInOut', true, (_camera, progress) => {
+      if (progress >= 1) {
+        camera.shake(120, 0.0025);
+        window.dispatchEvent(new Event(BATTLE_FOCUS_READY_EVENT));
+      }
+    });
+  }
+
+  private releaseBattleCamera() {
+    if (!this.playerContainer) return;
+    const camera = this.cameras.main;
+    camera.zoomTo(1, 520, 'Cubic.easeOut', true, (_camera, progress) => {
+      if (progress >= 1 && this.playerContainer) {
+        camera.startFollow(this.playerContainer, true, 0.1, 0.1);
+        this.battleFocusActive = false;
+      }
+    });
   }
 
   private toApiDirection(dx: number, dy: number): 'up' | 'down' | 'left' | 'right' | null {

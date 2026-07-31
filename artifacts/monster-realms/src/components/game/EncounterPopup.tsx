@@ -6,6 +6,10 @@ import { getElementColors, getRarityColors, QUALITY_LABEL } from '@/lib/element-
 import { MythSvgIcon } from '@/lib/myth-svgs';
 import { ELEMENT_ICON } from '@/lib/type-chart';
 import { Swords, AlertTriangle } from 'lucide-react';
+import {
+  BATTLE_FOCUS_EVENT,
+  waitForBattleFocus,
+} from '@/lib/battle-transition-events';
 
 // ─── Deterministic noise from species id ─────────────────────────────────────
 
@@ -236,8 +240,18 @@ export default function EncounterPopup() {
           activeMonsterCapturedId: team[0].id,
         },
       });
-      startBattle(battle.id, battle);
       clearEncounter();
+      const cameraReady = waitForBattleFocus();
+      window.dispatchEvent(new CustomEvent(BATTLE_FOCUS_EVENT, {
+        detail: {
+          x: player.posX,
+          y: player.posY,
+          regionId: player.regionId,
+          element: sp.element,
+        },
+      }));
+      await cameraReady;
+      startBattle(battle.id, battle);
     } catch (err) {
       console.error('Failed to start battle:', err);
     } finally {
