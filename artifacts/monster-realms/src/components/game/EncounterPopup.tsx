@@ -203,7 +203,7 @@ function ShinyRing() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function EncounterPopup() {
-  const { encounter, clearEncounter, startBattle, player } = useGameStore();
+  const { encounter, clearEncounter, startBattle, player, currentRegionId } = useGameStore();
   const [isStarting, setIsStarting] = useState(false);
 
   const { data: team } = useGetPlayerTeam(player?.id || '', {
@@ -234,7 +234,7 @@ export default function EncounterPopup() {
       const battle = await startBattleMutation.mutateAsync({
         data: {
           playerId: player.id,
-          regionId: player.regionId || 'verdant-meadows',
+          regionId: currentRegionId || player.regionId || 'verdant-meadows',
           speciesId: sp.id,
           wildLevel: encounter.wildLevel,
           shinyVariant: encounter.shinyVariant as any,
@@ -247,7 +247,7 @@ export default function EncounterPopup() {
         detail: {
           x: player.posX,
           y: player.posY,
-          regionId: player.regionId,
+          regionId: currentRegionId || player.regionId,
           element: sp.element,
         },
       }));

@@ -809,8 +809,8 @@ function ActionPanel({
         }}
         className="flex flex-col gap-2"
       >
-      {/* Skill buttons — 2×2 grid */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Skill buttons — use the full width without leaving an orphaned half-row */}
+      <div className="battle-skill-grid">
         {available.length > 0 ? available.map(({ action, type, skill }) => {
           const style = SKILL_STYLE[type] ?? SKILL_STYLE['normal']!;
           const elColors = getElementColors(skill.element);
@@ -1470,14 +1470,14 @@ export default function BattleOverlay() {
         <div
           className="absolute left-0 right-0 bottom-0"
           style={{
-            height: '46%',
+            height: '58%',
             background: theme.groundGrad,
             borderTop: `2px solid ${theme.groundLine}`,
           }}
         />
 
         {/* Horizon decorations */}
-        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '46%' }}>
+        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '58%' }}>
           {theme.hasTrees && <ForestSilhouette color={theme.treeColor} />}
           {theme.hasRocks && !theme.hasTrees && <RockSilhouette color={theme.rockColor} />}
         </div>
@@ -1600,16 +1600,16 @@ export default function BattleOverlay() {
 
         {/* Character — CENTER BACK (smaller, feet on ground) */}
         <div
-          className="absolute battle-entrance battle-idle-bob"
+          className="absolute battle-entrance battle-idle-bob battle-trainer"
           style={{
-            bottom: '34%',
-            left: '68%',
+            bottom: '47%',
+            left: '82%',
             transform: 'translateX(-50%)',
             animationDelay: '0.2s',
             zIndex: 1,
           }}
         >
-          <CharacterFront char={char} size={92} />
+          <CharacterFront char={char} size={72} />
           <div style={{
             width: 48, height: 8, borderRadius: '50%', marginTop: 2, marginLeft: 'auto', marginRight: 'auto',
             background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 80%)',
@@ -1650,7 +1650,7 @@ export default function BattleOverlay() {
               speciesId={wildMonster.species.id}
               element={wildMonster.species.element}
               rarity={wildMonster.species.rarity}
-              size={250}
+              size={276}
               shakeKey={wildShake}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
@@ -1679,7 +1679,7 @@ export default function BattleOverlay() {
               speciesId={playerMonster.species.id}
               element={playerMonster.species.element}
               rarity={playerMonster.species.rarity}
-              size={250}
+              size={276}
               shakeKey={playerShake}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"

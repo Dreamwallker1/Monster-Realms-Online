@@ -104,7 +104,13 @@ export default function Game() {
     try {
       const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
 
-      setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
+      setPlayer({
+        ...player,
+        posX: result.newPosX,
+        posY: result.newPosY,
+        energy: result.remainingEnergy,
+        regionId: input.regionId || player.regionId,
+      });
 
       // Update current region whenever the player crosses a zone boundary
       if (input.regionId && input.regionId !== currentRegionId) {

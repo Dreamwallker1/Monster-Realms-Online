@@ -443,13 +443,13 @@
   .battle-idle-bob { animation: battle-idle-bob 2s ease-in-out infinite; }
 
   .battle-combatant-wild {
-    left: clamp(4%, 9vw, 11%);
-    bottom: 5%;
+    left: clamp(3%, 7vw, 9%);
+    bottom: 2%;
   }
 
   .battle-combatant-player {
-    right: clamp(4%, 9vw, 11%);
-    bottom: 5%;
+    right: clamp(3%, 7vw, 9%);
+    bottom: 2%;
   }
 
   .battle-hit-wild {
@@ -465,7 +465,7 @@
   .battle-ground-perspective {
     position: absolute;
     inset: auto 0 0;
-    height: 46%;
+    height: 58%;
     z-index: 0;
     pointer-events: none;
     background:
@@ -479,7 +479,7 @@
     position: absolute;
     width: clamp(260px, 29vw, 480px);
     height: clamp(50px, 7vw, 94px);
-    bottom: 1%;
+    bottom: 0;
     border-radius: 50%;
     z-index: 1;
     opacity: 0.72;
@@ -490,6 +490,24 @@
 
   .battle-stage-pool-wild { left: clamp(0%, 4vw, 6%); }
   .battle-stage-pool-player { right: clamp(0%, 4vw, 6%); }
+
+  .battle-skill-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 900px) {
+    .battle-skill-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 700px) {
+    .battle-trainer { left: 76% !important; bottom: 48% !important; transform: translateX(-50%) scale(.76) !important; }
+    .battle-combatant-wild { left: 1%; }
+    .battle-combatant-player { right: 1%; }
+  }
 
   .battle-arena-vignette {
     position: absolute;
@@ -507,7 +525,7 @@
     mix-blend-mode: screen; opacity: 0.72;
   }
   .battle-horizon-haze {
-    position: absolute; left: 0; right: 0; bottom: 40%; height: 23%; pointer-events: none;
+    position: absolute; left: 0; right: 0; bottom: 52%; height: 23%; pointer-events: none;
     background: linear-gradient(to top, color-mix(in srgb, var(--arena-ambient) 24%, transparent), transparent 80%);
     filter: blur(16px); opacity: 0.78;
   }
