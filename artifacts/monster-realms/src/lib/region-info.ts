@@ -58,7 +58,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     accentColor: '#ff6620',
     // regionData.ts → volcanic-rift → monsterSpeciesIds
     speciesIds: [
-      'emberpup', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
+      'ashquill', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
     ],
   },
 
@@ -127,7 +127,7 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     accentColor: '#cc4400',
     // regionData.ts → scorched-wastes → monsterSpeciesIds
     speciesIds: [
-      'emberpup', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
+      'ashquill', 'flarelynx', 'flamewing', 'magmahorn', 'pyredrake',
     ],
   },
 

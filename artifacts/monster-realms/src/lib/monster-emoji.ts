@@ -111,7 +111,7 @@ export const MONSTER_EMOJI: Record<string, string> = {
   'noctiris':   '🐍✨',
 
   // ── v3 Fire ────────────────────────────────────────────────────────────────
-  'emberpup':    '🐺🔥',
+  'ashquill':    '🦅🔥',
   'flarelynx':   '🐈‍⬛🔥',
   'flamewing':   '🦅🔥',
   'magmahorn':   '🦏🌋',

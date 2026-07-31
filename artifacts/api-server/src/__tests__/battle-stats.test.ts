@@ -47,6 +47,15 @@ describe("Flarelynx catalogue integration", () => {
     assert.equal(flarelynx?.skills.length, 3);
   });
 
+  it("replaces Emberpup with the Fire C myth Ashquill", () => {
+    const ashquill = MONSTER_SEED_DATA.find((myth) => myth.id === "ashquill");
+    assert.equal(ashquill?.element, "Fire");
+    assert.equal(ashquill?.rarity, "C");
+    assert.equal(ashquill?.personality, "Defiant");
+    assert.equal(ashquill?.skills.length, 3);
+    assert.ok(!MONSTER_SEED_DATA.some((myth) => myth.id === "emberpup"));
+  });
+
   it("allows Flarelynx to spawn in both of its declared regions", () => {
     for (const regionId of ["volcanic-rift", "scorched-wastes"]) {
       const region = REGION_SEED_DATA.find((item) => item.id === regionId);

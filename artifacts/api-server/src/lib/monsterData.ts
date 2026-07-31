@@ -14,16 +14,16 @@ export const MONSTER_SEED_DATA: InsertMonsterSpecies[] = [
   // ══════════════════════════════════════════════════════════════════════════
 
   {
-    id: "emberpup", name: "Emberpup", element: "Fire", rarity: "C",
-    baseHp: 45, baseAttack: 40, baseDefense: 34, baseSpeed: 50,
-    description: "A scrappy wolf pup with ember-tipped paws. Always looking for a fight.",
-    lore: "Emberpups form small packs near lava fields. Their paws leave scorch marks on stone, making them easy to track.",
-    personality: "Aggressive", weight: 4.8, height: 0.4, captureRate: 88,
+    id: "ashquill", name: "Ashquill", element: "Fire", rarity: "C",
+    baseHp: 44, baseAttack: 43, baseDefense: 32, baseSpeed: 53,
+    description: "A lean ash-born raptor whose ragged feathers ignite when it spreads its wings.",
+    lore: "Ashquills hatch inside cooling volcanic craters. They cannot yet rise from death like the legendary firebirds of old, but every wound hardens their feathers into darker, sharper armor.",
+    personality: "Defiant", weight: 5.6, height: 0.68, captureRate: 88,
     evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
     skills: [
-      { name: "Ember Bite",    type: "normal",   element: "Fire", power: 42, accuracy: 97, description: "Lunges forward with flaming jaws, slamming into the target." },
-      { name: "Paw Slam",      type: "skill1",   element: "Fire", power: 62, accuracy: 90, description: "Leaps up and drives ember-coated paws down with crushing force." },
-      { name: "Inferno Howl",  type: "ultimate", element: "Fire", power: 125, accuracy: 75, description: "Unleashes a shockwave howl that ignites the air in a burst ring." },
+      { name: "Searing Peck", type: "normal",   element: "Fire", power: 42, accuracy: 97, description: "Darts forward and drives its heated obsidian beak into the target." },
+      { name: "Ashen Gust",   type: "skill1",   element: "Fire", power: 62, accuracy: 90, description: "Beats its ragged wings to launch a cutting cloud of hot ash and ember shards." },
+      { name: "Last Spark",   type: "ultimate", element: "Fire", power: 125, accuracy: 75, description: "Consumes the fire in its tail to become a black-red comet for one desperate strike." },
     ],
     regionIds: ["volcanic-rift", "scorched-wastes"],
   },

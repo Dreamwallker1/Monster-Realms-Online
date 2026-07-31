@@ -1901,11 +1901,17 @@ export interface MythSvgProps {
 const RARITY_SCALE: Record<string, number> = { S: 1.18, A: 1.0, B: 0.88, C: 0.75 };
 
 export function MythSvgIcon({ mythId, element, rarity = 'C', size = 100, className }: MythSvgProps) {
-  if (mythId === 'flarelynx') {
+  const illustratedMyths: Record<string, string> = {
+    flarelynx: '/myths/flarelynx.webp',
+    ashquill: '/myths/ashquill.webp',
+  };
+  const illustratedMyth = illustratedMyths[mythId];
+
+  if (illustratedMyth) {
     return (
       <img
-        src="/myths/flarelynx.webp"
-        alt="Flarelynx"
+        src={illustratedMyth}
+        alt={mythId}
         width={size}
         height={size}
         className={className}

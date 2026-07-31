@@ -30,7 +30,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     height: 50,
     monsterSpeciesIds: [
       // Fire C
-      "emberpup", "flarelynx",
+      "ashquill", "flarelynx",
       // Fire B / A / S
       "flamewing", "magmahorn", "pyredrake",
     ],
@@ -45,7 +45,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     height: 50,
     monsterSpeciesIds: [
       // Fire C
-      "emberpup", "flarelynx",
+      "ashquill", "flarelynx",
       // Fire B / A / S
       "flamewing", "magmahorn", "pyredrake",
     ],

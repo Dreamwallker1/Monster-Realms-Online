@@ -549,8 +549,13 @@ function MythSprite({
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
-  const hasBattleArt = speciesId === 'flarelynx';
-  const renderedSize = hasBattleArt ? Math.round(size * 2.15) : size;
+  const battleArt: Record<string, string> = {
+    flarelynx: '/myths/flarelynx-battle.webp',
+    ashquill: '/myths/ashquill-battle.webp',
+  };
+  const battleArtSrc = battleArt[speciesId];
+  const hasBattleArt = Boolean(battleArtSrc);
+  const renderedSize = hasBattleArt ? Math.round(size * 1.6) : size;
 
   useEffect(() => {
     if (shakeKey > 0) setAnimKey((k) => k + 1);
@@ -578,8 +583,8 @@ function MythSprite({
               style={{ transform: facing === 'left' ? 'scaleX(-1)' : undefined }}
             >
               <img
-                src="/myths/flarelynx-battle.webp"
-                alt="Flarelynx ready for battle"
+                src={battleArtSrc}
+                alt={`${speciesId} ready for battle`}
                 width={renderedSize}
                 height={renderedSize}
                 className="flarelynx-battle-sprite w-full h-full object-contain"
@@ -1635,7 +1640,7 @@ export default function BattleOverlay() {
               speciesId={wildMonster.species.id}
               element={wildMonster.species.element}
               rarity={wildMonster.species.rarity}
-              size={132}
+              size={180}
               shakeKey={wildShake}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
@@ -1664,7 +1669,7 @@ export default function BattleOverlay() {
               speciesId={playerMonster.species.id}
               element={playerMonster.species.element}
               rarity={playerMonster.species.rarity}
-              size={132}
+              size={180}
               shakeKey={playerShake}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"
