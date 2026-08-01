@@ -1074,11 +1074,16 @@ export default function BattleOverlay() {
   const [showWildEntrance, setShowWildEntrance]     = useState(false);
   const seenBattleId = useRef<string | null>(null);
   const prevSwitchAnimKey = useRef(0);
+  const wasBattleActiveRef = useRef(battle.active);
 
   useEffect(() => {
-    if (!battle.active) {
+    // Release the world camera only on a real active -> inactive transition.
+    // Emitting release while the encounter screen is preparing a new battle
+    // races with BATTLE_FOCUS_EVENT and can cancel arena entry.
+    if (wasBattleActiveRef.current && !battle.active) {
       window.dispatchEvent(new Event(BATTLE_RELEASE_EVENT));
     }
+    wasBattleActiveRef.current = battle.active;
   }, [battle.active]);
 
   // ── Faint cinematic state ─────────────────────────────────────────────────
