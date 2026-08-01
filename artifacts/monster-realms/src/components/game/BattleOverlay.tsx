@@ -577,6 +577,7 @@ function MythSprite({
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
+  const [hitEffectActive, setHitEffectActive] = useState(false);
   const [sheetMode, setSheetMode] = useState<'idle' | 'attack' | 'hit'>('idle');
   const battleArt: Record<string, string> = {
     flarelynx: '/myths/flarelynx-rig-master.png',
@@ -589,8 +590,12 @@ function MythSprite({
   useEffect(() => {
     if (shakeKey <= 0) return;
     setAnimKey((k) => k + 1);
+    setHitEffectActive(true);
     setSheetMode('hit');
-    const timer = window.setTimeout(() => setSheetMode('idle'), 650);
+    const timer = window.setTimeout(() => {
+      setSheetMode('idle');
+      setHitEffectActive(false);
+    }, 650);
     return () => window.clearTimeout(timer);
   }, [shakeKey]);
 
@@ -609,9 +614,9 @@ function MythSprite({
       >
         <div
           key={animKey}
-          className={`battle-grounded-idle ${animKey > 0 ? 'hit-flash' : ''}`}
+          className={`battle-grounded-idle ${hitEffectActive ? 'hit-flash' : ''}`}
           style={{
-            filter: animKey > 0 ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
+            filter: hitEffectActive ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
             transition: isFainting ? 'opacity 0.35s ease-in, transform 0.35s ease-in' : undefined,
             opacity: isFainting ? 0 : 1,
             transform: isFainting ? 'translateY(18px) scale(0.85)' : undefined,
@@ -645,7 +650,7 @@ function MythSprite({
             <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
           )}
         </div>
-        <HitReactionOverlay speciesId={speciesId} element={element} animKey={animKey} />
+        <HitReactionOverlay speciesId={speciesId} element={element} animKey={hitEffectActive ? animKey : 0} />
       </div>
       {/* Ground shadow */}
       <div style={{

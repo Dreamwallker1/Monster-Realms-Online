@@ -50,7 +50,7 @@ const getEl = (e: string) => EL_CONFIG[e] ?? DEFAULT_EL;
 // ─── Strike type → archetype map ─────────────────────────────────────────────
 
 type StrikeType =
-  | 'CLAW_SLASH' | 'BITE_LUNGE' | 'FLAME_BURST' | 'ROCK_SMASH'
+  | 'TWIN_FIRE_CLAW' | 'CLAW_SLASH' | 'BITE_LUNGE' | 'FLAME_BURST' | 'ROCK_SMASH'
   | 'TIDAL_SLAM' | 'BUBBLE_SHOT' | 'VINE_WHIP'   | 'SPORE_BOMB'
   | 'LIGHTNING_BOLT' | 'SPARK_DASH' | 'THUNDER_STOMP'
   | 'SHADOW_CLAW' | 'VOID_PULL' | 'ECLIPSE_BEAM';
@@ -85,8 +85,90 @@ const ARCHETYPE_STRIKE: Record<string, StrikeType> = {
 
 function getStrike(mythId?: string): StrikeType {
   if (!mythId) return 'CLAW_SLASH';
+  if (mythId === 'flarelynx') return 'TWIN_FIRE_CLAW';
+  if (mythId === 'ashquill') return 'BITE_LUNGE';
   const arch = MYTH_ARCHETYPE[mythId];
   return (arch && ARCHETYPE_STRIKE[arch]) ? ARCHETYPE_STRIKE[arch]! : 'CLAW_SLASH';
+}
+
+// ─── FLARELYNX BASIC: TWIN FIRE CLAW ────────────────────────────────────────
+// Two readable left/right paw swipes, each launching a three-taloned fire wave.
+// The flame lock-on is placed only over the defender, never over both combatants.
+
+function TwinFireClaw({ side, color, glow, scale }: {
+  side: 'player' | 'wild'; color: string; glow: string; waves: number; scale: number;
+}) {
+  const { from, to } = sides(side);
+  const direction = side === 'player' ? -1 : 1;
+
+  return (
+    <>
+      {[0, 1].map((swipe) => (
+        <motion.div
+          key={`twin-claw-${swipe}`}
+          data-testid="flarelynx-fire-claw-wave"
+          className="absolute pointer-events-none"
+          style={{
+            top: `${39 + swipe * 10}%`,
+            width: `${112 * Math.max(scale, 0.72)}px`,
+            height: `${82 * Math.max(scale, 0.72)}px`,
+            transform: 'translate(-50%,-50%)',
+            filter: `drop-shadow(0 0 ${14 * scale}px ${glow})`,
+            zIndex: 3,
+          }}
+          initial={{ left: from, opacity: 0, scale: 0.35, rotate: direction * (swipe === 0 ? -18 : 18) }}
+          animate={{
+            left: [from, from, to],
+            opacity: [0, 1, 1, 0],
+            scale: [0.35, 1.08, 0.92],
+            rotate: [direction * (swipe === 0 ? -18 : 18), direction * (swipe === 0 ? 12 : -12)],
+          }}
+          transition={{ duration: 0.48, delay: 0.08 + swipe * 0.24, ease: [0.2, 0.75, 0.25, 1] }}
+        >
+          {[0, 1, 2].map((talon) => (
+            <span
+              key={talon}
+              className="absolute rounded-[50%]"
+              style={{
+                left: `${8 + talon * 22}%`,
+                top: `${12 + talon * 7}%`,
+                width: '78%',
+                height: '26%',
+                borderTop: `${Math.max(3, 5 * scale)}px solid ${talon === 1 ? '#FFD166' : color}`,
+                boxShadow: `0 -2px ${8 + talon * 2}px ${glow}`,
+                transform: `rotate(${direction * (swipe === 0 ? -17 : 17)}deg)`,
+              }}
+            />
+          ))}
+        </motion.div>
+      ))}
+
+      {/* Defender-only heat lock and residual burn. */}
+      <motion.div
+        data-testid="flarelynx-target-burn"
+        className="absolute pointer-events-none rounded-full"
+        style={{
+          left: to, top: '45%', transform: 'translate(-50%,-50%)',
+          background: 'radial-gradient(circle, rgba(255,209,102,.52), rgba(255,73,20,.22) 42%, transparent 72%)',
+          boxShadow: `0 0 ${36 * scale}px ${glow}`,
+          zIndex: 2,
+        }}
+        initial={{ width: 20, height: 20, opacity: 0 }}
+        animate={{ width: [20, 155 * scale, 118 * scale], height: [20, 190 * scale, 145 * scale], opacity: [0, .95, .55, 0] }}
+        transition={{ duration: .82, delay: .48, ease: 'easeOut' }}
+      />
+      {[-28, 0, 28].map((offset, ember) => (
+        <motion.span
+          key={`burn-wisp-${ember}`}
+          className="absolute pointer-events-none rounded-full"
+          style={{ left: to, top: '48%', width: 10, height: 22, background: ember === 1 ? '#FFD166' : color, boxShadow: `0 0 12px ${glow}`, zIndex: 4 }}
+          initial={{ x: offset, y: 20, opacity: 0, scale: .5 }}
+          animate={{ x: [offset, offset * .55], y: [20, -45 - ember * 8], opacity: [0, 1, .75, 0], scale: [.5, 1.2, .35] }}
+          transition={{ duration: .65, delay: .52 + ember * .07, ease: 'easeOut' }}
+        />
+      ))}
+    </>
+  );
 }
 
 // ─── Shared geometry helpers ──────────────────────────────────────────────────
@@ -1009,6 +1091,7 @@ function StrikeEffect({ strike, side, color, glow, waves, scale }: {
 }) {
   const p = { side, color, glow, waves, scale };
   switch (strike) {
+    case 'TWIN_FIRE_CLAW': return <TwinFireClaw {...p} />;
     case 'CLAW_SLASH':    return <ClawSlash    {...p} />;
     case 'BITE_LUNGE':    return <BiteLunge    {...p} />;
     case 'FLAME_BURST':   return <FlameBurst   {...p} />;
@@ -1243,6 +1326,7 @@ export default function SkillCinematic({
   const rc = getRarityCfg(attackerRarity);
   const isNormalAttack = skillType === 'normal' || skillType === 'attack';
   const strike = isNormalAttack ? getStrike(attackerMythId) : null;
+  const isFlarelynxBasic = isNormalAttack && attackerMythId === 'flarelynx';
 
   // S-tier gets a longer timeout
   const timeout = isCritical ? rc.timeout + 120 : rc.timeout;
@@ -1265,7 +1349,10 @@ export default function SkillCinematic({
         {/* ── Background tint ── */}
         <motion.div
           className="absolute inset-0"
-          style={{ background: el.bg, backdropFilter: 'brightness(0.65)' }}
+          style={{
+            background: isFlarelynxBasic ? 'rgba(82, 18, 3, 0.12)' : el.bg,
+            backdropFilter: isFlarelynxBasic ? 'brightness(0.92)' : 'brightness(0.65)',
+          }}
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 1, 1, 0] }}
           transition={{ duration: timeout / 1000, times: [0, 0.08, 0.82, 1] }}

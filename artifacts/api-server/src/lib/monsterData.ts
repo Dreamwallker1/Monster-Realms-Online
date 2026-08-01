@@ -24,7 +24,7 @@ export const MONSTER_SEED_DATA: InsertMonsterSpecies[] = [
     personality: "Loyal", weight: 9.4, height: 0.62, captureRate: 85,
     evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
     skills: [
-      { name: "Ember Claw", type: "normal", element: "Fire", power: 44, accuracy: 96, description: "Strikes with heated claws before returning immediately to guard its partner." },
+      { name: "Twinflare Claw", type: "normal", element: "Fire", power: 44, accuracy: 96, description: "Slashes left then right, launching two claw-shaped waves of fire that briefly ignite the target." },
       { name: "Magma Pounce", type: "skill1", element: "Fire", power: 64, accuracy: 89, description: "Launches from a low stance and crashes into the target with magma-lit paws." },
       { name: "Blazing Tailspin", type: "ultimate", element: "Fire", power: 128, accuracy: 73, description: "Whips its furnace tail into a controlled firestorm of flame and volcanic shards." },
     ],

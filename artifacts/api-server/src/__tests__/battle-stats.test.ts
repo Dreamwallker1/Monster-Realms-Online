@@ -48,6 +48,8 @@ describe("Flarelynx catalogue integration", () => {
     assert.equal(flarelynx?.rarity, "C");
     assert.equal(flarelynx?.personality, "Loyal");
     assert.equal(flarelynx?.skills.length, 3);
+    assert.equal(flarelynx?.skills[0]?.name, "Twinflare Claw");
+    assert.equal(flarelynx?.skills[0]?.type, "normal");
   });
 
   it("replaces Emberpup with the Fire C myth Ashquill", () => {
