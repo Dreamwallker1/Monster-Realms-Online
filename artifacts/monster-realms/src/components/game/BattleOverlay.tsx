@@ -715,8 +715,9 @@ function HpPlate({
   const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
   const [lagPct, setLagPct] = useState(pct);
   const elColors = getElementColors(element);
-  const isFire = element.toLowerCase() === 'fire';
-  const barColor = pct > 50 ? '#22C55E' : pct > 20 ? '#EAB308' : '#EF4444';
+  const rawElementKey = element.toLowerCase();
+  const elementKey = ['fire', 'water', 'earth', 'storm', 'shadow'].includes(rawElementKey) ? rawElementKey : 'neutral';
+  const isFire = elementKey === 'fire';
   const qualLabel = QUALITY_LABEL[rarity] ?? rarity;
 
   useEffect(() => {
@@ -728,7 +729,7 @@ function HpPlate({
 
   return (
     <div
-      className={`rounded-xl px-4 py-3 battle-hp-card ${isFire ? 'battle-hp-card-fire' : ''} ${pct <= 20 ? 'battle-hp-critical' : ''}`}
+      className={`rounded-xl px-4 py-3 battle-hp-card battle-hp-card-${elementKey} ${pct <= 20 ? 'battle-hp-critical' : ''}`}
       style={{
         background: 'linear-gradient(135deg, rgba(8,8,22,0.92), rgba(4,4,14,0.96))',
         border: `2px solid ${elColors.primary}66`,
@@ -736,45 +737,44 @@ function HpPlate({
         boxShadow: `0 8px 28px rgba(0,0,0,0.82), 0 0 18px ${elColors.glow}77`,
       }}
     >
-      {/* Name + level */}
-      <div className={`flex items-baseline gap-1.5 mb-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <span className="font-bold text-sm text-white truncate" style={{ maxWidth: 102 }}>{name}</span>
-        <span className="text-[10px] text-white/40 font-mono shrink-0">Lv.{level}</span>
-      </div>
-      {/* Element + quality badges */}
-      <div className={`flex gap-1 mb-2 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <Badge
-          className="text-[9px] h-4 px-1.5"
-          style={{ background: elColors.primary + '38', color: elColors.primary, border: `1px solid ${elColors.primary}55`, boxShadow: 'none' }}
-        >
-          {element}
-        </Badge>
-        <Badge
-          className="text-[9px] h-4 px-1.5"
-          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: 'none' }}
-        >
-          {qualLabel}
-        </Badge>
+      <div className={`battle-hp-identity ${align === 'right' ? 'battle-hp-identity-right' : ''}`}>
+        <div className="battle-hp-name-group">
+          <span className="battle-hp-name">{name}</span>
+          <span className="battle-hp-level">LV.{level}</span>
+        </div>
+        <div className="battle-hp-badges">
+          <Badge
+            className="battle-hp-badge"
+            style={{ background: elColors.primary + '38', color: elColors.primary, border: `1px solid ${elColors.primary}66`, boxShadow: 'none' }}
+          >
+            {element}
+          </Badge>
+          <Badge
+            className="battle-hp-badge"
+            style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.13)', boxShadow: 'none' }}
+          >
+            {qualLabel}
+          </Badge>
+        </div>
       </div>
       <div className={`battle-hp-caption ${align === 'right' ? 'text-right' : ''}`}>
-        <b>HP</b><span>{Math.round(pct)}%</span>
+        <b>VITALITY</b><span>{Math.round(pct)}%</span>
       </div>
       {/* HP bar — numbers live inside the bar */}
       <div className="battle-hp-meter-wrap">
         <div
-          className={`relative w-full rounded-full overflow-hidden battle-vital-bar ${isFire ? 'battle-vital-fire' : ''}`}
+          className={`relative w-full rounded-full overflow-hidden battle-vital-bar battle-vital-${elementKey}`}
           style={{ background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(255,255,255,0.16)' }}
         >
           <div className="absolute inset-y-0 left-0 rounded-full battle-hp-lag" style={{ width: `${lagPct}%` }} />
           <div
-            className={`absolute inset-y-0 left-0 rounded-full hp-bar-fill ${isFire ? 'battle-fire-hp-fill' : ''}`}
+            className={`absolute inset-y-0 left-0 rounded-full hp-bar-fill battle-element-hp-fill battle-${elementKey}-hp-fill`}
             style={{
               width: `${pct}%`,
-              background: isFire ? undefined : `linear-gradient(90deg, ${barColor}88, ${barColor}dd)`,
-              boxShadow: isFire ? undefined : `0 0 6px ${barColor}66`,
-            }}
+              '--hp-element-color': elColors.primary,
+            } as React.CSSProperties}
           >
-            {isFire && <><i /><i /><i /><i /><i /></>}
+            <i /><i /><i /><i /><i />
           </div>
           {/* HP text overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1112,6 +1112,13 @@ export default function BattleOverlay() {
     attackerMythId?: string; attackerRarity?: string; skillType?: string;
   } | null>(null);
 
+  // The API resolves the player's action and the wild counterattack together.
+  // Keep visual HP separate so each defender loses health at its own impact.
+  const [displayedWildHp, setDisplayedWildHp] = useState<number | null>(null);
+  const [displayedPlayerHp, setDisplayedPlayerHp] = useState<number | null>(null);
+  const playerImpactApplied = useRef(false);
+  const wildImpactApplied = useRef(false);
+
   const prevWildHp      = useRef<number | null>(null);
   const prevPlayerHp    = useRef<number | null>(null);
   const prevCapturedId  = useRef<string | null>(null);
@@ -1153,7 +1160,16 @@ export default function BattleOverlay() {
     const wd = battleData.wildMonster;
     const pd = battleData.playerMonster;
 
-    if (prevWildHp.current !== null && wd.currentHp < prevWildHp.current) {
+    const actionSequenceActive = cinematic !== null || opponentTurnActive || pendingBattleResult.current !== null;
+
+    // Polling may receive the final HP for both turns while the first animation
+    // is still playing. Never let that authoritative snapshot bypass staging.
+    if (!actionSequenceActive) {
+      setDisplayedWildHp(wd.currentHp);
+      setDisplayedPlayerHp(pd.currentHp);
+    }
+
+    if (!actionSequenceActive && prevWildHp.current !== null && wd.currentHp < prevWildHp.current) {
       if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1;
       else setWildShake((k) => k + 1);
       // Floating damage number on the wild myth
@@ -1177,7 +1193,7 @@ export default function BattleOverlay() {
         });
       }
     }
-    if (prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
+    if (!actionSequenceActive && prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
       if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1;
       else setPlayerShake((k) => k + 1);
       // Floating damage number on the player myth
@@ -1219,7 +1235,7 @@ export default function BattleOverlay() {
         setTimeout(() => { endBattle(); setCaptureMsg(null); }, 4000);
       }
     }
-  }, [battleData]);
+  }, [battleData, cinematic, opponentTurnActive, battle.active, updateBattle, endBattle]);
 
   // Trigger entrances + PvP intro cinematic when a fresh battle starts
   useEffect(() => {
@@ -1230,6 +1246,10 @@ export default function BattleOverlay() {
       setShowBattleIntro(true);
       setShowPlayerEntrance(true);
       setShowWildEntrance(true);
+      setDisplayedWildHp(battleData?.wildMonster.currentHp ?? null);
+      setDisplayedPlayerHp(battleData?.playerMonster.currentHp ?? null);
+      playerImpactApplied.current = false;
+      wildImpactApplied.current = false;
       const t = setTimeout(() => setShowBattleIntro(false), 2800);
       return () => clearTimeout(t);
     }
@@ -1257,6 +1277,65 @@ export default function BattleOverlay() {
     }
   }, [isOver]);
 
+  const applyStagedImpact = useCallback((defender: 'wild' | 'player') => {
+    const result = pendingBattleResult.current;
+    if (!result) return false;
+
+    if (defender === 'wild') {
+      if (playerImpactApplied.current) return true;
+      playerImpactApplied.current = true;
+      const nextHp = result.wildMonster.currentHp;
+      setDisplayedWildHp(previous => {
+        const fromHp = previous ?? result.wildMonster.maxHp;
+        const damage = Math.max(0, fromHp - nextHp);
+        if (damage > 0) {
+          const id = ++floatIdRef.current;
+          setDamageFloats(items => [...items, { id, dmg: damage, side: 'wild', crit: !!cinematic?.isCritical }]);
+          window.setTimeout(() => setDamageFloats(items => items.filter(item => item.id !== id)), 1600);
+        }
+        return nextHp;
+      });
+      setWildShake(value => value + 1);
+      setHitFlashWild(value => value + 1);
+      setArenaShakeCrit(!!cinematic?.isCritical);
+      setArenaShakeId(value => value + 1);
+      if (nextHp === 0) {
+        setFaintCinematic({
+          side: 'wild', mythId: result.wildMonster.species?.id ?? '',
+          element: result.wildMonster.species?.element ?? 'Fire',
+          rarity: result.wildMonster.species?.rarity ?? 'C',
+        });
+      }
+      return true;
+    }
+
+    if (wildImpactApplied.current) return true;
+    wildImpactApplied.current = true;
+    const nextHp = result.playerMonster.currentHp;
+    setDisplayedPlayerHp(previous => {
+      const fromHp = previous ?? result.playerMonster.maxHp;
+      const damage = Math.max(0, fromHp - nextHp);
+      if (damage > 0) {
+        const id = ++floatIdRef.current;
+        setDamageFloats(items => [...items, { id, dmg: damage, side: 'player', crit: !!cinematic?.isCritical }]);
+        window.setTimeout(() => setDamageFloats(items => items.filter(item => item.id !== id)), 1600);
+      }
+      return nextHp;
+    });
+    setPlayerShake(value => value + 1);
+    setHitFlashPlayer(value => value + 1);
+    setArenaShakeCrit(!!cinematic?.isCritical);
+    setArenaShakeId(value => value + 1);
+    if (nextHp === 0) {
+      setFaintCinematic({
+        side: 'player', mythId: result.playerMonster.species?.id ?? '',
+        element: result.playerMonster.species?.element ?? 'Fire',
+        rarity: result.playerMonster.species?.rarity ?? 'C',
+      });
+    }
+    return true;
+  }, [cinematic?.isCritical]);
+
   // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
   useEffect(() => {
     if (!cinematic) return;
@@ -1275,21 +1354,17 @@ export default function BattleOverlay() {
     if (cinematic.attackerSide === 'player') {
       setPlayerLungeKey(k => k + 1);
       impactTimer = window.setTimeout(() => {
-        optimisticWildHitRef.current += 1;
-        setWildShake(k => k + 1);
-        window.setTimeout(() => { if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1; }, 4000);
+        applyStagedImpact('wild');
       }, impactDelay);
     } else {
       setWildLungeKey(k => k + 1);
       impactTimer = window.setTimeout(() => {
-        optimisticPlayerHitRef.current += 1;
-        setPlayerShake(k => k + 1);
-        window.setTimeout(() => { if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1; }, 4000);
+        applyStagedImpact('player');
       }, impactDelay);
     }
     return () => window.clearTimeout(impactTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cinematic, mythPhysics]);
+  }, [cinematic, mythPhysics, applyStagedImpact]);
 
   // ── Round tracking — banner fires AFTER opponent's turn ends ────────────
   // When the API returns a new round number we don't immediately show the banner
@@ -1411,24 +1486,31 @@ export default function BattleOverlay() {
     const wild = pendingWildCinematic.current;
 
     if (cinematic?.phase === 'player') {
-      // Apply result, then maybe show wild cinematic
+      // Fallback for unusually slow responses: if the contact timer ran before
+      // the API resolved, stage the defender's HP at cinematic completion.
+      applyStagedImpact('wild');
+      // Apply authoritative battle metadata, while displayed HP remains staged.
       if (result) {
         updateBattle(result);
         if (battle.battleId) {
           queryClient.invalidateQueries({ queryKey: getGetBattleQueryKey(battle.battleId) });
         }
-        pendingBattleResult.current = null;
       }
-      if (wild && result?.status === 'active') {
+      // A lethal counterattack marks the server battle as finished, but its
+      // animation and player HP loss still have to play before the result UI.
+      if (wild) {
         // Hand off to opponent turn phase — the countdown will fire the wild cinematic
         // (pendingWildCinematic.current still holds `wild`; opponent effect consumes it)
         setOpponentTurnActive(true);
       } else {
         pendingWildCinematic.current = null;
+        pendingBattleResult.current = null;
         setCinematic(null);
       }
     } else {
-      // Wild cinematic done — clear, then announce new round if pending
+      // The counterattack is a separate visual event: only now may player HP fall.
+      applyStagedImpact('player');
+      pendingBattleResult.current = null;
       setCinematic(null);
       if (pendingRoundRef.current > 0) {
         const nextRound = pendingRoundRef.current;
@@ -1438,11 +1520,14 @@ export default function BattleOverlay() {
         setTimeout(() => setShowRoundBanner(false), 2500);
       }
     }
-  }, [cinematic, battle.battleId, updateBattle, queryClient]);
+  }, [cinematic, battle.battleId, updateBattle, queryClient, applyStagedImpact]);
 
   // ── Skill / attack action ─────────────────────────────────────────────────
   const handleSkillAction = useCallback(async (action: ActionType) => {
     if (!battle.battleId || isPending || isOver || cinematic) return;
+
+    playerImpactApplied.current = false;
+    wildImpactApplied.current = false;
 
     const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
     const skill = getSkillForAction(action, playerSkills);
@@ -1606,7 +1691,9 @@ export default function BattleOverlay() {
   const logText   = lastLog?.description ?? (isOver ? getEndText(status) : 'What will you do?');
   const logActor  = lastLog?.actor === 'player' ? 'player' : lastLog?.actor === 'wild' ? 'wild' : 'system';
 
-  const wildHpPct   = (wildMonster.currentHp / wildMonster.maxHp) * 100;
+  const visibleWildHp = displayedWildHp ?? wildMonster.currentHp;
+  const visiblePlayerHp = displayedPlayerHp ?? playerMonster.currentHp;
+  const wildHpPct   = (visibleWildHp / wildMonster.maxHp) * 100;
   const wildColors  = getElementColors(wildMonster.species.element);
 
   return (
@@ -1747,7 +1834,7 @@ export default function BattleOverlay() {
               level={wildMonster.level}
               element={wildMonster.species.element}
               rarity={wildMonster.species.rarity}
-              currentHp={wildMonster.currentHp}
+              currentHp={visibleWildHp}
               maxHp={wildMonster.maxHp}
               align="left"
               statusEffect={wildMonster.statusEffect}
@@ -1815,7 +1902,7 @@ export default function BattleOverlay() {
               level={playerMonster.level}
               element={playerMonster.species.element}
               rarity={playerMonster.species.rarity}
-              currentHp={playerMonster.currentHp}
+              currentHp={visiblePlayerHp}
               maxHp={playerMonster.maxHp}
               align="right"
               statusEffect={playerMonster.statusEffect}
@@ -1898,7 +1985,7 @@ export default function BattleOverlay() {
             key={f.id}
             className={`absolute ${f.crit ? 'dmg-float-crit' : 'dmg-float'}`}
             style={{
-              ...(f.side === 'wild' ? { left: '12%' } : { right: '12%' }),
+              ...(f.side === 'wild' ? { left: '30.9%', transform: 'translateX(-50%)' } : { left: '69.1%', transform: 'translateX(-50%)' }),
               bottom: '54%',
               zIndex: 12,
               fontSize: f.crit ? 34 : 22,
@@ -2195,7 +2282,7 @@ export default function BattleOverlay() {
             playerMythName={playerMonster.species.name}
             playerMythElement={playerMonster.species.element}
             playerMythRarity={playerMonster.species.rarity}
-            playerHpPct={(playerMonster.currentHp / playerMonster.maxHp) * 100}
+            playerHpPct={(visiblePlayerHp / playerMonster.maxHp) * 100}
             totalRounds={battle.battle.round ?? 1}
             battleLog={log as { actor: string; damageDealt: number | null; critical: boolean; description?: string }[]}
           />
