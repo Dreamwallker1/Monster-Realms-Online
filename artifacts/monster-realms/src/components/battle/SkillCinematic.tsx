@@ -1391,11 +1391,11 @@ export default function SkillCinematic({
         <motion.div
           className="absolute inset-0"
           style={{
-            background: isFlarelynxBasic ? 'rgba(82, 18, 3, 0.12)' : el.bg,
-            backdropFilter: isFlarelynxBasic ? 'brightness(0.92)' : 'brightness(0.65)',
+            background: isFlarelynxBasic ? 'rgba(255, 91, 24, 0.06)' : el.bg,
+            backdropFilter: 'brightness(1.04) saturate(1.06)',
           }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 1, 0] }}
+          animate={{ opacity: [0, isFlarelynxBasic ? 0.36 : 0.22, isFlarelynxBasic ? 0.24 : 0.14, 0] }}
           transition={{ duration: timeout / 1000, times: [0, 0.08, 0.82, 1] }}
         />
 

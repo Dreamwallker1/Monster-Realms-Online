@@ -29,6 +29,14 @@ const getPhysicsAttackStyle = (skillType?: string): AttackStyle => {
   if (skillType === 'skill2' || skillType === 'ultimate') return 'burst';
   return 'combo';
 };
+type BattleChoreography = 'melee' | 'projectile';
+const getBattleChoreography = (skillType?: string, mythId?: string): BattleChoreography => {
+  // Flarelynx's basic is the authored twin fire-claw wave. Skill 2 / ultimates
+  // are ranged finishers; skill 1 and Ashquill's basic make physical contact.
+  if (skillType === 'skill2' || skillType === 'ultimate') return 'projectile';
+  if ((!skillType || skillType === 'normal' || skillType === 'attack') && mythId === 'flarelynx') return 'projectile';
+  return 'melee';
+};
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -1228,6 +1236,7 @@ export default function BattleOverlay() {
   // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
   useEffect(() => {
     if (!cinematic) return;
+    const choreography = getBattleChoreography(cinematic.skillType, cinematic.attackerMythId);
     mythPhysics.attack(
       cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
       cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
@@ -1236,8 +1245,9 @@ export default function BattleOverlay() {
       getPhysicsAttackStyle(cinematic.skillType),
     );
     let impactTimer: number;
-    const impactDelay = getPhysicsAttackStyle(cinematic.skillType) === 'combo' ? 780
-      : getPhysicsAttackStyle(cinematic.skillType) === 'leap' ? 940 : 790;
+    const impactDelay = choreography === 'melee'
+      ? (getPhysicsAttackStyle(cinematic.skillType) === 'leap' ? 1120 : 980)
+      : (getPhysicsAttackStyle(cinematic.skillType) === 'burst' ? 1180 : 820);
     if (cinematic.attackerSide === 'player') {
       setPlayerLungeKey(k => k + 1);
       impactTimer = window.setTimeout(() => {
@@ -1579,7 +1589,7 @@ export default function BattleOverlay() {
     <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
-      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? 'battle-focus-cinematic' : ''}`}>
+      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? `battle-focus-cinematic battle-action-${getBattleChoreography(cinematic.skillType, cinematic.attackerMythId)}` : ''}`}>
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
@@ -1748,7 +1758,7 @@ export default function BattleOverlay() {
           {/* Inner lunge wrapper — re-keyed on each wild attack to replay animation */}
           <div
             key={`wlunge-${wildLungeKey}`}
-            className={`flex flex-col items-center ${wildLungeKey > 0 ? 'myth-lunge-right' : ''}`}
+            className={`flex flex-col items-center ${wildLungeKey > 0 && cinematic?.attackerSide === 'wild' ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-right' : 'myth-lunge-right') : ''}`}
           >
             {/* Type matchup badge */}
             {(() => {
@@ -1794,7 +1804,7 @@ export default function BattleOverlay() {
           {/* Inner lunge wrapper — re-keyed on each player attack to replay animation */}
           <div
             key={`plunge-${playerLungeKey}`}
-            className={`flex flex-col items-center ${playerLungeKey > 0 ? 'myth-lunge-left' : ''}`}
+            className={`flex flex-col items-center ${playerLungeKey > 0 && cinematic?.attackerSide === 'player' ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-left' : 'myth-lunge-left') : ''}`}
           >
             <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
               Your Myth
