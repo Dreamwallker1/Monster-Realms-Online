@@ -761,7 +761,7 @@ function HpPlate({
         <b>VITALITY</b><span>{Math.round(pct)}%</span>
       </div>
       {/* HP bar — numbers live inside the bar */}
-      <div className="battle-hp-meter-wrap">
+      <div className={`battle-hp-meter-wrap battle-hp-meter-${elementKey}`}>
         <div
           className={`relative w-full rounded-full overflow-hidden battle-vital-bar battle-vital-${elementKey}`}
           style={{ background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(255,255,255,0.16)' }}
@@ -776,6 +776,7 @@ function HpPlate({
           >
             <i /><i /><i /><i /><i />
           </div>
+          <div className="battle-hp-glass" aria-hidden="true" />
           {/* HP text overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <span
