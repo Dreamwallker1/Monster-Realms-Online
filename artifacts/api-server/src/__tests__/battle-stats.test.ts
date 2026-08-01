@@ -28,7 +28,7 @@ import {
   type OrbRow,
   type CapturedMonsterInsert,
 } from "../lib/battleService.js";
-import { calculateCaptureChance, getElementMultiplier } from "../lib/gameEngine.js";
+import { calculateCaptureChance, getElementMultiplier, rollEncounter } from "../lib/gameEngine.js";
 import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 import { REGION_SEED_DATA } from "../lib/regionData.js";
 
@@ -63,6 +63,25 @@ describe("Flarelynx catalogue integration", () => {
     for (const regionId of ["volcanic-rift", "scorched-wastes"]) {
       const region = REGION_SEED_DATA.find((item) => item.id === regionId);
       assert.ok(region?.monsterSpeciesIds.includes("flarelynx"));
+    }
+  });
+});
+
+describe("exploration encounter pacing", () => {
+  it("allows the two active myths to roam the starter meadow", () => {
+    const meadow = REGION_SEED_DATA.find((item) => item.id === "verdant-meadows");
+    assert.deepEqual(meadow?.monsterSpeciesIds, ["ashquill", "flarelynx"]);
+  });
+
+  it("keeps grass encounters at a moderate 34 percent threshold", () => {
+    const originalRandom = Math.random;
+    try {
+      Math.random = () => 0.339;
+      assert.equal(rollEncounter(0), true);
+      Math.random = () => 0.341;
+      assert.equal(rollEncounter(0), false);
+    } finally {
+      Math.random = originalRandom;
     }
   });
 });

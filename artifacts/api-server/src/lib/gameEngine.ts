@@ -42,11 +42,11 @@ export function rollCritical(): boolean {
 export function rollEncounter(tileType: number): boolean {
   // Tile types match terrain.ts: 0=Grass, 1=Path, 2=Tree, 3=Pond, 4=Flower, 5=Building
   const rates: Record<number, number> = {
-    0: 0.30,  // Grass — main monster zone (1 in 3 steps)
+    0: 0.34,  // Grass — slightly livelier exploration, still not every step
     1: 0.12,  // Path — occasional encounters
     2: 0,     // Tree — impassable
     3: 0,     // Pond — impassable
-    4: 0.40,  // Flower — flower beds attract rare monsters (2 in 5 steps)
+    4: 0.44,  // Flower — a modest bonus over ordinary grass
     5: 0,     // Building — impassable
   };
   return Math.random() < (rates[tileType] ?? 0.20);

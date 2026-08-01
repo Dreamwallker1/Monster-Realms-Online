@@ -3,7 +3,7 @@ import type { InsertRegion } from "@workspace/db";
 const FIRE_MYTHS = ["ashquill", "flarelynx"];
 
 export const REGION_SEED_DATA: InsertRegion[] = [
-  { id: "verdant-meadows", name: "Verdant Meadows", biome: "Meadow", description: "A lush park surrounded by ancient trees.", requiredExplorerLevel: 1, width: 50, height: 50, monsterSpeciesIds: [] },
+  { id: "verdant-meadows", name: "Verdant Meadows", biome: "Meadow", description: "A lush park surrounded by ancient trees. Young wandering myths sometimes cross its warm clearings.", requiredExplorerLevel: 1, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
   { id: "volcanic-rift", name: "Volcanic Rift", biome: "Volcano", description: "Scorched rock, lava vents, and eternal heat. Fire myths thrive here.", requiredExplorerLevel: 5, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
   { id: "scorched-wastes", name: "Scorched Wastes", biome: "Wasteland", description: "Ancient lava fields cooled to obsidian flatlands.", requiredExplorerLevel: 10, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
   { id: "ocean-ruins", name: "Ocean Ruins", biome: "Coastal", description: "A sunken ancient city at the ocean's edge.", requiredExplorerLevel: 5, width: 50, height: 50, monsterSpeciesIds: [] },
