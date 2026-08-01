@@ -36,12 +36,25 @@ export default function MythoraEntry({ initialName = '', onContinue, onSignIn }:
   }
 
   const cleanName = name.trim().slice(0, 20);
+  const asset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
 
   return (
     <main className={`mythora-entry phase-${phase}`} data-testid="premium-entry">
       <div className="mythora-nebula" aria-hidden="true" />
       <div className="mythora-stars mythora-stars-a" aria-hidden="true" />
       <div className="mythora-stars mythora-stars-b" aria-hidden="true" />
+      <div className="mythora-world" aria-hidden="true">
+        <div className="mythora-moon" />
+        <div className="mythora-mountains mythora-mountains-far" />
+        <div className="mythora-mountains mythora-mountains-near" />
+        <div className="mythora-world-grid" />
+        <div className="mythora-rift" />
+      </div>
+      <img className="mythora-guardian mythora-guardian-ashquill" src={asset('myths/ashquill-battle.webp')} alt="" aria-hidden="true" />
+      <img className="mythora-guardian mythora-guardian-flarelynx" src={asset('myths/flarelynx-battle.webp')} alt="" aria-hidden="true" />
+      <div className="mythora-embers" aria-hidden="true">
+        {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
+      </div>
       <div className="mythora-portal" aria-hidden="true"><i /><i /><i /></div>
       <div className="mythora-transition-flash" aria-hidden="true" />
 
@@ -53,8 +66,9 @@ export default function MythoraEntry({ initialName = '', onContinue, onSignIn }:
           </svg>
         </div>
         <p className="mythora-eyebrow">ENTER THE MYTHIC REALM</p>
-        <h1 id="litardia-title">LITARDIA</h1>
-        <p className="mythora-tagline">Discover. Bond. Become legendary.</p>
+        <h1 id="litardia-title" className="mythora-title-text">LITARDIA</h1>
+        <img className="mythora-wordmark" src={asset('branding/litardia-wordmark.png')} alt="" aria-hidden="true" />
+        <p className="mythora-tagline"><span /> Discover. Bond. Become legendary. <span /></p>
 
         <form onSubmit={submit}>
           <label htmlFor="explorer-name">EXPLORER NAME</label>

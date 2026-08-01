@@ -176,3 +176,98 @@
 @media (prefers-reduced-motion: reduce) {
   .mythora-entry * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ── Litardia world art direction ───────────────────────────────────────── */
+.mythora-entry {
+  --entry-cyan: #63e1ff;
+  --entry-violet: #5876a8;
+  --entry-ember: #ff6a22;
+  background:
+    radial-gradient(circle at 50% 37%, #153746 0, #07141d 27%, transparent 53%),
+    linear-gradient(180deg, #02070a 0, #061017 52%, #020506 100%);
+}
+
+.mythora-nebula {
+  inset: -16%;
+  background:
+    radial-gradient(ellipse at 20% 46%, #0e627054 0, transparent 30%),
+    radial-gradient(ellipse at 80% 42%, #7d2a132b 0, transparent 28%),
+    radial-gradient(ellipse at 50% 84%, #d4471529 0, transparent 30%);
+  filter: blur(38px);
+  opacity: .78;
+}
+
+.mythora-stars { opacity: .12; }
+.mythora-stars-b { opacity: .07; }
+
+.mythora-world { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.mythora-moon { position: absolute; top: 7%; left: 50%; width: min(38vw, 540px); aspect-ratio: 1; border-radius: 50%; transform: translateX(-50%); background: radial-gradient(circle, #80e8ff12 0 23%, #3cc8e90c 24% 45%, transparent 68%); box-shadow: 0 0 120px #4bdcff12; }
+.mythora-mountains { position: absolute; left: -6%; width: 112%; background-repeat: repeat-x; }
+.mythora-mountains-far { bottom: 18%; height: 47%; opacity: .58; background: linear-gradient(145deg, transparent 0 43%, #0d2028 43% 57%, transparent 57%) 0 100%/320px 100%, linear-gradient(215deg, transparent 0 45%, #0b1a21 45% 58%, transparent 58%) 140px 100%/360px 90%; filter: drop-shadow(0 -18px 42px #3cd5e20b); }
+.mythora-mountains-near { bottom: 8%; height: 37%; opacity: .95; background: linear-gradient(140deg, transparent 0 45%, #050b0f 45% 64%, transparent 64%) 0 100%/420px 100%, linear-gradient(220deg, transparent 0 43%, #071117 43% 65%, transparent 65%) 210px 100%/440px 88%; }
+.mythora-world-grid { position: absolute; left: -15%; right: -15%; bottom: -12%; height: 42%; opacity: .25; transform: perspective(480px) rotateX(61deg); transform-origin: 50% 100%; background-image: linear-gradient(#33b7cf25 1px, transparent 1px), linear-gradient(90deg, #33b7cf25 1px, transparent 1px); background-size: 72px 44px; mask-image: linear-gradient(to bottom, transparent, #000 60%); }
+.mythora-rift { position: absolute; left: 50%; bottom: -12%; width: 23%; height: 46%; transform: translateX(-50%); clip-path: polygon(48% 0, 58% 18%, 48% 34%, 64% 53%, 52% 68%, 68% 100%, 34% 100%, 47% 70%, 36% 54%, 50% 34%, 42% 18%); background: linear-gradient(90deg, transparent 0, #ff67213a 37%, #ffb45d 49%, #ff5a1f 53%, transparent 100%); filter: blur(1px) drop-shadow(0 0 20px #ff5428a0); opacity: .62; }
+
+.mythora-guardian { position: absolute; z-index: 1; bottom: 2%; width: clamp(310px, 32vw, 610px); pointer-events: none; object-fit: contain; opacity: .27; filter: grayscale(.68) brightness(.42) contrast(1.45) drop-shadow(0 0 38px #000); mask-image: linear-gradient(to bottom, #000 34%, #000 69%, transparent 97%); }
+.mythora-guardian-ashquill { left: -4%; transform: scaleX(-1) rotate(-3deg); transform-origin: 50% 100%; }
+.mythora-guardian-flarelynx { right: -3%; transform: rotate(2deg); transform-origin: 50% 100%; }
+.mythora-guardian-ashquill::after, .mythora-guardian-flarelynx::after { content: ''; }
+
+.mythora-embers { position: absolute; z-index: 2; inset: 0; overflow: hidden; pointer-events: none; }
+.mythora-embers i { position: absolute; bottom: -3%; left: calc((var(--ember-index, 1) * 6%) - 3%); width: 2px; height: 2px; border-radius: 50%; background: #ff8a3d; box-shadow: 0 0 8px #ff5d1f; opacity: 0; animation: mythora-ember-rise 8s linear infinite; }
+.mythora-embers i:nth-child(1) { --ember-index: 1; animation-delay: -1s; }.mythora-embers i:nth-child(2) { --ember-index: 2; animation-delay: -5s; }.mythora-embers i:nth-child(3) { --ember-index: 3; animation-delay: -3s; }.mythora-embers i:nth-child(4) { --ember-index: 4; animation-delay: -7s; }.mythora-embers i:nth-child(5) { --ember-index: 5; animation-delay: -2s; }.mythora-embers i:nth-child(6) { --ember-index: 6; animation-delay: -6s; }.mythora-embers i:nth-child(7) { --ember-index: 7; animation-delay: -4s; }.mythora-embers i:nth-child(8) { --ember-index: 8; animation-delay: -.4s; }.mythora-embers i:nth-child(9) { --ember-index: 9; animation-delay: -4.7s; }.mythora-embers i:nth-child(10) { --ember-index: 10; animation-delay: -2.6s; }.mythora-embers i:nth-child(11) { --ember-index: 11; animation-delay: -6.7s; }.mythora-embers i:nth-child(12) { --ember-index: 12; animation-delay: -3.6s; }.mythora-embers i:nth-child(13) { --ember-index: 13; animation-delay: -7.6s; }.mythora-embers i:nth-child(14) { --ember-index: 14; animation-delay: -1.8s; }.mythora-embers i:nth-child(15) { --ember-index: 15; animation-delay: -5.8s; }.mythora-embers i:nth-child(16) { --ember-index: 16; animation-delay: -.8s; }
+
+.mythora-entry-panel {
+  width: min(460px, calc(100vw - 34px));
+  padding: 27px 38px 22px;
+  border: 1px solid #7ac8db38;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, #ffffff08, transparent 28%),
+    linear-gradient(155deg, #07151bed, #03080cf7);
+  box-shadow: 0 34px 100px #000e, 0 0 0 1px #000 inset, 0 0 70px #36d4ed0c;
+  backdrop-filter: blur(14px) saturate(.75);
+}
+.mythora-entry-panel::before { left: 8%; right: 8%; background: linear-gradient(90deg, var(--entry-ember), #d9f7ff 48%, var(--entry-cyan)); box-shadow: 0 0 18px #56dcff5c; }
+.mythora-entry-panel::after { content: ''; position: absolute; inset: 7px; border: 1px solid #ffffff08; pointer-events: none; }
+.mythora-sigil { width: 42px; height: 42px; margin-bottom: 9px; border: 1px solid #95ecff66; border-radius: 50%; background: #071117; box-shadow: 0 0 22px #53dcff30; }
+.mythora-sigil svg { width: 23px; stroke: #9aeaff; stroke-width: 2; }
+.mythora-eyebrow { margin-bottom: 6px; color: #819ca5; font-size: 7px; letter-spacing: .34em; }
+.mythora-title-text { position: absolute; width: 1px !important; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mythora-wordmark { display: block; width: 100%; height: 104px; margin: -8px auto -9px; object-fit: contain; mix-blend-mode: screen; filter: contrast(1.2) saturate(.82) drop-shadow(0 0 13px #3ecfff2b); }
+.mythora-tagline { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 25px; color: #768992; font: 500 8px var(--app-font-mono); letter-spacing: .08em; }
+.mythora-tagline span { width: 28px; height: 1px; background: linear-gradient(90deg, transparent, #5cbdd0); }.mythora-tagline span:last-child { transform: scaleX(-1); }
+.mythora-entry label { color: #8fa2aa; font-size: 8px; }
+.mythora-name-field { height: 48px; border-radius: 4px; border-color: #678d982e; background: #010609c7; box-shadow: inset 0 1px 9px #000b; }
+.mythora-name-field:focus-within { border-color: #68dcf899; box-shadow: 0 0 0 2px #48cfe614, inset 0 1px 9px #000b; }
+.mythora-enter-button { height: 49px; border: 1px solid #8fd5df3d; border-radius: 4px; color: #d9f7fb; background: linear-gradient(100deg, #12262c, #163740 48%, #48261a); box-shadow: inset 0 1px #ffffff12, 0 12px 28px #0008; }
+.mythora-enter-button:hover:not(:disabled) { box-shadow: inset 0 1px #ffffff18, 0 0 28px #46d8ef26; }
+.mythora-enter-button:disabled { color: #526268; background: #101619; filter: none; }
+.mythora-sign-in { color: #687980; }.mythora-sign-in u { color: #9ab2bb; }
+.mythora-system-line { margin-left: -38px; margin-right: -38px; color: #415159; }
+.mythora-system-line i { background: #ff7539; box-shadow: 0 0 9px #ff562b; }
+.mythora-footer-mark { color: #34434a; }
+
+@keyframes mythora-ember-rise { 0% { opacity: 0; transform: translate3d(0, 0, 0) scale(.5); } 12% { opacity: .75; } 70% { opacity: .28; } 100% { opacity: 0; transform: translate3d(34px, -76vh, 0) scale(1.7); } }
+
+@media (max-width: 800px) {
+  .mythora-guardian { width: clamp(250px, 58vw, 430px); bottom: 3%; opacity: .17; }
+  .mythora-guardian-ashquill { left: -19%; }
+  .mythora-guardian-flarelynx { right: -18%; }
+  .mythora-mountains-far { opacity: .4; }
+}
+
+@media (max-width: 540px) {
+  .mythora-entry-panel { padding: 24px 24px 18px; }
+  .mythora-wordmark { height: 84px; }
+  .mythora-tagline { margin-bottom: 20px; font-size: 7px; }
+  .mythora-system-line { margin-left: -24px; margin-right: -24px; }
+  .mythora-guardian { bottom: 0; opacity: .13; }
+}
+
+@media (max-height: 640px) {
+  .mythora-entry-panel { padding-top: 16px; transform: scale(.88); }
+  .mythora-sigil { width: 36px; height: 36px; margin-bottom: 5px; }
+  .mythora-wordmark { height: 76px; }
+  .mythora-tagline { margin-bottom: 15px; }
+}
