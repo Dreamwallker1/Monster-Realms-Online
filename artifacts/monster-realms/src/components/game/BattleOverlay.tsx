@@ -98,17 +98,17 @@ const REGION_THEMES: Record<string, RegionTheme> = {
   },
   // ── Fire zones ────────────────────────────────────────────────────────────
   'volcanic-rift': {
-    skyGrad:    'linear-gradient(180deg, #000000 0%, #1A0000 40%, #3E0000 70%, #6D2200 100%)',
-    groundGrad: 'linear-gradient(180deg, #D84315 0%, #A00000 55%, #700000 100%)',
-    groundLine: '#D84315',
+    skyGrad:    'radial-gradient(ellipse at 50% 44%, #3b1018 0%, #16070d 37%, #050309 78%), linear-gradient(180deg,#030207,#21070b)',
+    groundGrad: 'radial-gradient(ellipse at 50% 2%, #66251d 0%, #351018 36%, #120811 76%, #050309 100%)',
+    groundLine: '#a34a32',
     hasTrees:   false, treeColor: '#4E342E',
     hasRocks:   true,  rockColor: '#5D4037',
     ambientColor: '#EF4444',
   },
   'scorched-wastes': {
-    skyGrad:    'linear-gradient(180deg, #1A0800 0%, #3D1200 40%, #6B2200 70%, #8B3A00 100%)',
-    groundGrad: 'linear-gradient(180deg, #BF360C 0%, #7B1F00 55%, #4A1500 100%)',
-    groundLine: '#BF360C',
+    skyGrad:    'radial-gradient(ellipse at 50% 40%, #52301c 0%, #21100b 43%, #070507 84%)',
+    groundGrad: 'radial-gradient(ellipse at 50% 0%, #704024 0%, #32180f 43%, #0b0708 100%)',
+    groundLine: '#b56a35',
     hasTrees:   false, treeColor: '#3E2723',
     hasRocks:   true,  rockColor: '#4E342E',
     ambientColor: '#FB923C',
@@ -213,6 +213,11 @@ function BattleBiomeScenery({ regionId, ambientColor }: { regionId?: string | nu
   const volcanic = regionId === 'volcanic-rift' || regionId === 'scorched-wastes';
   return (
     <>
+      <div className={`battle-atmosphere ${volcanic ? 'battle-atmosphere-volcanic' : ''}`} style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true">
+        <span className="battle-cloud battle-cloud-a" />
+        <span className="battle-cloud battle-cloud-b" />
+        <span className="battle-cloud battle-cloud-c" />
+      </div>
       <div className={`battle-celestial ${volcanic ? 'battle-celestial-volcanic' : ''}`} style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
       <svg className="battle-mountain-layer battle-mountain-back" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 260V205L92 142l55 42 96-104 74 86 88-62 77 90 112-138 89 127 71-69 92 78 102-121 106 117 66-39V260Z" />
@@ -222,15 +227,25 @@ function BattleBiomeScenery({ regionId, ambientColor }: { regionId?: string | nu
         {volcanic && <path className="battle-volcano-rift" d="M600 38l-18 67 24-21 19 32 17-74-21 18Z" />}
       </svg>
       <div className="battle-arena-dais" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
+      <div className="battle-arena-ring" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true">
+        <i /><i /><i />
+      </div>
+      <div className="battle-keylight battle-keylight-wild" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
+      <div className="battle-keylight battle-keylight-player" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
       <svg className="battle-ground-cracks" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} viewBox="0 0 1200 430" preserveAspectRatio="none" aria-hidden="true">
         <path d="M610 0l-28 75 34 34-58 58 21 49-96 78M617 106l78 48-14 66 108 75M390 119l-67 52 19 49-119 73M881 104l63 70-22 57 112 67" />
         <path d="M579 216l-69 14-27 64M680 220l45 22 64 53M342 220l-71 6-48 67M922 231l58 9 54 58" />
       </svg>
       {volcanic && (
-        <div className="battle-ash-field" aria-hidden="true">
-          {Array.from({ length: 18 }, (_, i) => <i key={i} style={{ '--ash-i': i, left: `${(i * 37 + 7) % 100}%`, top: `${(i * 23 + 11) % 88}%` } as React.CSSProperties} />)}
-        </div>
+        <>
+          <div className="battle-lavafall battle-lavafall-left" aria-hidden="true" />
+          <div className="battle-lavafall battle-lavafall-right" aria-hidden="true" />
+          <div className="battle-ash-field" aria-hidden="true">
+            {Array.from({ length: 28 }, (_, i) => <i key={i} style={{ '--ash-i': i, left: `${(i * 37 + 7) % 100}%`, top: `${(i * 23 + 11) % 88}%` } as React.CSSProperties} />)}
+          </div>
+        </>
       )}
+      <div className="battle-cinematic-foreground" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
     </>
   );
 }
@@ -695,7 +710,7 @@ function HpPlate({
 
   return (
     <div
-      className="rounded-xl px-3 py-2.5"
+      className="rounded-xl px-3 py-2.5 battle-hp-card"
       style={{
         minWidth: 158, maxWidth: 204,
         background: 'linear-gradient(135deg, rgba(8,8,22,0.92), rgba(4,4,14,0.96))',
@@ -883,7 +898,7 @@ function ActionPanel({
               key={action}
               onClick={() => handleSkillAction(action)}
               disabled={isBlocked}
-              className="relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden"
+              className="relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden battle-skill-card"
               style={{ background: style.grad, border: `1.5px solid ${matchupColor ? matchupColor + '55' : style.border}`, boxShadow: `0 0 16px ${matchupColor ? matchupColor + '44' : style.glow}, inset 0 1px 0 rgba(255,255,255,0.12)`, minHeight: 52, padding: '8px 10px' }}
               data-testid={`button-${action}`}
             >

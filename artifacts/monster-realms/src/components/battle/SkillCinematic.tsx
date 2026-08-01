@@ -1378,6 +1378,15 @@ export default function SkillCinematic({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
+        {/* Cinematic framing: special skills briefly claim the screen without hiding combat readability. */}
+        {!isNormalAttack && (
+          <>
+            <motion.div className="absolute left-0 right-0 top-0 bg-black" style={{ zIndex: 8 }} initial={{ height: 0 }} animate={{ height: ['0vh','5vh','5vh','0vh'] }} transition={{ duration: timeout / 1000, times: [0,.12,.82,1], ease: 'easeInOut' }} />
+            <motion.div className="absolute left-0 right-0 bottom-0 bg-black" style={{ zIndex: 8 }} initial={{ height: 0 }} animate={{ height: ['0vh','5vh','5vh','0vh'] }} transition={{ duration: timeout / 1000, times: [0,.12,.82,1], ease: 'easeInOut' }} />
+          </>
+        )}
+        <motion.div className="absolute inset-[-20%] pointer-events-none" style={{ zIndex: 1, background: `repeating-conic-gradient(from ${attackerSide === 'player' ? '180deg' : '0deg'} at ${attackerSide === 'player' ? '72%' : '28%'} 52%, transparent 0 5deg, ${el.color}12 5.2deg 5.45deg)` }}
+          initial={{ opacity: 0, scale: .72 }} animate={{ opacity: [0,.35,.12,0], scale: [.72,1.08,1.25,1.42] }} transition={{ duration: timeout / 1000, times: [0,.28,.72,1], ease: 'easeOut' }} />
         {/* ── Background tint ── */}
         <motion.div
           className="absolute inset-0"
