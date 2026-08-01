@@ -29,32 +29,32 @@ function getMotion(name: string, t: number, mode: RigMode, myth: string): Motion
   let x = 0, y = 0, r = 0, sx = 1, sy = 1;
   if (mode === 'idle') {
     const breath = Math.sin(t * 2.3);
-    if (name === 'body') { y = breath * 2.6; sx = 1 + breath * .004; sy = 1 + breath * .012; }
-    if (name === 'head') r = Math.sin(t * 1.7) * .025;
-    if (name === 'wingFront') r = Math.sin(t * 2.1) * .06;
-    if (name === 'wingBack') r = -Math.sin(t * 2.1) * .045;
-    if (name === 'tail') r = Math.sin(t * 2.8) * (myth === 'flarelynx' ? .09 : .065);
-    if (name === 'legFront' || name === 'legBack') r = Math.sin(t * 2.3 + (name === 'legBack' ? 1 : 0)) * .012;
+    if (name === 'body') { y = breath * 5.2; sx = 1 + breath * .009; sy = 1 + breath * .024; }
+    if (name === 'head') r = Math.sin(t * 1.7) * .05;
+    if (name === 'wingFront') r = Math.sin(t * 2.1) * .125;
+    if (name === 'wingBack') r = -Math.sin(t * 2.1) * .095;
+    if (name === 'tail') r = Math.sin(t * 2.8) * (myth === 'flarelynx' ? .17 : .13);
+    if (name === 'legFront' || name === 'legBack') r = Math.sin(t * 2.3 + (name === 'legBack' ? 1 : 0)) * .025;
   } else if (mode === 'attack') {
-    const p = Math.min(t / .52, 1);
+    const p = Math.min(t / .9, 1);
     const wind = p < .42 ? p / .42 : Math.max(0, (1 - p) / .58);
     const hit = Math.max(0, 1 - Math.abs(p - .62) * 7);
-    if (name === 'body') { x = hit * 32; y = -hit * 8; r = -hit * .045; sx = 1 + hit * .035; }
-    if (name === 'head') r = -wind * .13 - hit * .12;
-    if (name === 'wingFront') r = -wind * .34 + hit * .5;
-    if (name === 'wingBack') r = wind * .28 - hit * .35;
-    if (name === 'tail') r = -wind * .18;
-    if (name === 'legFront') r = -hit * .28;
-    if (name === 'legBack') r = hit * .12;
+    if (name === 'body') { x = hit * 62; y = -hit * 14; r = -hit * .085; sx = 1 + hit * .07; sy = 1 - hit * .04; }
+    if (name === 'head') r = -wind * .24 - hit * .2;
+    if (name === 'wingFront') r = -wind * .58 + hit * .82;
+    if (name === 'wingBack') r = wind * .48 - hit * .58;
+    if (name === 'tail') r = -wind * .3;
+    if (name === 'legFront') r = -hit * .46;
+    if (name === 'legBack') r = hit * .22;
   } else {
-    const p = Math.min(t / .24, 1);
+    const p = Math.min(t / .65, 1);
     const impact = Math.max(0, 1 - p);
     const shake = Math.sin(p * 70) * impact;
-    if (name === 'body') { x = -impact * 36; y = impact * 8; r = impact * .11 + shake * .015; }
-    if (name === 'head') r = impact * .22 + shake * .035;
-    if (name === 'wingFront') r = -impact * .3;
-    if (name === 'wingBack') r = impact * .25;
-    if (name === 'tail') r = -impact * .25;
+    if (name === 'body') { x = -impact * 58; y = impact * 14; r = impact * .17 + shake * .025; sx = 1 - impact * .09; sy = 1 + impact * .06; }
+    if (name === 'head') r = impact * .34 + shake * .055;
+    if (name === 'wingFront') r = -impact * .48;
+    if (name === 'wingBack') r = impact * .4;
+    if (name === 'tail') r = -impact * .42;
   }
   return { x, y, r, sx, sy };
 }
@@ -95,7 +95,8 @@ export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }:
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, logical, logical);
       ctx.save();
-      if (facing === 'left') { ctx.translate(logical, 0); ctx.scale(-1, 1); }
+      const shouldFlip = speciesId === 'ashquill' ? facing === 'right' : facing === 'left';
+      if (shouldFlip) { ctx.translate(logical, 0); ctx.scale(-1, 1); }
       const scale = rig.scale;
       const origin: Point = [(logical - 512 * scale) / 2, (logical - 512 * scale) / 2 + 18];
       const body = rig.parts.find(part => part.id === 'body')!;
@@ -116,7 +117,6 @@ export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }:
         });
         if (mode === 'idle' && Math.sin(t * .83) > .985) {
           ctx.save();
-          if (facing === 'left') { /* parent canvas is already mirrored */ }
           ctx.fillStyle = '#170b10';
           ctx.beginPath();
           ctx.ellipse(origin[0] + rig.eye[0] * scale, origin[1] + rig.eye[1] * scale, 10 * scale, 3 * scale, 0, 0, Math.PI * 2);

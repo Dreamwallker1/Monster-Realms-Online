@@ -590,14 +590,14 @@ function MythSprite({
     if (shakeKey <= 0) return;
     setAnimKey((k) => k + 1);
     setSheetMode('hit');
-    const timer = window.setTimeout(() => setSheetMode('idle'), 240);
+    const timer = window.setTimeout(() => setSheetMode('idle'), 650);
     return () => window.clearTimeout(timer);
   }, [shakeKey]);
 
   useEffect(() => {
     if (attackKey <= 0) return;
     setSheetMode('attack');
-    const timer = window.setTimeout(() => setSheetMode('idle'), 520);
+    const timer = window.setTimeout(() => setSheetMode('idle'), 900);
     return () => window.clearTimeout(timer);
   }, [attackKey]);
 
@@ -1048,6 +1048,8 @@ export default function BattleOverlay() {
   const prevWildHp      = useRef<number | null>(null);
   const prevPlayerHp    = useRef<number | null>(null);
   const prevCapturedId  = useRef<string | null>(null);
+  const optimisticWildHitRef = useRef(0);
+  const optimisticPlayerHitRef = useRef(0);
 
   const { data: battleData } = useGetBattle(battle.battleId || '', {
     query: {
@@ -1085,7 +1087,8 @@ export default function BattleOverlay() {
     const pd = battleData.playerMonster;
 
     if (prevWildHp.current !== null && wd.currentHp < prevWildHp.current) {
-      setWildShake((k) => k + 1);
+      if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1;
+      else setWildShake((k) => k + 1);
       // Floating damage number on the wild myth
       const wildDmg = prevWildHp.current - wd.currentHp;
       const wildCrit = (battleData.log ?? []).slice(-3).some(
@@ -1108,7 +1111,8 @@ export default function BattleOverlay() {
       }
     }
     if (prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
-      setPlayerShake((k) => k + 1);
+      if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1;
+      else setPlayerShake((k) => k + 1);
       // Floating damage number on the player myth
       const playerDmg = prevPlayerHp.current - pd.currentHp;
       const playerCrit = (battleData.log ?? []).slice(-3).some(
@@ -1187,11 +1191,23 @@ export default function BattleOverlay() {
   // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
   useEffect(() => {
     if (!cinematic) return;
+    let impactTimer: number;
     if (cinematic.attackerSide === 'player') {
       setPlayerLungeKey(k => k + 1);
+      impactTimer = window.setTimeout(() => {
+        optimisticWildHitRef.current += 1;
+        setWildShake(k => k + 1);
+        window.setTimeout(() => { if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1; }, 4000);
+      }, 520);
     } else {
       setWildLungeKey(k => k + 1);
+      impactTimer = window.setTimeout(() => {
+        optimisticPlayerHitRef.current += 1;
+        setPlayerShake(k => k + 1);
+        window.setTimeout(() => { if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1; }, 4000);
+      }, 520);
     }
+    return () => window.clearTimeout(impactTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cinematic]);
 

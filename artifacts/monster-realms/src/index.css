@@ -926,23 +926,23 @@
   @keyframes myth-lunge-left {
     0%   { transform: translateX(0) scaleX(1) scaleY(1); }
     10%  { transform: translateX(8px) scaleX(0.88) scaleY(1.08); }   /* squash-windup */
-    30%  { transform: translateX(-60px) scaleX(1.18) scaleY(0.92); } /* dart */
-    55%  { transform: translateX(-38px) scaleX(0.95) scaleY(1.04); } /* impact recoil */
+    42%  { transform: translateX(-105px) scaleX(1.18) scaleY(0.92); } /* dart */
+    65%  { transform: translateX(-54px) scaleX(0.95) scaleY(1.04); } /* impact recoil */
     100% { transform: translateX(0) scaleX(1) scaleY(1); }
   }
   .myth-lunge-left {
-    animation: myth-lunge-left 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: myth-lunge-left 0.90s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   @keyframes myth-lunge-right {
     0%   { transform: translateX(0) scaleX(1) scaleY(1); }
     10%  { transform: translateX(-8px) scaleX(0.88) scaleY(1.08); }
-    30%  { transform: translateX(60px) scaleX(1.18) scaleY(0.92); }
-    55%  { transform: translateX(38px) scaleX(0.95) scaleY(1.04); }
+    42%  { transform: translateX(105px) scaleX(1.18) scaleY(0.92); }
+    65%  { transform: translateX(54px) scaleX(0.95) scaleY(1.04); }
     100% { transform: translateX(0) scaleX(1) scaleY(1); }
   }
   .myth-lunge-right {
-    animation: myth-lunge-right 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: myth-lunge-right 0.90s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   /* ── Floating damage number ─────────────────────────────────────────── */
