@@ -13,6 +13,31 @@ import { requireAuth } from "../middlewares/requireAuth.js";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const router: IRouter = Router();
+const payoutsInFlight = new Set<string>();
+
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+/** Decode a base58 treasury secret without relying on an undeclared transitive package. */
+function decodeBase58(value: string): Uint8Array {
+  if (!value) throw new Error("Empty base58 value");
+  const bytes: number[] = [0];
+  for (const char of value) {
+    const digit = BASE58_ALPHABET.indexOf(char);
+    if (digit < 0) throw new Error("Invalid base58 character");
+    let carry = digit;
+    for (let i = 0; i < bytes.length; i += 1) {
+      carry += bytes[i]! * 58;
+      bytes[i] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+  for (let i = 0; i < value.length - 1 && value[i] === "1"; i += 1) bytes.push(0);
+  return Uint8Array.from(bytes.reverse());
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const TOURNAMENT_HOUR_UTC = parseInt(process.env.TOURNAMENT_HOUR_UTC ?? "20");
@@ -418,14 +443,20 @@ router.post("/tournament/claim-payout", requireAuth, async (req, res): Promise<v
     return;
   }
 
+  if (payoutsInFlight.has(reg.id)) {
+    res.status(409).json({ error: "This payout is already being processed" });
+    return;
+  }
+  payoutsInFlight.add(reg.id);
+
   try {
     const { Connection, PublicKey, Transaction, SystemProgram, Keypair } = await import("@solana/web3.js");
-    const bs58 = await import("bs58");
     const connection = new Connection(
       process.env.SOLANA_RPC_URL ?? "https://api.mainnet-beta.solana.com",
       "confirmed",
     );
-    const secretKey = bs58.default.decode(treasuryKeyB58);
+    const secretKey = decodeBase58(treasuryKeyB58);
+    if (secretKey.length !== 64) throw new Error("Treasury secret key must decode to 64 bytes");
     const fromKeypair = Keypair.fromSecretKey(secretKey);
     const toPubkey = new PublicKey(player.solanaWallet);
 
@@ -441,14 +472,23 @@ router.post("/tournament/claim-payout", requireAuth, async (req, res): Promise<v
     const signature = await connection.sendRawTransaction(tx.serialize());
     await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
 
-    await db.update(tournamentRegistrationsTable)
+    const claimed = await db.update(tournamentRegistrationsTable)
       .set({ payoutClaimed: true })
-      .where(eq(tournamentRegistrationsTable.id, reg.id));
+      .where(and(
+        eq(tournamentRegistrationsTable.id, reg.id),
+        eq(tournamentRegistrationsTable.payoutClaimed, false),
+      ))
+      .returning({ id: tournamentRegistrationsTable.id });
+    if (claimed.length !== 1) {
+      throw new Error("Payout state changed while processing");
+    }
 
     res.json({ success: true, signature, sol: reg.payoutLamports / LAMPORTS_PER_SOL });
   } catch (err: any) {
     console.error("Payout error:", err);
     res.status(500).json({ error: "Payout failed — " + (err?.message ?? "unknown error") });
+  } finally {
+    payoutsInFlight.delete(reg.id);
   }
 });
 

@@ -5,7 +5,7 @@ import {
   capturedMonstersTable,
   playersTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import {
   GetPlayerInventoryParams,
@@ -105,11 +105,20 @@ router.post(
       return;
     }
 
-    // Reduce quantity
-    await db
-      .update(inventoryItemsTable)
-      .set({ quantity: item.quantity - 1 })
-      .where(eq(inventoryItemsTable.id, item.id));
+    const consumeItem = async (): Promise<boolean> => {
+      const [updated] = await db
+        .update(inventoryItemsTable)
+        .set({ quantity: sql`${inventoryItemsTable.quantity} - 1` })
+        .where(
+          and(
+            eq(inventoryItemsTable.id, item.id),
+            eq(inventoryItemsTable.playerId, params.data.playerId),
+            gt(inventoryItemsTable.quantity, 0),
+          ),
+        )
+        .returning({ id: inventoryItemsTable.id });
+      return Boolean(updated);
+    };
 
     if (item.type === "energy") {
       const [player] = await db
@@ -117,6 +126,14 @@ router.post(
         .from(playersTable)
         .where(eq(playersTable.id, params.data.playerId));
       const energyRestored = Math.min(200, (player?.maxEnergy ?? 300) - (player?.energy ?? 0));
+      if (energyRestored <= 0) {
+        res.status(400).json({ error: "Energy is already full" });
+        return;
+      }
+      if (!(await consumeItem())) {
+        res.status(409).json({ error: "Item was already consumed" });
+        return;
+      }
       await db
         .update(playersTable)
         .set({ energy: (player?.energy ?? 0) + energyRestored })
@@ -132,7 +149,11 @@ router.post(
       return;
     }
 
-    if (item.type === "heal" && body.data.targetCapturedMonsterId) {
+    if (item.type === "heal") {
+      if (!body.data.targetCapturedMonsterId) {
+        res.status(400).json({ error: "A target myth is required for a healing item" });
+        return;
+      }
       const [row] = await db
         .select()
         .from(capturedMonstersTable)
@@ -148,6 +169,14 @@ router.post(
         );
       if (!row || !row.monster_species) {
         res.status(404).json({ error: "Target monster not found" });
+        return;
+      }
+      if (row.captured_monsters.currentHp >= row.captured_monsters.maxHp) {
+        res.status(400).json({ error: "That myth is already at full health" });
+        return;
+      }
+      if (!(await consumeItem())) {
+        res.status(409).json({ error: "Item was already consumed" });
         return;
       }
       const healAmount = 30;
@@ -168,6 +197,11 @@ router.post(
           energyRestored: null,
         }),
       );
+      return;
+    }
+
+    if (!(await consumeItem())) {
+      res.status(409).json({ error: "Item was already consumed" });
       return;
     }
 

@@ -14,3 +14,12 @@ export const REGION_SEED_DATA: InsertRegion[] = [
   { id: "shadow-marsh", name: "Shadow Marsh", biome: "Dark Marsh", description: "Sunlight has never reached the marsh floor.", requiredExplorerLevel: 8, width: 50, height: 50, monsterSpeciesIds: [] },
   { id: "void-realm", name: "Void Realm", biome: "Dimensional Rift", description: "A breach between dimensions.", requiredExplorerLevel: 20, width: 40, height: 40, monsterSpeciesIds: [] },
 ];
+
+/** Authoritative region lookup for the shared 50x50 overworld. */
+export function getRegionIdForPosition(x: number, y: number): string {
+  if (y <= 19) return "verdant-meadows";
+  if (y <= 34) return x <= 24 ? "ocean-ruins" : "volcanic-rift";
+  if (x <= 16) return "shadow-marsh";
+  if (x <= 33) return "ancient-forest";
+  return "thunder-valley";
+}

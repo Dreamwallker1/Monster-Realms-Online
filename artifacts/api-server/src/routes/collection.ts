@@ -3,7 +3,6 @@ import { db } from "@workspace/db";
 import {
   capturedMonstersTable,
   monsterSpeciesTable,
-  playersTable,
 } from "@workspace/db";
 import type {
   CapturedMonster,
@@ -17,15 +16,12 @@ import {
   GetPlayerCollectionQueryParams,
   GetPlayerCollectionResponse,
   CaptureMonsterParams,
-  CaptureMonsterBody,
-  CaptureMonsterResponse,
   GetCapturedMonsterParams,
   GetCapturedMonsterResponse,
   UpdateCapturedMonsterParams,
   UpdateCapturedMonsterBody,
   UpdateCapturedMonsterResponse,
 } from "@workspace/api-zod";
-import { calculateWildStats } from "../lib/gameEngine.js";
 import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
 
 const router: IRouter = Router();
@@ -120,64 +116,10 @@ router.post(
       res.status(403).json({ error: "Cannot capture for another player" });
       return;
     }
-    const body = CaptureMonsterBody.safeParse(req.body);
-    if (!body.success) {
-      res.status(400).json({ error: body.error.message });
-      return;
-    }
-    if (!ACTIVE_SPECIES_IDS.has(body.data.speciesId)) {
-      res.status(404).json({ error: "Monster species not found" });
-      return;
-    }
-
-    const [species] = await db
-      .select()
-      .from(monsterSpeciesTable)
-      .where(eq(monsterSpeciesTable.id, body.data.speciesId));
-    if (!species) {
-      res.status(404).json({ error: "Monster species not found" });
-      return;
-    }
-
-    const stats = calculateWildStats(species, body.data.level);
-    const personalities = ["Hardy", "Brave", "Calm", "Gentle", "Lax", "Bold", "Jolly", "Quirky", "Sassy", "Timid", "Mild", "Hasty"];
-    const personality = personalities[Math.floor(Math.random() * personalities.length)]!;
-
-    const [captured] = await db
-      .insert(capturedMonstersTable)
-      .values({
-        playerId: params.data.playerId,
-        speciesId: species.id,
-        level: body.data.level,
-        currentHp: stats.hp,
-        maxHp: stats.hp,
-        attack: stats.attack,
-        defense: stats.defense,
-        speed: stats.speed,
-        shinyVariant: body.data.shinyVariant ?? null,
-        personality,
-        inTeam: false,
-      })
-      .returning();
-
-    // Update player stats
-    await db
-      .update(playersTable)
-      .set({
-        monstersCaptured: (
-          await db
-            .select({ v: playersTable.monstersCaptured })
-            .from(playersTable)
-            .where(eq(playersTable.id, params.data.playerId))
-        )[0]!.v + 1,
-      })
-      .where(eq(playersTable.id, params.data.playerId));
-
-    res
-      .status(201)
-      .json(
-        CaptureMonsterResponse.parse(formatCapturedMonster(captured!, species)),
-      );
+    // Captures are authoritative battle rewards. Keeping a public creation
+    // endpoint enabled would let a modified client mint arbitrary high-level myths.
+    res.status(403).json({ error: "Myths can only be captured through an active battle" });
+    return;
   },
 );
 

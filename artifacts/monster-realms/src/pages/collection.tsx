@@ -25,7 +25,12 @@ export default function Collection() {
       element: elementFilter && elementFilter !== 'all' ? elementFilter : undefined,
       rarity: rarityFilter && rarityFilter !== 'all' ? rarityFilter : undefined,
     },
-    { query: { enabled: !!player?.id } },
+    {
+      query: {
+        enabled: !!player?.id,
+        queryKey: ['player-collection', player?.id, elementFilter, rarityFilter],
+      },
+    },
   );
   
   const filteredCollection = collection?.filter((m) =>

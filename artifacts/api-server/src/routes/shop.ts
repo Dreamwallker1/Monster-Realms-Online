@@ -5,7 +5,7 @@ import {
   inventoryItemsTable,
   shopPurchasesTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, gt } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
@@ -33,8 +33,10 @@ const TREASURY   = process.env.TREASURY_WALLET_ADDRESS ?? "";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function ensureOrbRows(playerId: string) {
-  const existing = await db
+type ShopExecutor = Pick<typeof db, "select" | "insert" | "update">;
+
+async function ensureOrbRows(playerId: string, executor: ShopExecutor = db) {
+  const existing = await executor
     .select({ orbType: inventoryItemsTable.orbType, quantity: inventoryItemsTable.quantity })
     .from(inventoryItemsTable)
     .where(and(eq(inventoryItemsTable.playerId, playerId), eq(inventoryItemsTable.type, 'orb')));
@@ -42,7 +44,7 @@ async function ensureOrbRows(playerId: string) {
   const existingTypes = new Set(existing.map(r => r.orbType));
   const toInsert = VALID_ORBS.filter(o => !existingTypes.has(o));
   if (toInsert.length > 0) {
-    await db.insert(inventoryItemsTable).values(
+    await executor.insert(inventoryItemsTable).values(
       toInsert.map(orbType => ({
         playerId,
         name: ORB_CONFIG[orbType].name,
@@ -55,8 +57,8 @@ async function ensureOrbRows(playerId: string) {
   }
 }
 
-async function getOrbRow(playerId: string, orbType: OrbType) {
-  const [row] = await db
+async function getOrbRow(playerId: string, orbType: OrbType, executor: ShopExecutor = db) {
+  const [row] = await executor
     .select()
     .from(inventoryItemsTable)
     .where(and(
@@ -67,14 +69,14 @@ async function getOrbRow(playerId: string, orbType: OrbType) {
   return row ?? null;
 }
 
-async function grantOrbs(playerId: string, grants: Partial<Record<OrbType, number>>) {
-  await ensureOrbRows(playerId);
+async function grantOrbs(playerId: string, grants: Partial<Record<OrbType, number>>, executor: ShopExecutor = db) {
+  await ensureOrbRows(playerId, executor);
   for (const [orbType, qty] of Object.entries(grants) as [OrbType, number][]) {
     if (!qty) continue;
-    const row = await getOrbRow(playerId, orbType);
+    const row = await getOrbRow(playerId, orbType, executor);
     if (row) {
-      await db.update(inventoryItemsTable)
-        .set({ quantity: row.quantity + qty })
+      await executor.update(inventoryItemsTable)
+        .set({ quantity: sql`${inventoryItemsTable.quantity} + ${qty}` })
         .where(eq(inventoryItemsTable.id, row.id));
     }
   }
@@ -186,12 +188,29 @@ router.post("/shop/purchase", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: "txSignature, orbType, buyerWallet required" });
     return;
   }
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100) {
+    res.status(400).json({ error: "quantity must be an integer between 1 and 100" });
+    return;
+  }
   if (!VALID_ORBS.includes(orbType as OrbType)) {
     res.status(400).json({ error: "Invalid orbType" });
     return;
   }
   if (!TREASURY) {
     res.status(503).json({ error: "Shop not configured — TREASURY_WALLET_ADDRESS not set" });
+    return;
+  }
+
+  const [player] = await db
+    .select({ solanaWallet: playersTable.solanaWallet })
+    .from(playersTable)
+    .where(eq(playersTable.id, req.playerId!));
+  if (!player?.solanaWallet || player.solanaWallet !== buyerWallet) {
+    res.status(403).json({ error: "Payment wallet does not match the connected player wallet" });
+    return;
+  }
+  try { new PublicKey(buyerWallet); } catch {
+    res.status(400).json({ error: "Invalid buyer wallet" });
     return;
   }
 
@@ -217,6 +236,10 @@ router.post("/shop/purchase", requireAuth, async (req, res): Promise<void> => {
     });
     if (!tx) {
       res.status(400).json({ error: "Transaction not found or not confirmed" });
+      return;
+    }
+    if (tx.meta?.err) {
+      res.status(400).json({ error: "Transaction failed on-chain" });
       return;
     }
 
@@ -246,16 +269,24 @@ router.post("/shop/purchase", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  // Record purchase + grant orbs
-  await db.insert(shopPurchasesTable).values({
-    playerId: req.playerId!,
-    txSignature,
-    orbType,
-    quantity,
-    lamports: expectedLamports,
-  });
-
-  await grantOrbs(req.playerId!, { [orbType as OrbType]: quantity });
+  // The unique signature record and the inventory grant commit together. A
+  // database failure can therefore never charge a player without granting orbs.
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(shopPurchasesTable).values({
+        playerId: req.playerId!,
+        txSignature,
+        orbType,
+        quantity,
+        lamports: expectedLamports,
+      });
+      await grantOrbs(req.playerId!, { [orbType as OrbType]: quantity }, tx);
+    });
+  } catch (error) {
+    console.error("Purchase fulfillment failed:", error);
+    res.status(409).json({ error: "Transaction was already processed or fulfillment failed" });
+    return;
+  }
 
   res.json({ success: true, granted: { [orbType]: quantity } });
 });
@@ -273,10 +304,15 @@ router.post("/shop/deduct", requireAuth, async (req, res): Promise<void> => {
   if (!row || row.quantity <= 0) {
     res.status(400).json({ error: "No orbs of this type remaining" }); return;
   }
-  await db.update(inventoryItemsTable)
-    .set({ quantity: row.quantity - 1 })
-    .where(eq(inventoryItemsTable.id, row.id));
-  res.json({ success: true, remaining: row.quantity - 1 });
+  const [updated] = await db.update(inventoryItemsTable)
+    .set({ quantity: sql`${inventoryItemsTable.quantity} - 1` })
+    .where(and(eq(inventoryItemsTable.id, row.id), gt(inventoryItemsTable.quantity, 0)))
+    .returning({ quantity: inventoryItemsTable.quantity });
+  if (!updated) {
+    res.status(409).json({ error: "Orb was already consumed" });
+    return;
+  }
+  res.json({ success: true, remaining: updated.quantity });
 });
 
 export default router;

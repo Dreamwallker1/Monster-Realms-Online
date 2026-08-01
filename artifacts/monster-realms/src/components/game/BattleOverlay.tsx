@@ -69,6 +69,31 @@ const AETHER_COST: Record<SkillData['type'], number> = {
 const BASIC_AETHER_GAIN = 18;
 const ROUND_AETHER_REGEN = 10;
 
+function restorePlayerAether(
+  turn: number,
+  log: Array<{ turn: number; actor: string; action: string }>,
+): number {
+  let aether = 45;
+  let regeneratedThroughTurn = 1;
+  for (const entry of log) {
+    if (entry.actor !== 'player') continue;
+    while (regeneratedThroughTurn < entry.turn) {
+      aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+      regeneratedThroughTurn += 1;
+    }
+    if (entry.action === 'attack') aether = Math.min(MAX_AETHER, aether + BASIC_AETHER_GAIN);
+    else {
+      const type = ACTION_TO_SKILL_TYPE[entry.action];
+      if (type) aether = Math.max(0, aether - AETHER_COST[type]);
+    }
+  }
+  while (regeneratedThroughTurn < turn) {
+    aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+    regeneratedThroughTurn += 1;
+  }
+  return aether;
+}
+
 function getSkillForAction(action: string, skills: SkillData[]): SkillData {
   const type = ACTION_TO_SKILL_TYPE[action];
   if (type) {
@@ -1246,7 +1271,9 @@ export default function BattleOverlay() {
   useEffect(() => {
     if (battle.battleId && battle.battleId !== seenBattleId.current) {
       seenBattleId.current = battle.battleId;
-      setPlayerAether(45);
+      const restoredTurn = battleData?.turn ?? 1;
+      prevRoundRef.current = restoredTurn;
+      setPlayerAether(restorePlayerAether(restoredTurn, battleData?.log ?? []));
       setWildAether(45);
       setShowBattleIntro(true);
       setShowPlayerEntrance(true);
@@ -1255,7 +1282,7 @@ export default function BattleOverlay() {
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [battle.battleId]);
+  }, [battle.battleId, battleData]);
 
   // Trigger player entrance on myth switch
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import {
   playersTable,
@@ -22,13 +22,34 @@ import {
 } from "../lib/gameEngine.js";
 import { formatSpecies } from "./monsters.js";
 import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+import { getRegionIdForPosition } from "../lib/regionData.js";
+import { rememberEncounter } from "../lib/encounterStore.js";
 
 const router: IRouter = Router();
+const movementInFlight = new Set<string>();
+
+function lockMovement(req: Request, res: Response, next: NextFunction): void {
+  const playerId = req.playerId;
+  if (!playerId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (movementInFlight.has(playerId)) {
+    res.status(409).json({ error: "Movement is already being processed" });
+    return;
+  }
+  movementInFlight.add(playerId);
+  const release = () => movementInFlight.delete(playerId);
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+}
 
 // POST /players/:playerId/explore
 router.post(
   "/players/:playerId/explore",
   requireAuth,
+  lockMovement,
   async (req, res): Promise<void> => {
     const params = ExploreTileParams.safeParse(req.params);
     if (!params.success) {
@@ -69,15 +90,32 @@ router.post(
     };
     const [dx, dy] = dirDeltas[body.data.direction] ?? [0, 0];
 
+    if (body.data.posX !== player.posX || body.data.posY !== player.posY) {
+      res.status(409).json({ error: "Player position is out of sync" });
+      return;
+    }
+
+    const maxX = 49;
+    const maxY = 49;
+    const newX = Math.max(0, Math.min(maxX, player.posX + dx));
+    const newY = Math.max(0, Math.min(maxY, player.posY + dy));
+    const authoritativeRegionId = getRegionIdForPosition(newX, newY);
+    if (body.data.regionId !== authoritativeRegionId) {
+      res.status(409).json({ error: "Region is out of sync with player position" });
+      return;
+    }
     const [region] = await db
       .select()
       .from(regionsTable)
-      .where(eq(regionsTable.id, body.data.regionId));
-
-    const maxX = (region?.width ?? 50) - 1;
-    const maxY = (region?.height ?? 50) - 1;
-    const newX = Math.max(0, Math.min(maxX, body.data.posX + dx));
-    const newY = Math.max(0, Math.min(maxY, body.data.posY + dy));
+      .where(eq(regionsTable.id, authoritativeRegionId));
+    if (!region) {
+      res.status(404).json({ error: "Region not found" });
+      return;
+    }
+    if (player.explorerLevel < region.requiredExplorerLevel) {
+      res.status(403).json({ error: "Explorer level is too low for this region" });
+      return;
+    }
     const newTile = true; // simplified: always award xp for movement
 
     // Explorer XP + coins
@@ -118,7 +156,7 @@ router.post(
         requiredLevel = region.requiredExplorerLevel;
       } else {
         // Build the static ID set for this region from seed data
-        const targetRegionId = body.data.regionId;
+        const targetRegionId = authoritativeRegionId;
         const staticIdsForRegion = new Set(
           MONSTER_SEED_DATA
             .filter((m) =>
@@ -146,6 +184,13 @@ router.post(
             wildLevel,
             shinyVariant: shiny,
           };
+          rememberEncounter({
+            playerId: player.id,
+            speciesId: wild.id,
+            regionId: authoritativeRegionId,
+            wildLevel,
+            shinyVariant: shiny,
+          });
         }
       }
       // Empty regionMonsterIds → no encounter; client receives encounterTriggered: false
@@ -157,7 +202,7 @@ router.post(
       .set({
         posX: newX,
         posY: newY,
-        regionId: body.data.regionId,
+        regionId: authoritativeRegionId,
         energy: player.energy - energyCost,
         explorerXp: newXp,
         explorerLevel: newLevel,

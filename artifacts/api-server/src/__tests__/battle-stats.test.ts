@@ -30,7 +30,55 @@ import {
 } from "../lib/battleService.js";
 import { calculateCaptureChance, getElementMultiplier, rollEncounter } from "../lib/gameEngine.js";
 import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
-import { REGION_SEED_DATA } from "../lib/regionData.js";
+import { REGION_SEED_DATA, getRegionIdForPosition } from "../lib/regionData.js";
+import { rememberEncounter, consumeEncounter } from "../lib/encounterStore.js";
+
+describe("server-authoritative world validation", () => {
+  it("maps every overworld boundary to the expected region", () => {
+    assert.equal(getRegionIdForPosition(24, 20), "ocean-ruins");
+    assert.equal(getRegionIdForPosition(25, 20), "volcanic-rift");
+    assert.equal(getRegionIdForPosition(16, 35), "shadow-marsh");
+    assert.equal(getRegionIdForPosition(17, 35), "ancient-forest");
+    assert.equal(getRegionIdForPosition(34, 35), "thunder-valley");
+  });
+
+  it("allows a server encounter ticket to be consumed exactly once", () => {
+    rememberEncounter({
+      playerId: "player-ticket-test",
+      speciesId: "ashquill",
+      regionId: "volcanic-rift",
+      wildLevel: 4,
+      shinyVariant: null,
+    });
+    const first = consumeEncounter("player-ticket-test", {
+      speciesId: "ashquill",
+      regionId: "volcanic-rift",
+    });
+    assert.equal(first?.wildLevel, 4);
+    assert.equal(consumeEncounter("player-ticket-test", {
+      speciesId: "ashquill",
+      regionId: "volcanic-rift",
+    }), null);
+  });
+
+  it("rejects a forged species or region and invalidates the ticket", () => {
+    rememberEncounter({
+      playerId: "player-forged-ticket",
+      speciesId: "flarelynx",
+      regionId: "verdant-meadows",
+      wildLevel: 2,
+      shinyVariant: "Golden",
+    });
+    assert.equal(consumeEncounter("player-forged-ticket", {
+      speciesId: "ashquill",
+      regionId: "verdant-meadows",
+    }), null);
+    assert.equal(consumeEncounter("player-forged-ticket", {
+      speciesId: "flarelynx",
+      regionId: "verdant-meadows",
+    }), null);
+  });
+});
 
 describe("Flarelynx catalogue integration", () => {
   it("keeps only Ashquill and Flarelynx in the active catalogue", () => {

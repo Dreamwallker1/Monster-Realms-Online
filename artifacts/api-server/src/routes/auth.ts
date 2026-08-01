@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { playersTable, inventoryItemsTable, capturedMonstersTable, monsterSpeciesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -219,6 +219,32 @@ async function grantStarterPack(playerId: string, element: string): Promise<Star
 }
 
 const router: IRouter = Router();
+
+type AttemptBucket = { count: number; resetAt: number };
+const authAttempts = new Map<string, AttemptBucket>();
+const AUTH_WINDOW_MS = 60_000;
+const AUTH_MAX_ATTEMPTS = 12;
+
+function authRateLimit(req: Request, res: Response, next: NextFunction): void {
+  const now = Date.now();
+  const key = `${req.ip ?? req.socket.remoteAddress ?? "unknown"}:${req.path}`;
+  const existing = authAttempts.get(key);
+  const bucket = !existing || existing.resetAt <= now
+    ? { count: 0, resetAt: now + AUTH_WINDOW_MS }
+    : existing;
+  bucket.count += 1;
+  authAttempts.set(key, bucket);
+  if (bucket.count > AUTH_MAX_ATTEMPTS) {
+    res.setHeader("Retry-After", Math.ceil((bucket.resetAt - now) / 1000));
+    res.status(429).json({ error: "Too many authentication attempts. Try again shortly." });
+    return;
+  }
+  next();
+}
+
+router.use("/auth/guest", authRateLimit);
+router.use("/auth/register", authRateLimit);
+router.use("/auth/login", authRateLimit);
 
 // POST /auth/guest
 router.post("/auth/guest", async (req, res): Promise<void> => {

@@ -165,24 +165,47 @@ router.put(
       return;
     }
 
-    // Clear existing team
-    await db
-      .update(capturedMonstersTable)
-      .set({ inTeam: false, teamSlot: null })
-      .where(eq(capturedMonstersTable.playerId, params.data.playerId));
-
-    // Set new team
-    for (let i = 0; i < body.data.capturedMonsterIds.length; i++) {
-      await db
-        .update(capturedMonstersTable)
-        .set({ inTeam: true, teamSlot: i })
-        .where(
-          and(
-            eq(capturedMonstersTable.id, body.data.capturedMonsterIds[i]!),
-            eq(capturedMonstersTable.playerId, params.data.playerId),
-          ),
-        );
+    const requestedIds = body.data.capturedMonsterIds;
+    if (new Set(requestedIds).size !== requestedIds.length) {
+      res.status(400).json({ error: "A myth cannot occupy multiple team slots" });
+      return;
     }
+    if (requestedIds.length > 0) {
+      const owned = await db
+        .select({ id: capturedMonstersTable.id, speciesId: capturedMonstersTable.speciesId })
+        .from(capturedMonstersTable)
+        .where(eq(capturedMonstersTable.playerId, params.data.playerId));
+      const ownedById = new Map(owned.map((monster) => [monster.id, monster]));
+      if (requestedIds.some((id) => !ownedById.has(id))) {
+        res.status(400).json({ error: "Team contains an unknown myth" });
+        return;
+      }
+      if (requestedIds.some((id) => !ACTIVE_SPECIES_IDS.has(ownedById.get(id)!.speciesId))) {
+        res.status(400).json({ error: "Team contains an unavailable myth species" });
+        return;
+      }
+    }
+
+    // Clear and replace atomically so a failed write never leaves an empty or
+    // half-written team.
+    await db.transaction(async (tx) => {
+      await tx
+        .update(capturedMonstersTable)
+        .set({ inTeam: false, teamSlot: null })
+        .where(eq(capturedMonstersTable.playerId, params.data.playerId));
+
+      for (let i = 0; i < requestedIds.length; i += 1) {
+        await tx
+          .update(capturedMonstersTable)
+          .set({ inTeam: true, teamSlot: i })
+          .where(
+            and(
+              eq(capturedMonstersTable.id, requestedIds[i]!),
+              eq(capturedMonstersTable.playerId, params.data.playerId),
+            ),
+          );
+      }
+    });
 
     const teamMembers = await db
       .select()

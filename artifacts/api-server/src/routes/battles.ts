@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import {
   battlesTable,
@@ -6,6 +6,7 @@ import {
   monsterSpeciesTable,
   playersTable,
   inventoryItemsTable,
+  regionsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth.js";
@@ -38,13 +39,16 @@ import {
   type StatUpdateDb,
 } from "../lib/battleService.js";
 import type { BattleLogEntry } from "@workspace/db";
+import { consumeEncounter } from "../lib/encounterStore.js";
 
 /**
  * Adapts the Drizzle `db` instance to the minimal `StatUpdateDb` interface
  * expected by the battle service functions. Keeping the adapter thin means
  * the service functions themselves contain the real business logic under test.
  */
-function makeStatDb(drizzle: typeof db): StatUpdateDb {
+type DrizzleExecutor = Pick<typeof db, "select" | "update" | "insert">;
+
+function makeStatDb(drizzle: DrizzleExecutor): StatUpdateDb {
   return {
     async fetchPlayerStats(playerId) {
       const [row] = await drizzle
@@ -94,6 +98,67 @@ function makeStatDb(drizzle: typeof db): StatUpdateDb {
 }
 
 const router: IRouter = Router();
+const battleActionsInFlight = new Set<string>();
+const battleStartsInFlight = new Set<string>();
+const MAX_AETHER = 100;
+const STARTING_AETHER = 45;
+const ROUND_AETHER_REGEN = 10;
+const BASIC_AETHER_GAIN = 18;
+const AETHER_COST: Record<string, number> = { skill1: 30, skill2: 45, ultimate: 70 };
+
+function getPlayerAether(turn: number, log: BattleLogEntry[]): number {
+  let aether = STARTING_AETHER;
+  let regeneratedThroughTurn = 1;
+  for (const entry of log) {
+    if (entry.actor !== "player") continue;
+    while (regeneratedThroughTurn < entry.turn) {
+      aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+      regeneratedThroughTurn += 1;
+    }
+    if (entry.action === "attack") aether = Math.min(MAX_AETHER, aether + BASIC_AETHER_GAIN);
+    else if (entry.action in AETHER_COST) aether = Math.max(0, aether - AETHER_COST[entry.action]!);
+  }
+  while (regeneratedThroughTurn < turn) {
+    aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+    regeneratedThroughTurn += 1;
+  }
+  return aether;
+}
+
+function lockBattleAction(req: Request, res: Response, next: NextFunction): void {
+  const rawId = req.params?.battleId;
+  const battleId = Array.isArray(rawId) ? rawId[0] : rawId;
+  if (!battleId) {
+    res.status(400).json({ error: "Invalid battle id" });
+    return;
+  }
+  if (battleActionsInFlight.has(battleId)) {
+    res.status(409).json({ error: "A battle action is already being processed" });
+    return;
+  }
+  battleActionsInFlight.add(battleId);
+  const release = () => battleActionsInFlight.delete(battleId);
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+}
+
+function lockBattleStart(req: Request, res: Response, next: NextFunction): void {
+  const playerId = req.playerId;
+  if (!playerId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  if (battleStartsInFlight.has(playerId)) {
+    res.status(409).json({ error: "A battle is already being started" });
+    return;
+  }
+  battleStartsInFlight.add(playerId);
+  const release = () => battleStartsInFlight.delete(playerId);
+  res.once("finish", release);
+  res.once("close", release);
+  next();
+}
 
 function formatBattle(
   b: typeof battlesTable.$inferSelect,
@@ -155,7 +220,7 @@ function formatBattle(
 }
 
 // POST /battles
-router.post("/battles", requireAuth, async (req, res): Promise<void> => {
+router.post("/battles", requireAuth, lockBattleStart, async (req, res): Promise<void> => {
   const body = StartBattleBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
@@ -175,6 +240,27 @@ router.post("/battles", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const [region] = await db
+    .select()
+    .from(regionsTable)
+    .where(eq(regionsTable.id, body.data.regionId));
+  if (!region || !(region.monsterSpeciesIds as string[]).includes(species.id)) {
+    res.status(400).json({ error: "This myth cannot be encountered in that region" });
+    return;
+  }
+
+  const [activeBattle] = await db
+    .select({ id: battlesTable.id })
+    .from(battlesTable)
+    .where(and(
+      eq(battlesTable.playerId, body.data.playerId),
+      eq(battlesTable.status, "active"),
+    ));
+  if (activeBattle) {
+    res.status(409).json({ error: "Finish the active battle before starting another" });
+    return;
+  }
+
   const [playerCaptured] = await db
     .select()
     .from(capturedMonstersTable)
@@ -188,8 +274,21 @@ router.post("/battles", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Player monster not found" });
     return;
   }
+  if (playerCaptured.currentHp <= 0) {
+    res.status(400).json({ error: "A fainted myth cannot start a battle" });
+    return;
+  }
 
-  const wildStats = calculateWildStats(species, body.data.wildLevel);
+  const pendingEncounter = consumeEncounter(body.data.playerId, {
+    speciesId: species.id,
+    regionId: body.data.regionId,
+  });
+  if (!pendingEncounter) {
+    res.status(409).json({ error: "This encounter expired or was not found. Explore to find the myth again." });
+    return;
+  }
+
+  const wildStats = calculateWildStats(species, pendingEncounter.wildLevel);
 
   const [battle] = await db
     .insert(battlesTable)
@@ -198,13 +297,13 @@ router.post("/battles", requireAuth, async (req, res): Promise<void> => {
       status: "active",
       turn: 1,
       wildSpeciesId: species.id,
-      wildLevel: body.data.wildLevel,
+      wildLevel: pendingEncounter.wildLevel,
       wildCurrentHp: wildStats.hp,
       wildMaxHp: wildStats.hp,
       wildAttack: wildStats.attack,
       wildDefense: wildStats.defense,
       wildSpeed: wildStats.speed,
-      wildShinyVariant: body.data.shinyVariant ?? null,
+      wildShinyVariant: pendingEncounter.shinyVariant,
       playerCapturedId: playerCaptured.id,
       playerCurrentHp: playerCaptured.currentHp,
       regionId: body.data.regionId,
@@ -276,6 +375,7 @@ router.get(
 router.post(
   "/battles/:battleId/action",
   requireAuth,
+  lockBattleAction,
   async (req, res): Promise<void> => {
     const params = PerformBattleActionParams.safeParse(req.params);
     if (!params.success) {
@@ -330,6 +430,19 @@ router.post(
     const action = body.data.action;
     const skills = (wildSpecies.skills as { name: string; type: string; element: string; power: number; accuracy: number }[]);
     const playerSkills = (playerSpecies.skills as typeof skills);
+
+    if (action in AETHER_COST) {
+      const requestedSkill = playerSkills.find((skill) => skill.type === action);
+      if (!requestedSkill) {
+        res.status(400).json({ error: "That skill is not available to this myth" });
+        return;
+      }
+      const availableAether = getPlayerAether(battle.turn, log);
+      if (availableAether < AETHER_COST[action]!) {
+        res.status(400).json({ error: "Not enough Aether for that skill" });
+        return;
+      }
+    }
 
     if (action === "switch") {
       const switchToId = body.data.switchToMonsterId;

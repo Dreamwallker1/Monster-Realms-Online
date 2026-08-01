@@ -20,6 +20,8 @@ export interface PlayerStatRow {
   coins?: number | null;
 }
 
+export type PlayerStatUpdate = Partial<Record<keyof PlayerStatRow, number>>;
+
 export interface OrbRow {
   id: string;
   quantity: number;
@@ -41,7 +43,7 @@ export interface CapturedMonsterInsert {
 
 export interface StatUpdateDb {
   fetchPlayerStats(playerId: string): Promise<PlayerStatRow | undefined>;
-  writePlayerStats(playerId: string, stats: Partial<PlayerStatRow>): Promise<void>;
+  writePlayerStats(playerId: string, stats: PlayerStatUpdate): Promise<void>;
   fetchOrb(playerId: string, orbType: string): Promise<OrbRow | undefined>;
   writeOrbQuantity(orbRowId: string, quantity: number): Promise<void>;
   insertCapturedMonster(data: CapturedMonsterInsert): Promise<{ id: string }>;

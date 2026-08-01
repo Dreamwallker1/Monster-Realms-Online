@@ -84,7 +84,12 @@ router.get("/api/pvp/opponents", requireAuth, async (req, res): Promise<void> =>
 
 // POST /api/pvp/challenge/:opponentId — start a PvP battle vs opponent's lead myth
 router.post("/api/pvp/challenge/:opponentId", requireAuth, async (req, res): Promise<void> => {
-  const { opponentId } = req.params;
+  const rawOpponentId = req.params.opponentId;
+  if (!rawOpponentId || Array.isArray(rawOpponentId)) {
+    res.status(400).json({ error: "Invalid opponent id" });
+    return;
+  }
+  const opponentId = rawOpponentId;
 
   if (opponentId === req.playerId) {
     res.status(400).json({ error: "Cannot challenge yourself" });
@@ -169,7 +174,7 @@ router.post("/api/pvp/challenge/:opponentId", requireAuth, async (req, res): Pro
       regionId: "pvp-arena",
       log: [{
         turn: 0,
-        actor: "system",
+        actor: "player",
         action: "start",
         description: `PvP Battle! You challenged ${oppPlayer?.username ?? "opponent"}'s ${oppSpecies.name} (Lv.${oppLead.level})!`,
         damageDealt: null,
