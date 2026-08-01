@@ -1,0 +1,379 @@
+From faecb769e63847cd43e2e8a1449347127a8a40ad Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 18:46:11 -0400
+Subject: [PATCH] Polish cinematic map-to-battle transition and arena
+
+---
+ .../src/components/game/BattleOverlay.tsx     | 21 +++--
+ .../components/game/BattleTransitionVeil.tsx  | 56 ++++++++++++
+ .../src/components/game/EncounterPopup.tsx    |  2 +
+ .../src/components/phaser/WorldScene.ts       |  8 +-
+ artifacts/monster-realms/src/index.css        | 86 +++++++++++++++----
+ .../src/lib/battle-transition-events.ts       |  3 +-
+ artifacts/monster-realms/src/pages/game.tsx   |  2 +
+ 7 files changed, 148 insertions(+), 30 deletions(-)
+ create mode 100644 artifacts/monster-realms/src/components/game/BattleTransitionVeil.tsx
+
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index 33f3a37..c66ec2f 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -1463,30 +1463,33 @@ export default function BattleOverlay() {
+ 
+         {/* Sky */}
+         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
++        <div className="battle-sky-bloom" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
++        <div className="battle-horizon-haze" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
+ 
+         {/* Ground */}
+         <div
+           className="absolute left-0 right-0 bottom-0"
+           style={{
+-            height: '38%',
++            height: '46%',
+             background: theme.groundGrad,
+             borderTop: `2px solid ${theme.groundLine}`,
+           }}
+         />
+ 
+         {/* Horizon decorations */}
+-        <div className="absolute left-0 right-0" style={{ bottom: '38%' }}>
++        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '46%' }}>
+           {theme.hasTrees && <ForestSilhouette color={theme.treeColor} />}
+           {theme.hasRocks && !theme.hasTrees && <RockSilhouette color={theme.rockColor} />}
+         </div>
+ 
+         {/* Arena depth — subtle perspective and combatant staging pools */}
+         <div className="battle-ground-perspective" aria-hidden="true" />
++        <div className="battle-foreground-ridge" aria-hidden="true" />
+         <div className="battle-stage-pool battle-stage-pool-wild" aria-hidden="true" />
+         <div className="battle-stage-pool battle-stage-pool-player" aria-hidden="true" />
+ 
+         {/* Wild HP plate — upper left */}
+-        <div className="absolute top-4 left-4 battle-slide-up" style={{ animationDelay: '0.1s' }}>
++        <div className="absolute top-5 left-5 battle-slide-up battle-hp-anchor battle-hp-anchor-left" style={{ animationDelay: '0.75s' }}>
+           <HpPlate
+             name={wildMonster.species.name}
+             level={wildMonster.level}
+@@ -1581,7 +1584,7 @@ export default function BattleOverlay() {
+         </div>
+ 
+         {/* Player myth HP plate — upper right */}
+-        <div className="absolute top-4 right-4 battle-slide-up" style={{ animationDelay: '0.15s' }}>
++        <div className="absolute top-5 right-5 battle-slide-up battle-hp-anchor battle-hp-anchor-right" style={{ animationDelay: '0.8s' }}>
+           <HpPlate
+             name={playerMonster.species.name}
+             level={playerMonster.level}
+@@ -1599,14 +1602,14 @@ export default function BattleOverlay() {
+         <div
+           className="absolute battle-entrance battle-idle-bob"
+           style={{
+-            bottom: '38%',
+-            left: '50%',
++            bottom: '34%',
++            left: '68%',
+             transform: 'translateX(-50%)',
+             animationDelay: '0.2s',
+             zIndex: 1,
+           }}
+         >
+-          <CharacterFront char={char} size={78} />
++          <CharacterFront char={char} size={92} />
+           <div style={{
+             width: 48, height: 8, borderRadius: '50%', marginTop: 2, marginLeft: 'auto', marginRight: 'auto',
+             background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 80%)',
+@@ -1647,7 +1650,7 @@ export default function BattleOverlay() {
+               speciesId={wildMonster.species.id}
+               element={wildMonster.species.element}
+               rarity={wildMonster.species.rarity}
+-              size={180}
++              size={250}
+               shakeKey={wildShake}
+               isFainting={faintCinematic?.side === 'wild'}
+               facing="right"
+@@ -1676,7 +1679,7 @@ export default function BattleOverlay() {
+               speciesId={playerMonster.species.id}
+               element={playerMonster.species.element}
+               rarity={playerMonster.species.rarity}
+-              size={180}
++              size={250}
+               shakeKey={playerShake}
+               isFainting={faintCinematic?.side === 'player'}
+               facing="left"
+diff --git a/artifacts/monster-realms/src/components/game/BattleTransitionVeil.tsx b/artifacts/monster-realms/src/components/game/BattleTransitionVeil.tsx
+new file mode 100644
+index 0000000..4afb9e1
+--- /dev/null
++++ b/artifacts/monster-realms/src/components/game/BattleTransitionVeil.tsx
+@@ -0,0 +1,56 @@
++import { useEffect, useState, type CSSProperties } from 'react';
++import {
++  BATTLE_FOCUS_EVENT,
++  BATTLE_OPEN_EVENT,
++  BATTLE_RELEASE_EVENT,
++} from '@/lib/battle-transition-events';
++
++const ELEMENT_COLOR: Record<string, string> = {
++  Fire: '#ff542e', Water: '#38bdf8', Nature: '#4ade80', Earth: '#a3e635',
++  Electric: '#fde047', Storm: '#fde047', Dark: '#c084fc', Shadow: '#c084fc',
++};
++
++export default function BattleTransitionVeil() {
++  const [state, setState] = useState<'idle' | 'focus' | 'open'>('idle');
++  const [color, setColor] = useState('#ff6542');
++
++  useEffect(() => {
++    let closeTimer: number | undefined;
++    const focus = (event: Event) => {
++      const detail = (event as CustomEvent<{ element?: string }>).detail;
++      setColor(ELEMENT_COLOR[detail?.element ?? 'Fire'] ?? '#ff6542');
++      setState('focus');
++    };
++    const open = () => {
++      setState('open');
++      closeTimer = window.setTimeout(() => setState('idle'), 1650);
++    };
++    const release = () => setState('idle');
++
++    window.addEventListener(BATTLE_FOCUS_EVENT, focus);
++    window.addEventListener(BATTLE_OPEN_EVENT, open);
++    window.addEventListener(BATTLE_RELEASE_EVENT, release);
++    return () => {
++      window.clearTimeout(closeTimer);
++      window.removeEventListener(BATTLE_FOCUS_EVENT, focus);
++      window.removeEventListener(BATTLE_OPEN_EVENT, open);
++      window.removeEventListener(BATTLE_RELEASE_EVENT, release);
++    };
++  }, []);
++
++  if (state === 'idle') return null;
++
++  return (
++    <div className={`battle-transition-veil battle-transition-${state}`} style={{ '--battle-color': color } as CSSProperties}>
++      <div className="battle-transition-letterbox battle-transition-letterbox-top" />
++      <div className="battle-transition-letterbox battle-transition-letterbox-bottom" />
++      <div className="battle-transition-focus-ring" />
++      <div className="battle-transition-speed-lines" />
++      <div className="battle-transition-core" />
++      <div className="battle-transition-title">
++        <span>FIELD RESONANCE</span>
++        <strong>ENGAGING</strong>
++      </div>
++    </div>
++  );
++}
+diff --git a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+index dbb8d30..e761282 100644
+--- a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
++++ b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+@@ -8,6 +8,7 @@ import { ELEMENT_ICON } from '@/lib/type-chart';
+ import { Swords, AlertTriangle } from 'lucide-react';
+ import {
+   BATTLE_FOCUS_EVENT,
++  BATTLE_OPEN_EVENT,
+   waitForBattleFocus,
+ } from '@/lib/battle-transition-events';
+ 
+@@ -251,6 +252,7 @@ export default function EncounterPopup() {
+         },
+       }));
+       await cameraReady;
++      window.dispatchEvent(new Event(BATTLE_OPEN_EVENT));
+       startBattle(battle.id, battle);
+     } catch (err) {
+       console.error('Failed to start battle:', err);
+diff --git a/artifacts/monster-realms/src/components/phaser/WorldScene.ts b/artifacts/monster-realms/src/components/phaser/WorldScene.ts
+index 404d049..776830c 100644
+--- a/artifacts/monster-realms/src/components/phaser/WorldScene.ts
++++ b/artifacts/monster-realms/src/components/phaser/WorldScene.ts
+@@ -641,10 +641,10 @@ export default class WorldScene extends Phaser.Scene {
+     const focusY = this.playerY * TILE_SIZE + TILE_SIZE / 2;
+ 
+     camera.stopFollow();
+-    camera.pan(focusX, focusY, 880, 'Cubic.easeInOut', true);
+-    camera.zoomTo(2.2, 880, 'Cubic.easeInOut', true, (_camera, progress) => {
++    camera.pan(focusX, focusY, 1650, 'Sine.easeInOut', true);
++    camera.zoomTo(2.65, 1650, 'Sine.easeInOut', true, (_camera, progress) => {
+       if (progress >= 1) {
+-        camera.shake(120, 0.0025);
++        camera.shake(180, 0.0018);
+         window.dispatchEvent(new Event(BATTLE_FOCUS_READY_EVENT));
+       }
+     });
+@@ -653,7 +653,7 @@ export default class WorldScene extends Phaser.Scene {
+   private releaseBattleCamera() {
+     if (!this.playerContainer) return;
+     const camera = this.cameras.main;
+-    camera.zoomTo(1, 520, 'Cubic.easeOut', true, (_camera, progress) => {
++    camera.zoomTo(1, 850, 'Sine.easeInOut', true, (_camera, progress) => {
+       if (progress >= 1 && this.playerContainer) {
+         camera.startFollow(this.playerContainer, true, 0.1, 0.1);
+         this.battleFocusActive = false;
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 4ce2573..27aab9c 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -443,13 +443,13 @@
+   .battle-idle-bob { animation: battle-idle-bob 2s ease-in-out infinite; }
+ 
+   .battle-combatant-wild {
+-    left: clamp(3%, 8vw, 10%);
+-    bottom: 7%;
++    left: clamp(4%, 9vw, 11%);
++    bottom: 5%;
+   }
+ 
+   .battle-combatant-player {
+-    right: clamp(3%, 8vw, 10%);
+-    bottom: 7%;
++    right: clamp(4%, 9vw, 11%);
++    bottom: 5%;
+   }
+ 
+   .battle-hit-wild {
+@@ -465,20 +465,21 @@
+   .battle-ground-perspective {
+     position: absolute;
+     inset: auto 0 0;
+-    height: 38%;
++    height: 46%;
+     z-index: 0;
+     pointer-events: none;
+     background:
+-      linear-gradient(to bottom, rgba(255,255,255,0.05), transparent 18%),
+-      repeating-linear-gradient(168deg, transparent 0 54px, rgba(255,255,255,0.025) 55px 56px);
++      radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.11), transparent 42%),
++      linear-gradient(to bottom, rgba(255,255,255,0.06), transparent 20%),
++      repeating-linear-gradient(168deg, transparent 0 54px, rgba(255,255,255,0.04) 55px 56px);
+     mask-image: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent 90%);
+   }
+ 
+   .battle-stage-pool {
+     position: absolute;
+-    width: clamp(210px, 25vw, 430px);
+-    height: clamp(42px, 6vw, 82px);
+-    bottom: 2%;
++    width: clamp(260px, 29vw, 480px);
++    height: clamp(50px, 7vw, 94px);
++    bottom: 1%;
+     border-radius: 50%;
+     z-index: 1;
+     opacity: 0.72;
+@@ -497,8 +498,61 @@
+     pointer-events: none;
+     background:
+       linear-gradient(to bottom, rgba(2,5,16,0.22), transparent 22%, transparent 76%, rgba(2,5,16,0.18)),
+-      radial-gradient(ellipse at center, transparent 45%, rgba(1,3,12,0.3) 100%);
+-  }
++      radial-gradient(ellipse at 50% 58%, transparent 35%, rgba(1,3,12,0.48) 100%);
++  }
++
++  .battle-sky-bloom {
++    position: absolute; inset: 0; pointer-events: none;
++    background: radial-gradient(ellipse 68% 55% at 50% 43%, color-mix(in srgb, var(--arena-ambient) 25%, transparent), transparent 72%);
++    mix-blend-mode: screen; opacity: 0.72;
++  }
++  .battle-horizon-haze {
++    position: absolute; left: 0; right: 0; bottom: 40%; height: 23%; pointer-events: none;
++    background: linear-gradient(to top, color-mix(in srgb, var(--arena-ambient) 24%, transparent), transparent 80%);
++    filter: blur(16px); opacity: 0.78;
++  }
++  .battle-horizon-layer { filter: drop-shadow(0 -8px 24px rgba(0,0,0,0.35)); }
++  .battle-foreground-ridge {
++    position: absolute; inset: auto -8% -8% -8%; height: 29%; pointer-events: none; z-index: 1;
++    background: radial-gradient(ellipse at center top, rgba(255,255,255,0.045), transparent 40%), linear-gradient(180deg, transparent, rgba(0,0,0,0.3));
++    transform: perspective(600px) rotateX(58deg) scaleX(1.15);
++    transform-origin: bottom;
++  }
++  .battle-hp-anchor { transform: scale(1.08); z-index: 15; }
++  .battle-hp-anchor-left { transform-origin: top left; }
++  .battle-hp-anchor-right { transform-origin: top right; }
++
++  /* World-map camera → local battlefield cinematic veil */
++  .battle-transition-veil { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
++  .battle-transition-letterbox { position: absolute; left: 0; right: 0; height: 0; background: #02030a; transition: height 1.25s cubic-bezier(.16,1,.3,1); }
++  .battle-transition-letterbox-top { top: 0; }
++  .battle-transition-letterbox-bottom { bottom: 0; }
++  .battle-transition-focus .battle-transition-letterbox { height: 7vh; }
++  .battle-transition-focus-ring {
++    position: absolute; width: 18vmin; aspect-ratio: 1; left: 50%; top: 50%; border-radius: 50%;
++    border: 1px solid color-mix(in srgb, var(--battle-color) 75%, white);
++    box-shadow: 0 0 32px var(--battle-color), inset 0 0 32px color-mix(in srgb, var(--battle-color) 45%, transparent);
++    transform: translate(-50%,-50%) scale(4.8); opacity: 0;
++    animation: battle-focus-ring 1.8s cubic-bezier(.16,1,.3,1) forwards;
++  }
++  .battle-transition-speed-lines {
++    position: absolute; inset: -15%; opacity: 0;
++    background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 5deg, color-mix(in srgb, var(--battle-color) 15%, transparent) 5.2deg 5.5deg);
++    animation: battle-speed-lines 1.7s ease-in forwards;
++  }
++  .battle-transition-core { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at center, transparent 0 8%, color-mix(in srgb, var(--battle-color) 38%, #02030a) 42%, #02030a 78%); }
++  .battle-transition-open .battle-transition-core { animation: battle-core-open 1.6s cubic-bezier(.16,1,.3,1) forwards; }
++  .battle-transition-title {
++    position: absolute; left: 50%; bottom: 12vh; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center;
++    opacity: 0; color: white; font-family: var(--font-mono, monospace); text-shadow: 0 0 18px var(--battle-color); white-space: nowrap;
++    animation: battle-title-in 1.7s ease forwards;
++  }
++  .battle-transition-title span { font-size: 9px; letter-spacing: .55em; opacity: .62; }
++  .battle-transition-title strong { font-size: clamp(18px,3vw,34px); letter-spacing: .24em; }
++  @keyframes battle-focus-ring { 0%{opacity:0;transform:translate(-50%,-50%) scale(4.8)} 25%{opacity:.7} 100%{opacity:.95;transform:translate(-50%,-50%) scale(1)} }
++  @keyframes battle-speed-lines { 0%,35%{opacity:0;transform:scale(1)} 100%{opacity:.55;transform:scale(1.8) rotate(5deg)} }
++  @keyframes battle-core-open { 0%{opacity:0;transform:scale(.65)} 20%{opacity:1} 72%{opacity:1;transform:scale(1.08)} 100%{opacity:0;transform:scale(1.7)} }
++  @keyframes battle-title-in { 0%,28%{opacity:0;transform:translate(-50%,18px)} 48%,78%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-10px)} }
+ 
+   @media (max-width: 760px) {
+     .battle-combatant-wild,
+@@ -580,11 +634,11 @@
+   .capture-success { animation: capture-success 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+ 
+   @keyframes battle-screen-in {
+-    0%   { opacity: 0; clip-path: circle(0% at 50% 48%); filter: saturate(1.7) brightness(1.35); }
+-    55%  { opacity: 1; filter: saturate(1.3) brightness(1.12); }
+-    100% { opacity: 1; clip-path: circle(150% at 50% 48%); filter: saturate(1) brightness(1); }
++    0%   { opacity: 0; clip-path: circle(8% at 50% 50%); filter: blur(18px) saturate(1.7) brightness(1.35); transform: scale(1.08); }
++    55%  { opacity: 1; filter: blur(4px) saturate(1.25) brightness(1.08); }
++    100% { opacity: 1; clip-path: circle(150% at 50% 48%); filter: blur(0) saturate(1) brightness(1); transform: scale(1); }
+   }
+-  .battle-screen-in { animation: battle-screen-in 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
++  .battle-screen-in { animation: battle-screen-in 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+ 
+   @media (prefers-reduced-motion: reduce) {
+     .battle-screen-in { animation-duration: 0.15s; }
+diff --git a/artifacts/monster-realms/src/lib/battle-transition-events.ts b/artifacts/monster-realms/src/lib/battle-transition-events.ts
+index 2b656da..68532f7 100644
+--- a/artifacts/monster-realms/src/lib/battle-transition-events.ts
++++ b/artifacts/monster-realms/src/lib/battle-transition-events.ts
+@@ -1,8 +1,9 @@
+ export const BATTLE_FOCUS_EVENT = 'litardia:battle-focus';
+ export const BATTLE_FOCUS_READY_EVENT = 'litardia:battle-focus-ready';
+ export const BATTLE_RELEASE_EVENT = 'litardia:battle-release';
++export const BATTLE_OPEN_EVENT = 'litardia:battle-open';
+ 
+-export function waitForBattleFocus(timeoutMs = 1400): Promise<void> {
++export function waitForBattleFocus(timeoutMs = 2600): Promise<void> {
+   return new Promise((resolve) => {
+     let settled = false;
+     const finish = () => {
+diff --git a/artifacts/monster-realms/src/pages/game.tsx b/artifacts/monster-realms/src/pages/game.tsx
+index 6516575..ff6f7ee 100644
+--- a/artifacts/monster-realms/src/pages/game.tsx
++++ b/artifacts/monster-realms/src/pages/game.tsx
+@@ -9,6 +9,7 @@ import BattleOverlay from '@/components/game/BattleOverlay';
+ import DPad from '@/components/game/DPad';
+ import RegionBanner from '@/components/game/RegionBanner';
+ import MinimapOverlay from '@/components/game/MinimapOverlay';
++import BattleTransitionVeil from '@/components/game/BattleTransitionVeil';
+ import { useGameStore } from '@/store/game-store';
+ import { useGetMe, useExploreTile, type ExploreInput } from '@workspace/api-client-react';
+ import { getToken } from '@/lib/auth';
+@@ -178,6 +179,7 @@ export default function Game() {
+       <GameHUD />
+       <GameSidebar />
+       <EncounterPopup />
++      <BattleTransitionVeil />
+       <BattleOverlay />
+     </div>
+   );
+-- 
+2.51.1
+

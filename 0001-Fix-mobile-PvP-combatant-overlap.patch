@@ -1,0 +1,77 @@
+From 4469b916a0f61b1c63e7edd4e8a445fe8c76250d Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 13:45:48 +0300
+Subject: [PATCH] Fix mobile PvP combatant overlap
+
+---
+ artifacts/monster-realms/src/index.css | 40 ++++++++++++++++++++++----
+ 1 file changed, 34 insertions(+), 6 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index deecb55..b9e197f 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -981,9 +981,9 @@
+   @keyframes myth-lunge-left {
+     0%   { transform: translateX(0) scaleX(1) scaleY(1); }
+     12%  { transform: translateX(18px) scaleX(0.9) scaleY(1.08); }
+-    48%  { transform: translateX(clamp(-430px,-34vw,-250px)) scaleX(1.1) scaleY(.96); }
+-    62%  { transform: translateX(clamp(-420px,-33vw,-242px)) scaleX(.98) scaleY(1.03); }
+-    76%  { transform: translateX(clamp(-430px,-34vw,-250px)) scaleX(1.04) scaleY(.98); }
++    48%  { transform: translateX(var(--battle-lunge-x, clamp(-430px,-34vw,-250px))) scaleX(1.1) scaleY(.96); }
++    62%  { transform: translateX(var(--battle-lunge-recoil, clamp(-420px,-33vw,-242px))) scaleX(.98) scaleY(1.03); }
++    76%  { transform: translateX(var(--battle-lunge-x, clamp(-430px,-34vw,-250px))) scaleX(1.04) scaleY(.98); }
+     100% { transform: translateX(0) scaleX(1) scaleY(1); }
+   }
+   .myth-lunge-left {
+@@ -993,9 +993,9 @@
+   @keyframes myth-lunge-right {
+     0%   { transform: translateX(0) scaleX(1) scaleY(1); }
+     12%  { transform: translateX(-18px) scaleX(0.9) scaleY(1.08); }
+-    48%  { transform: translateX(clamp(250px,34vw,430px)) scaleX(1.1) scaleY(.96); }
+-    62%  { transform: translateX(clamp(242px,33vw,420px)) scaleX(.98) scaleY(1.03); }
+-    76%  { transform: translateX(clamp(250px,34vw,430px)) scaleX(1.04) scaleY(.98); }
++    48%  { transform: translateX(var(--battle-lunge-x, clamp(250px,34vw,430px))) scaleX(1.1) scaleY(.96); }
++    62%  { transform: translateX(var(--battle-lunge-recoil, clamp(242px,33vw,420px))) scaleX(.98) scaleY(1.03); }
++    76%  { transform: translateX(var(--battle-lunge-x, clamp(250px,34vw,430px))) scaleX(1.04) scaleY(.98); }
+     100% { transform: translateX(0) scaleX(1) scaleY(1); }
+   }
+   .myth-lunge-right {
+@@ -1044,6 +1044,34 @@
+   .battle-focus-cinematic .battle-combatant-wild { opacity:1; filter:brightness(1.06) saturate(1.1); }
+   .battle-action-melee .battle-stage-pool { opacity:.9; filter:blur(1px) brightness(1.16); }
+ 
++  /* Mobile battle staging: keep both 252px authored rigs inside their own
++     half of the arena. `scale` composes with the turn-camera transform, so
++     focus still works without pushing the combatants into each other. */
++  @media (max-width: 760px) {
++    .battle-combatant-wild,
++    .battle-combatant-player {
++      scale: .68;
++      bottom: 1%;
++      transform-origin: bottom center;
++    }
++    .battle-combatant-wild { left: -1%; }
++    .battle-combatant-player { right: -1%; }
++    .myth-lunge-left { --battle-lunge-x: -47vw; --battle-lunge-recoil: -45vw; }
++    .myth-lunge-right { --battle-lunge-x: 47vw; --battle-lunge-recoil: 45vw; }
++    .battle-hit-wild { left: 11%; }
++    .battle-hit-player { right: 11%; }
++  }
++
++  @media (max-width: 480px) {
++    .battle-combatant-wild,
++    .battle-combatant-player { scale: .52; bottom: 2%; }
++    .battle-combatant-wild { left: -5%; }
++    .battle-combatant-player { right: -5%; }
++    .myth-lunge-left { --battle-lunge-x: -32vw; --battle-lunge-recoil: -30vw; }
++    .myth-lunge-right { --battle-lunge-x: 32vw; --battle-lunge-recoil: 30vw; }
++    .battle-stage-pool { width: 42vw; }
++  }
++
+   /* ── Floating damage number ─────────────────────────────────────────── */
+   @keyframes dmg-float {
+     0%   { transform: translateY(0) scale(1.4);   opacity: 0; }
+-- 
+2.51.1
+

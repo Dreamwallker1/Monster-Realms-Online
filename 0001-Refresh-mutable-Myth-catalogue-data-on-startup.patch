@@ -1,0 +1,60 @@
+From 3cde034b2bdc51b01146b815a0e943927ab962b4 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 14:42:51 +0300
+Subject: [PATCH] Refresh mutable Myth catalogue data on startup
+
+---
+ artifacts/api-server/src/lib/seedOnStartup.ts | 23 +++++++++----------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
+
+diff --git a/artifacts/api-server/src/lib/seedOnStartup.ts b/artifacts/api-server/src/lib/seedOnStartup.ts
+index 143af7c..f0a8767 100644
+--- a/artifacts/api-server/src/lib/seedOnStartup.ts
++++ b/artifacts/api-server/src/lib/seedOnStartup.ts
+@@ -10,10 +10,10 @@ import { logger } from "./logger.js";
+ /**
+  * Called once at server startup.
+  *
+- * Compares the DB species and region ID-sets against the catalogue constants.
+- * Uses a deterministic content fingerprint (sorted ID list) — not just row
+- * counts — so it detects catalogue swaps where totals are equal but species
+- * differ.
++ * Compares the DB species and region ID-sets against the catalogue constants,
++ * then always upserts the active catalogue. The unconditional upsert is
++ * intentional: skill names, descriptions and balance values can change while
++ * the species IDs stay the same.
+  *
+  * When a mismatch is found the function upserts all species and regions.
+  * It NEVER deletes battles, captured_monsters, or any player-progress tables;
+@@ -43,14 +43,6 @@ export async function seedOnStartup(): Promise<void> {
+     const speciesMismatch = dbSpeciesFingerprint !== catSpeciesFingerprint;
+     const regionsMismatch = dbRegionsFingerprint !== catRegionsFingerprint;
+ 
+-    if (!speciesMismatch && !regionsMismatch) {
+-      logger.info(
+-        { regions: regionRows.length, species: speciesRows.length },
+-        "Startup seed check passed — tables already populated",
+-      );
+-      return;
+-    }
+-
+     // Log what triggered the upsert
+     if (speciesMismatch) {
+       logger.warn(
+@@ -65,6 +57,13 @@ export async function seedOnStartup(): Promise<void> {
+       );
+     }
+ 
++    if (!speciesMismatch && !regionsMismatch) {
++      logger.info(
++        { regions: regionRows.length, species: speciesRows.length },
++        "Startup catalogue IDs match — refreshing mutable Myth and region data",
++      );
++    }
++
+     // Non-destructive upsert: update species and regions in place.
+     // Player progress tables (battles, captured_monsters) are NEVER touched.
+     await db.transaction(async (tx) => {
+-- 
+2.51.1
+

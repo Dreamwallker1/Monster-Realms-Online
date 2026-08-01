@@ -1,0 +1,349 @@
+From 4310f4fa27782e48487e380403afced3b4422627 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 12:52:02 +0300
+Subject: [PATCH] Add cinematic turn focus and three-stage Myth combat
+
+---
+ .../src/components/battle/SkillCinematic.tsx  | 41 +++++++++++++++++--
+ .../src/components/game/BattleOverlay.tsx     | 24 ++++++++---
+ artifacts/monster-realms/src/index.css        | 32 ++++++++++++++-
+ .../myth-physics/myth-physics-engine.test.ts  | 26 +++++++++++-
+ .../lib/myth-physics/myth-physics-engine.ts   | 28 +++++++++----
+ 5 files changed, 129 insertions(+), 22 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+index e4e9375..a5790d2 100644
+--- a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
++++ b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+@@ -24,10 +24,10 @@ const RARITY_CFG: Record<string, {
+   hitWaves: number; scale: number; particleScale: number;
+   dur: number; timeout: number; extraGlow: number;
+ }> = {
+-  C: { hitWaves: 1, scale: 0.65, particleScale: 0.6, dur: 0.85, timeout: 1400, extraGlow: 0 },
+-  B: { hitWaves: 2, scale: 0.90, particleScale: 1.0, dur: 1.05, timeout: 1700, extraGlow: 0.4 },
+-  A: { hitWaves: 2, scale: 1.10, particleScale: 1.3, dur: 1.30, timeout: 2000, extraGlow: 0.8 },
+-  S: { hitWaves: 3, scale: 1.40, particleScale: 1.8, dur: 1.65, timeout: 2500, extraGlow: 1.4 },
++  C: { hitWaves: 1, scale: 0.65, particleScale: 0.6, dur: 1.25, timeout: 2400, extraGlow: 0 },
++  B: { hitWaves: 2, scale: 0.90, particleScale: 1.0, dur: 1.45, timeout: 2700, extraGlow: 0.4 },
++  A: { hitWaves: 2, scale: 1.10, particleScale: 1.3, dur: 1.70, timeout: 3000, extraGlow: 0.8 },
++  S: { hitWaves: 3, scale: 1.40, particleScale: 1.8, dur: 2.05, timeout: 3400, extraGlow: 1.4 },
+ };
+ const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
+ 
+@@ -180,6 +180,38 @@ function sides(side: 'player' | 'wild') {
+     : { from: '25%', to: '75%', fromN: 25, toN: 75 };
+ }
+ 
++function PhysicalSkillStage({ side, skillType, color, glow }: {
++  side: 'player' | 'wild'; skillType: string; color: string; glow: string;
++}) {
++  const { from, to } = sides(side);
++  const style = skillType === 'skill1' ? 'leap' : skillType === 'skill2' || skillType === 'ultimate' ? 'burst' : 'combo';
++  if (style === 'leap') return (
++    <>
++      <motion.div className="absolute w-24 h-24 rounded-full border-2" style={{ left: from, top: '52%', borderColor: color, boxShadow: `0 0 32px ${glow}` }}
++        initial={{ x: '-50%', y: '-10%', scale: .25, opacity: 0 }}
++        animate={{ y: ['-10%', '-230%', '-35%'], scale: [.25, 1.15, .65], opacity: [0, .9, .75, 0] }}
++        transition={{ duration: 1.25, ease: [.22,.72,.18,1], times: [0,.42,.78,1] }} />
++      {[0, 1, 2].map((ring) => <motion.div key={ring} className="absolute rounded-full border-2" style={{ left: to, top: '64%', borderColor: ring === 0 ? '#fff2bd' : color, boxShadow: `0 0 22px ${glow}` }}
++        initial={{ x: '-50%', y: '-50%', width: 8, height: 8, opacity: 0 }} animate={{ width: 90 + ring * 55, height: 24 + ring * 18, opacity: [0, .9, 0] }}
++        transition={{ duration: .9, delay: .92 + ring * .09, ease: 'easeOut' }} />)}
++    </>
++  );
++  if (style === 'burst') return (
++    <>
++      <motion.div className="absolute rounded-full" style={{ left: from, top: '48%', width: 84, height: 84, background: `radial-gradient(circle,#fff7cf,${color} 32%,transparent 70%)`, boxShadow: `0 0 58px ${glow}` }}
++        initial={{ x: '-50%', y: '-50%', scale: .08, opacity: 0 }} animate={{ scale: [.08,.55,1.18,.2], opacity: [0,.65,1,0] }} transition={{ duration: 1.55, times: [0,.35,.72,1] }} />
++      <motion.div className="absolute h-3 rounded-full" style={{ top: '48%', left: side === 'player' ? '20%' : '25%', width: '55%', transformOrigin: side === 'player' ? 'right' : 'left', background: `linear-gradient(90deg,transparent,${color},#fff8d0,${color},transparent)`, boxShadow: `0 0 34px ${glow}` }}
++        initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: [0,0,1,.3], opacity: [0,0,1,0] }} transition={{ duration: 1.7, times: [0,.48,.7,1] }} />
++      <motion.div className="absolute rounded-full" style={{ left: to, top: '49%', width: 180, height: 220, background: `radial-gradient(circle,${color}88,${color}22 48%,transparent 72%)`, boxShadow: `0 0 70px ${glow}` }}
++        initial={{ x: '-50%', y: '-50%', scale: .1, opacity: 0 }} animate={{ scale: [.1,.1,1.25,.85], opacity: [0,0,1,0] }} transition={{ duration: 2.05, times: [0,.48,.7,1] }} />
++    </>
++  );
++  return (
++    <>{[0,1].map((beat) => <motion.div key={beat} className="absolute h-px" style={{ left: side === 'player' ? '20%' : '25%', top: `${43 + beat * 11}%`, width: '55%', background: `linear-gradient(90deg,transparent,${color},transparent)`, boxShadow: `0 0 18px ${glow}` }}
++      initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: [0,1,.35], opacity: [0,1,0] }} transition={{ duration: .72, delay: .34 + beat * .34, ease: [.18,.74,.2,1] }} />)}</>
++  );
++}
++
+ // ─── 1. CLAW_SLASH ────────────────────────────────────────────────────────────
+ // Three diagonal tear marks sweep from attacker → impact point
+ 
+@@ -1425,6 +1457,7 @@ export default function SkillCinematic({
+ 
+         {/* ── Strike / element effect ── */}
+         <div className="absolute inset-0" style={{ zIndex: 2 }}>
++          <PhysicalSkillStage side={attackerSide} skillType={skillType} color={el.color} glow={el.glow} />
+           {isNormalAttack && strike ? (
+             <StrikeEffect
+               strike={strike}
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index 2767c59..0a8c2a6 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -19,10 +19,16 @@ import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
+ import RiggedMythCanvas from './RiggedMythCanvas';
+ import { useMythPhysics } from '@/lib/myth-physics/use-myth-physics';
+ import type { MythKind, RenderPose } from '@/lib/myth-physics/myth-physics-engine';
++import type { AttackStyle } from '@/lib/myth-physics/myth-physics-engine';
+ 
+ const PLAYER_PHYSICS_ID = 'battle-player-myth';
+ const WILD_PHYSICS_ID = 'battle-wild-myth';
+ const isPhysicsMyth = (id?: string): id is MythKind => id === 'ashquill' || id === 'flarelynx';
++const getPhysicsAttackStyle = (skillType?: string): AttackStyle => {
++  if (skillType === 'skill1') return 'leap';
++  if (skillType === 'skill2' || skillType === 'ultimate') return 'burst';
++  return 'combo';
++};
+ 
+ // ─── Skill types ─────────────────────────────────────────────────────────────
+ 
+@@ -1058,7 +1064,7 @@ export default function BattleOverlay() {
+   const pendingBattleResult = useRef<Parameters<typeof updateBattle>[0] | null>(null);
+   const pendingWildCinematic = useRef<{
+     skillName: string; element: string; power: number; isCritical?: boolean;
+-    attackerMythId?: string; attackerRarity?: string;
++    attackerMythId?: string; attackerRarity?: string; skillType?: string;
+   } | null>(null);
+ 
+   const prevWildHp      = useRef<number | null>(null);
+@@ -1211,22 +1217,26 @@ export default function BattleOverlay() {
+       cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
+       cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
+       cinematic.power,
++      310,
++      getPhysicsAttackStyle(cinematic.skillType),
+     );
+     let impactTimer: number;
++    const impactDelay = getPhysicsAttackStyle(cinematic.skillType) === 'combo' ? 780
++      : getPhysicsAttackStyle(cinematic.skillType) === 'leap' ? 940 : 790;
+     if (cinematic.attackerSide === 'player') {
+       setPlayerLungeKey(k => k + 1);
+       impactTimer = window.setTimeout(() => {
+         optimisticWildHitRef.current += 1;
+         setWildShake(k => k + 1);
+         window.setTimeout(() => { if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1; }, 4000);
+-      }, 520);
++      }, impactDelay);
+     } else {
+       setWildLungeKey(k => k + 1);
+       impactTimer = window.setTimeout(() => {
+         optimisticPlayerHitRef.current += 1;
+         setPlayerShake(k => k + 1);
+         window.setTimeout(() => { if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1; }, 4000);
+-      }, 520);
++      }, impactDelay);
+     }
+     return () => window.clearTimeout(impactTimer);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+@@ -1286,7 +1296,7 @@ export default function BattleOverlay() {
+               phase: 'wild',
+               attackerMythId: wild.attackerMythId,
+               attackerRarity: wild.attackerRarity,
+-              skillType: 'normal',
++              skillType: wild.skillType ?? 'normal',
+             });
+           }
+           setOpponentTurnActive(false);
+@@ -1413,6 +1423,8 @@ export default function BattleOverlay() {
+       const wildEntry = logEntries.slice(-3).reverse().find(e => e.actor === 'wild');
+       if (wildEntry) {
+         const wildElement = updated.wildMonster?.species?.element ?? 'Fire';
++        const wildSkill = getDisplaySkills(updated.wildMonster?.species ?? {})
++          .find((candidate) => candidate.name === wildEntry.action);
+         pendingWildCinematic.current = {
+           skillName: wildEntry.action,
+           element: wildElement,
+@@ -1420,6 +1432,7 @@ export default function BattleOverlay() {
+           isCritical: wildEntry.critical,
+           attackerMythId: updated.wildMonster?.species?.id,
+           attackerRarity:  updated.wildMonster?.species?.rarity ?? 'C',
++          skillType: wildSkill?.type ?? 'normal',
+         };
+       }
+       pendingBattleResult.current = updated;
+@@ -1551,12 +1564,13 @@ export default function BattleOverlay() {
+     <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+ 
+       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
+-      <div className="relative flex-1 min-h-0 overflow-hidden battle-arena">
++      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? 'battle-focus-cinematic' : ''}`}>
+ 
+         {/* Sky */}
+         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
+         <div className="battle-sky-bloom" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
+         <div className="battle-horizon-haze" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
++        <div className="battle-turn-camera-focus" aria-hidden="true" />
+ 
+         {/* Ground */}
+         <div
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index cf9a8f1..80cec8b 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -931,7 +931,7 @@
+     100% { transform: translateX(0) scaleX(1) scaleY(1); }
+   }
+   .myth-lunge-left {
+-    animation: myth-lunge-left 0.90s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    animation: myth-lunge-left 1.65s cubic-bezier(0.18, 0.72, 0.22, 1) forwards;
+   }
+ 
+   @keyframes myth-lunge-right {
+@@ -942,7 +942,35 @@
+     100% { transform: translateX(0) scaleX(1) scaleY(1); }
+   }
+   .myth-lunge-right {
+-    animation: myth-lunge-right 0.90s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    animation: myth-lunge-right 1.65s cubic-bezier(0.18, 0.72, 0.22, 1) forwards;
++  }
++
++  /* Turn camera: a restrained virtual dolly that keeps the acting Myth readable. */
++  .battle-turn-camera-focus {
++    position: absolute; inset: 0; z-index: 10; pointer-events: none;
++    transition: background 1.1s ease, opacity .8s ease;
++    background: radial-gradient(ellipse 42% 66% at 78% 62%, transparent 12%, rgba(2,2,10,.14) 58%, rgba(2,2,10,.46) 100%);
++    mix-blend-mode: multiply;
++  }
++  .battle-focus-wild .battle-turn-camera-focus {
++    background: radial-gradient(ellipse 42% 66% at 22% 62%, transparent 12%, rgba(2,2,10,.14) 58%, rgba(2,2,10,.46) 100%);
++  }
++  .battle-combatant-player, .battle-combatant-wild {
++    transition: transform 1.05s cubic-bezier(.2,.72,.24,1), filter .8s ease, opacity .8s ease;
++    transform-origin: 50% 78%;
++  }
++  .battle-focus-player .battle-combatant-player,
++  .battle-focus-wild .battle-combatant-wild {
++    transform: scale(1.055) translateY(-4px);
++    filter: saturate(1.08) brightness(1.04);
++  }
++  .battle-focus-player .battle-combatant-wild,
++  .battle-focus-wild .battle-combatant-player { opacity: .78; filter: brightness(.76) saturate(.82); }
++  .battle-focus-cinematic .battle-turn-camera-focus { opacity: .82; }
++  .battle-focus-cinematic.battle-focus-player .battle-combatant-player,
++  .battle-focus-cinematic.battle-focus-wild .battle-combatant-wild {
++    transform: scale(1.11) translateY(-9px);
++    filter: saturate(1.16) brightness(1.08) drop-shadow(0 12px 24px rgba(0,0,0,.38));
+   }
+ 
+   /* ── Floating damage number ─────────────────────────────────────────── */
+diff --git a/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.test.ts b/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.test.ts
+index e4d688a..717a0b9 100644
+--- a/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.test.ts
++++ b/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.test.ts
+@@ -10,7 +10,7 @@ describe('MythPhysicsEngine', () => {
+     engine.add('player', 'flarelynx', 'player');
+     engine.add('wild', 'ashquill', 'wild');
+     engine.attack('player', 'wild', 20);
+-    vi.advanceTimersByTime(260);
++    vi.advanceTimersByTime(530);
+     const poses = engine.tick(1000);
+     expect(poses.find((pose) => pose.entityId === 'wild')?.state).toBe('hit');
+     expect(poses.find((pose) => pose.entityId === 'player')?.state).not.toBe('hit');
+@@ -44,7 +44,7 @@ describe('MythPhysicsEngine', () => {
+     engine.add('player', 'flarelynx', 'player');
+     engine.add('wild', 'ashquill', 'wild');
+     engine.attack('player', 'wild', 20);
+-    vi.advanceTimersByTime(410);
++    vi.advanceTimersByTime(790);
+     expect(impacts).toEqual(['wild', 'wild']);
+     engine.destroy();
+   });
+@@ -64,4 +64,26 @@ describe('MythPhysicsEngine', () => {
+     expect(engine.tick(1000).find((pose) => pose.entityId === 'wild')?.state).toBe('idle');
+     engine.destroy();
+   });
++
++  it('uses separate physical choreography for combo, leap and burst skills', () => {
++    vi.useFakeTimers();
++    const directions: Array<{ x: number; y: number; force: number }> = [];
++    const run = (style: 'combo' | 'leap' | 'burst', wait: number) => {
++      const engine = new MythPhysicsEngine();
++      engine.add('player', 'flarelynx', 'player');
++      engine.add('wild', 'ashquill', 'wild');
++      engine.onImpact = (event) => directions.push({ ...event.direction, force: event.force });
++      engine.attack('player', 'wild', 20, 310, style);
++      vi.advanceTimersByTime(wait);
++      engine.destroy();
++    };
++    run('combo', 530);
++    run('leap', 950);
++    run('burst', 800);
++    expect(directions).toHaveLength(3);
++    expect(directions[0]?.y).toBeLessThan(0);
++    expect(directions[1]?.y).toBeGreaterThan(0);
++    expect(directions[1]!.force).toBeGreaterThan(directions[0]!.force);
++    expect(Math.abs(directions[2]!.y)).toBeLessThan(Math.abs(directions[0]!.y));
++  });
+ });
+diff --git a/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.ts b/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.ts
+index c24a601..301a598 100644
+--- a/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.ts
++++ b/artifacts/monster-realms/src/lib/myth-physics/myth-physics-engine.ts
+@@ -2,6 +2,7 @@ export type MythKind = 'ashquill' | 'flarelynx';
+ export type MythSide = 'player' | 'wild';
+ export type MythState = 'idle' | 'anticipation' | 'attack' | 'recovery' | 'hit' | 'faint';
+ export type PhysicsQuality = 'low' | 'medium' | 'high';
++export type AttackStyle = 'combo' | 'leap' | 'burst';
+ 
+ export interface Vec2 { x: number; y: number }
+ export interface PhysicsTransform { x: number; y: number; rotation: number; scaleX: number; scaleY: number }
+@@ -302,27 +303,35 @@ export class MythPhysicsEngine {
+     this.bodies.get(entityId)?.setState(state);
+   }
+ 
+-  attack(attackerId: string, targetId: string, damage: number, force = 310) {
++  attack(attackerId: string, targetId: string, damage: number, force = 310, style: AttackStyle = 'combo') {
+     const attacker = this.bodies.get(attackerId);
+     const target = this.bodies.get(targetId);
+     if (!attacker || !target || attackerId === targetId) return false;
+ 
+     const stillCurrent = () => this.bodies.get(attackerId) === attacker && this.bodies.get(targetId) === target;
++    const directionX = attacker.side === 'player' ? -1 : 1;
++    const firstImpactAt = style === 'combo' ? 520 : style === 'leap' ? 940 : 790;
+     attacker.setState('anticipation');
+-    this.schedule(() => { if (stillCurrent()) attacker.setState('attack'); }, 130);
++    this.schedule(() => {
++      if (!stillCurrent()) return;
++      attacker.setState('attack');
++      if (style === 'leap') attacker.impulse({ x: directionX * 150, y: -430 }, directionX * .18);
++      else if (style === 'combo') attacker.impulse({ x: directionX * 105, y: -65 }, directionX * .08);
++      else attacker.impulse({ x: -directionX * 42, y: -35 }, -directionX * .12);
++    }, style === 'combo' ? 260 : style === 'leap' ? 330 : 410);
+     this.schedule(() => { if (stillCurrent()) this.impact({
+       attackerId,
+       targetId,
+       damage,
+-      direction: { x: attacker.side === 'player' ? -1 : 1, y: -.24 },
+-      force,
+-      hitStopMs: 65,
++      direction: { x: directionX, y: style === 'leap' ? .42 : style === 'burst' ? -.08 : -.24 },
++      force: style === 'leap' ? force * 1.28 : style === 'burst' ? force * 1.12 : force,
++      hitStopMs: style === 'leap' ? 105 : style === 'burst' ? 88 : 70,
+       burnMs: attacker.kind === 'flarelynx' ? 1050 : 0,
+-    }); }, 250);
++    }); }, firstImpactAt);
+ 
+     // Twinflare Claw is a physical two-beat action. This second impulse is
+     // visual only; battle HP remains exclusively server-authoritative.
+-    if (attacker.kind === 'flarelynx') {
++    if (style === 'combo') {
+       this.schedule(() => { if (stillCurrent()) this.impact({
+         attackerId,
+         targetId,
+@@ -331,9 +340,10 @@ export class MythPhysicsEngine {
+         force: force * .74,
+         hitStopMs: 42,
+         burnMs: 1150,
+-      }); }, 390);
++      }); }, firstImpactAt + 260);
+     }
+-    this.schedule(() => { if (stillCurrent()) attacker.setState('recovery'); }, attacker.kind === 'flarelynx' ? 470 : 340);
++    this.schedule(() => { if (stillCurrent()) attacker.setState('recovery'); },
++      style === 'combo' ? firstImpactAt + 390 : style === 'leap' ? 1160 : 1030);
+     return true;
+   }
+ 
+-- 
+2.51.1
+

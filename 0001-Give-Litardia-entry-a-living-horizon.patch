@@ -1,0 +1,127 @@
+From 6c6241195b3bbf2f29cda8e6605fb781a200da42 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 15:54:03 +0300
+Subject: [PATCH] Give Litardia entry a living horizon
+
+---
+ .../src/components/auth/MythoraEntry.tsx      |  3 ++
+ .../src/components/auth/mythora-entry.css     | 34 ++++++++++++-------
+ 2 files changed, 25 insertions(+), 12 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx b/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+index 6b7032d..335b138 100644
+--- a/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
++++ b/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+@@ -26,6 +26,9 @@ export function LitardiaBackdrop() {
+       </div>
+       <img className="mythora-guardian mythora-guardian-ashquill" src={entryAsset('myths/ashquill-battle.webp')} alt="" aria-hidden="true" />
+       <img className="mythora-guardian mythora-guardian-flarelynx" src={entryAsset('myths/flarelynx-battle.webp')} alt="" aria-hidden="true" />
++      <div className="mythora-wanderer" aria-hidden="true">
++        <span style={{ backgroundImage: `url(${entryAsset('myths/flarelynx-sprites.png')})` }} />
++      </div>
+       <div className="mythora-embers" aria-hidden="true">
+         {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
+       </div>
+diff --git a/artifacts/monster-realms/src/components/auth/mythora-entry.css b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+index 712630e..e9e2ff0 100644
+--- a/artifacts/monster-realms/src/components/auth/mythora-entry.css
++++ b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+@@ -183,8 +183,8 @@
+   --entry-violet: #5876a8;
+   --entry-ember: #ff6a22;
+   background:
+-    radial-gradient(circle at 50% 37%, #153746 0, #07141d 27%, transparent 53%),
+-    linear-gradient(180deg, #02070a 0, #061017 52%, #020506 100%);
++    radial-gradient(circle at 50% 37%, #1b4a5b 0, #0a1b25 29%, transparent 55%),
++    linear-gradient(180deg, #030b0f 0, #081820 52%, #03080a 100%);
+ }
+ 
+ .mythora-nebula {
+@@ -194,25 +194,28 @@
+     radial-gradient(ellipse at 80% 42%, #7d2a132b 0, transparent 28%),
+     radial-gradient(ellipse at 50% 84%, #d4471529 0, transparent 30%);
+   filter: blur(38px);
+-  opacity: .78;
++  opacity: .9;
+ }
+ 
+-.mythora-stars { opacity: .12; }
+-.mythora-stars-b { opacity: .07; }
++.mythora-stars { opacity: .17; }
++.mythora-stars-b { opacity: .1; }
+ 
+ .mythora-world { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+ .mythora-moon { position: absolute; top: 7%; left: 50%; width: min(38vw, 540px); aspect-ratio: 1; border-radius: 50%; transform: translateX(-50%); background: radial-gradient(circle, #80e8ff12 0 23%, #3cc8e90c 24% 45%, transparent 68%); box-shadow: 0 0 120px #4bdcff12; }
+ .mythora-mountains { position: absolute; left: -6%; width: 112%; background-repeat: repeat-x; }
+-.mythora-mountains-far { bottom: 18%; height: 47%; opacity: .58; background: linear-gradient(145deg, transparent 0 43%, #0d2028 43% 57%, transparent 57%) 0 100%/320px 100%, linear-gradient(215deg, transparent 0 45%, #0b1a21 45% 58%, transparent 58%) 140px 100%/360px 90%; filter: drop-shadow(0 -18px 42px #3cd5e20b); }
+-.mythora-mountains-near { bottom: 8%; height: 37%; opacity: .95; background: linear-gradient(140deg, transparent 0 45%, #050b0f 45% 64%, transparent 64%) 0 100%/420px 100%, linear-gradient(220deg, transparent 0 43%, #071117 43% 65%, transparent 65%) 210px 100%/440px 88%; }
+-.mythora-world-grid { position: absolute; left: -15%; right: -15%; bottom: -12%; height: 42%; opacity: .25; transform: perspective(480px) rotateX(61deg); transform-origin: 50% 100%; background-image: linear-gradient(#33b7cf25 1px, transparent 1px), linear-gradient(90deg, #33b7cf25 1px, transparent 1px); background-size: 72px 44px; mask-image: linear-gradient(to bottom, transparent, #000 60%); }
++.mythora-mountains-far { bottom: 18%; height: 47%; opacity: .7; background: linear-gradient(145deg, transparent 0 43%, #102a34 43% 57%, transparent 57%) 0 100%/320px 100%, linear-gradient(215deg, transparent 0 45%, #0e252e 45% 58%, transparent 58%) 140px 100%/360px 90%; filter: drop-shadow(0 -18px 42px #3cd5e214); }
++.mythora-mountains-near { bottom: 8%; height: 37%; opacity: .92; background: linear-gradient(140deg, transparent 0 45%, #071116 45% 64%, transparent 64%) 0 100%/420px 100%, linear-gradient(220deg, transparent 0 43%, #0a1a21 43% 65%, transparent 65%) 210px 100%/440px 88%; }
++.mythora-world-grid { position: absolute; left: -15%; right: -15%; bottom: -12%; height: 42%; opacity: .32; transform: perspective(480px) rotateX(61deg); transform-origin: 50% 100%; background-image: linear-gradient(#33b7cf25 1px, transparent 1px), linear-gradient(90deg, #33b7cf25 1px, transparent 1px); background-size: 72px 44px; mask-image: linear-gradient(to bottom, transparent, #000 60%); }
+ .mythora-rift { position: absolute; left: 50%; bottom: -12%; width: 23%; height: 46%; transform: translateX(-50%); clip-path: polygon(48% 0, 58% 18%, 48% 34%, 64% 53%, 52% 68%, 68% 100%, 34% 100%, 47% 70%, 36% 54%, 50% 34%, 42% 18%); background: linear-gradient(90deg, transparent 0, #ff67213a 37%, #ffb45d 49%, #ff5a1f 53%, transparent 100%); filter: blur(1px) drop-shadow(0 0 20px #ff5428a0); opacity: .62; }
+ 
+-.mythora-guardian { position: absolute; z-index: 1; bottom: 2%; width: clamp(310px, 32vw, 610px); pointer-events: none; object-fit: contain; opacity: .27; filter: grayscale(.68) brightness(.42) contrast(1.45) drop-shadow(0 0 38px #000); mask-image: linear-gradient(to bottom, #000 34%, #000 69%, transparent 97%); }
++.mythora-guardian { position: absolute; z-index: 1; bottom: 2%; width: clamp(310px, 32vw, 610px); pointer-events: none; object-fit: contain; opacity: .34; filter: grayscale(.6) brightness(.5) contrast(1.38) drop-shadow(0 0 38px #000); mask-image: linear-gradient(to bottom, #000 34%, #000 69%, transparent 97%); }
+ .mythora-guardian-ashquill { left: -4%; transform: scaleX(-1) rotate(-3deg); transform-origin: 50% 100%; }
+ .mythora-guardian-flarelynx { right: -3%; transform: rotate(2deg); transform-origin: 50% 100%; }
+ .mythora-guardian-ashquill::after, .mythora-guardian-flarelynx::after { content: ''; }
+ 
++.mythora-wanderer { position: absolute; z-index: 2; left: -18vw; bottom: 18%; width: clamp(82px, 8vw, 138px); aspect-ratio: 1; pointer-events: none; opacity: 0; animation: mythora-wanderer-crossing 22s linear infinite; }
++.mythora-wanderer span { display: block; width: 100%; height: 100%; background-repeat: no-repeat; background-size: 300% 200%; background-position: 0 0; filter: brightness(0) drop-shadow(0 0 5px #54d8e970); opacity: .9; animation: mythora-wanderer-run .72s steps(1, end) infinite; }
++
+ .mythora-embers { position: absolute; z-index: 2; inset: 0; overflow: hidden; pointer-events: none; }
+ .mythora-embers i { position: absolute; bottom: -3%; left: calc((var(--ember-index, 1) * 6%) - 3%); width: 2px; height: 2px; border-radius: 50%; background: #ff8a3d; box-shadow: 0 0 8px #ff5d1f; opacity: 0; animation: mythora-ember-rise 8s linear infinite; }
+ .mythora-embers i:nth-child(1) { --ember-index: 1; animation-delay: -1s; }.mythora-embers i:nth-child(2) { --ember-index: 2; animation-delay: -5s; }.mythora-embers i:nth-child(3) { --ember-index: 3; animation-delay: -3s; }.mythora-embers i:nth-child(4) { --ember-index: 4; animation-delay: -7s; }.mythora-embers i:nth-child(5) { --ember-index: 5; animation-delay: -2s; }.mythora-embers i:nth-child(6) { --ember-index: 6; animation-delay: -6s; }.mythora-embers i:nth-child(7) { --ember-index: 7; animation-delay: -4s; }.mythora-embers i:nth-child(8) { --ember-index: 8; animation-delay: -.4s; }.mythora-embers i:nth-child(9) { --ember-index: 9; animation-delay: -4.7s; }.mythora-embers i:nth-child(10) { --ember-index: 10; animation-delay: -2.6s; }.mythora-embers i:nth-child(11) { --ember-index: 11; animation-delay: -6.7s; }.mythora-embers i:nth-child(12) { --ember-index: 12; animation-delay: -3.6s; }.mythora-embers i:nth-child(13) { --ember-index: 13; animation-delay: -7.6s; }.mythora-embers i:nth-child(14) { --ember-index: 14; animation-delay: -1.8s; }.mythora-embers i:nth-child(15) { --ember-index: 15; animation-delay: -5.8s; }.mythora-embers i:nth-child(16) { --ember-index: 16; animation-delay: -.8s; }
+@@ -224,7 +227,7 @@
+   border-radius: 8px;
+   background:
+     linear-gradient(135deg, #ffffff08, transparent 28%),
+-    linear-gradient(155deg, #07151bed, #03080cf7);
++    linear-gradient(155deg, #0a2028ed, #050d12f7);
+   box-shadow: 0 34px 100px #000e, 0 0 0 1px #000 inset, 0 0 70px #36d4ed0c;
+   backdrop-filter: blur(14px) saturate(.75);
+ }
+@@ -238,7 +241,7 @@
+ .mythora-tagline { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 25px; color: #768992; font: 500 8px var(--app-font-mono); letter-spacing: .08em; }
+ .mythora-tagline span { width: 28px; height: 1px; background: linear-gradient(90deg, transparent, #5cbdd0); }.mythora-tagline span:last-child { transform: scaleX(-1); }
+ .mythora-entry label { color: #8fa2aa; font-size: 8px; }
+-.mythora-name-field { height: 48px; border-radius: 4px; border-color: #678d982e; background: #010609c7; box-shadow: inset 0 1px 9px #000b; }
++.mythora-name-field { height: 48px; border-radius: 4px; border-color: #7ba4af3d; background: #030c10c7; box-shadow: inset 0 1px 9px #000b; }
+ .mythora-name-field:focus-within { border-color: #68dcf899; box-shadow: 0 0 0 2px #48cfe614, inset 0 1px 9px #000b; }
+ .mythora-enter-button { height: 49px; border: 1px solid #8fd5df3d; border-radius: 4px; color: #d9f7fb; background: linear-gradient(100deg, #12262c, #163740 48%, #48261a); box-shadow: inset 0 1px #ffffff12, 0 12px 28px #0008; }
+ .mythora-enter-button:hover:not(:disabled) { box-shadow: inset 0 1px #ffffff18, 0 0 28px #46d8ef26; }
+@@ -249,14 +252,21 @@
+ .mythora-footer-mark { color: #34434a; }
+ 
+ @keyframes mythora-ember-rise { 0% { opacity: 0; transform: translate3d(0, 0, 0) scale(.5); } 12% { opacity: .75; } 70% { opacity: .28; } 100% { opacity: 0; transform: translate3d(34px, -76vh, 0) scale(1.7); } }
++@keyframes mythora-wanderer-crossing { 0%, 9% { left: -18vw; opacity: 0; transform: translateY(0) scale(.82); } 12% { opacity: .3; } 24% { transform: translateY(-5px) scale(.9); } 38% { transform: translateY(2px) scale(.96); } 54% { left: 112vw; opacity: .3; transform: translateY(-3px) scale(.84); } 57%, 100% { left: 112vw; opacity: 0; transform: translateY(-3px) scale(.84); } }
++@keyframes mythora-wanderer-run { 0%, 16% { background-position: 0 0; } 17%, 32% { background-position: 50% 0; } 33%, 48% { background-position: 100% 0; } 49%, 64% { background-position: 0 100%; } 65%, 80% { background-position: 50% 100%; } 81%, 100% { background-position: 100% 100%; } }
+ 
+ @media (max-width: 800px) {
+   .mythora-guardian { width: clamp(250px, 58vw, 430px); bottom: 3%; opacity: .17; }
++  .mythora-wanderer { bottom: 20%; width: 76px; }
+   .mythora-guardian-ashquill { left: -19%; }
+   .mythora-guardian-flarelynx { right: -18%; }
+   .mythora-mountains-far { opacity: .4; }
+ }
+ 
++@media (prefers-reduced-motion: reduce) {
++  .mythora-wanderer { display: none; }
++}
++
+ @media (max-width: 540px) {
+   .mythora-entry-panel { padding: 24px 24px 18px; }
+   .mythora-wordmark { height: 84px; }
+@@ -289,7 +299,7 @@
+ .mythora-auth-back, .mythora-auth-switch { display: flex; align-items: center; justify-content: center; min-height: 38px; border: 1px solid #59727a2e; border-radius: 3px; color: #71858c; background: #050b0e80; font: 600 8px var(--app-font-mono); letter-spacing: .06em; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+ .mythora-auth-back:hover, .mythora-auth-switch:hover { color: #bce9ef; border-color: #64cce24f; background: #0c1b20cc; }
+ .mythora-auth-error { position: relative; z-index: 1; margin: 12px 0 0; padding: 9px 11px; border: 1px solid #ff633b3d; color: #ff9478; background: #54170f36; font: 600 9px var(--app-font-mono); text-align: center; }
+-.mythora-auth-entry .mythora-guardian { opacity: .19; }
++.mythora-auth-entry .mythora-guardian { opacity: .25; }
+ 
+ @media (max-width: 540px) {
+   .mythora-auth-panel { padding: 21px 23px 17px; }
+-- 
+2.51.1
+

@@ -1,0 +1,183 @@
+From 1fab4aa60639143e0d5ad2583703d75a9419ba85 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 14:20:05 +0300
+Subject: [PATCH] Author Ashquill Furnace Gale double wing skill
+
+---
+ artifacts/api-server/src/lib/monsterData.ts   |  2 +-
+ .../src/__tests__/SkillCinematic.test.tsx     |  3 +-
+ .../src/components/battle/SkillCinematic.tsx  | 36 ++++++++++++++++---
+ .../src/components/game/BattleOverlay.tsx     |  3 +-
+ .../src/components/game/RiggedMythCanvas.tsx  | 19 ++++++++++
+ 5 files changed, 56 insertions(+), 7 deletions(-)
+
+diff --git a/artifacts/api-server/src/lib/monsterData.ts b/artifacts/api-server/src/lib/monsterData.ts
+index 8a7566c..0459e98 100644
+--- a/artifacts/api-server/src/lib/monsterData.ts
++++ b/artifacts/api-server/src/lib/monsterData.ts
+@@ -10,7 +10,7 @@ export const MONSTER_SEED_DATA: InsertMonsterSpecies[] = [
+     personality: "Defiant", weight: 5.6, height: 0.68, captureRate: 88,
+     evolutionFromId: null, evolutionToId: null, evolutionLevel: null,
+     skills: [
+-      { name: "Searing Peck", type: "normal", element: "Fire", power: 42, accuracy: 97, description: "Darts forward and drives its heated obsidian beak into the target." },
++      { name: "Furnace Gale", type: "normal", element: "Fire", power: 42, accuracy: 97, description: "Plants its talons, fills its chest, then closes its wings twice to launch two compressed waves of furnace-hot air." },
+       { name: "Ashen Gust", type: "skill1", element: "Fire", power: 62, accuracy: 90, description: "Beats its ragged wings to launch a cutting cloud of hot ash and ember shards." },
+       { name: "Last Spark", type: "ultimate", element: "Fire", power: 125, accuracy: 75, description: "Consumes the fire in its tail to become a black-red comet for one desperate strike." },
+     ],
+diff --git a/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx b/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx
+index 01d522e..fd90a64 100644
+--- a/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx
++++ b/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx
+@@ -24,7 +24,7 @@ describe('Flarelynx basic attack cinematic', () => {
+   it('does not attach Flarelynx burn visuals to Ashquill basic attacks', () => {
+     render(
+       <SkillCinematic
+-        skillName="Searing Peck"
++        skillName="Furnace Gale"
+         element="Fire"
+         power={42}
+         attackerSide="wild"
+@@ -36,6 +36,7 @@ describe('Flarelynx basic attack cinematic', () => {
+     );
+ 
+     expect(screen.queryByTestId('flarelynx-target-burn')).not.toBeInTheDocument();
++    expect(screen.getAllByTestId('ashquill-heat-wave')).toHaveLength(2);
+   });
+ 
+   it('holds the effect during anticipation and releases it only on strike', () => {
+diff --git a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+index 7b86d64..2271955 100644
+--- a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
++++ b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+@@ -51,7 +51,7 @@ const getEl = (e: string) => EL_CONFIG[e] ?? DEFAULT_EL;
+ // ─── Strike type → archetype map ─────────────────────────────────────────────
+ 
+ type StrikeType =
+-  | 'TWIN_FIRE_CLAW' | 'CLAW_SLASH' | 'BITE_LUNGE' | 'FLAME_BURST' | 'ROCK_SMASH'
++  | 'TWIN_FIRE_CLAW' | 'FURNACE_GALE' | 'CLAW_SLASH' | 'BITE_LUNGE' | 'FLAME_BURST' | 'ROCK_SMASH'
+   | 'TIDAL_SLAM' | 'BUBBLE_SHOT' | 'VINE_WHIP'   | 'SPORE_BOMB'
+   | 'LIGHTNING_BOLT' | 'SPARK_DASH' | 'THUNDER_STOMP'
+   | 'SHADOW_CLAW' | 'VOID_PULL' | 'ECLIPSE_BEAM';
+@@ -87,7 +87,7 @@ const ARCHETYPE_STRIKE: Record<string, StrikeType> = {
+ function getStrike(mythId?: string): StrikeType {
+   if (!mythId) return 'CLAW_SLASH';
+   if (mythId === 'flarelynx') return 'TWIN_FIRE_CLAW';
+-  if (mythId === 'ashquill') return 'BITE_LUNGE';
++  if (mythId === 'ashquill') return 'FURNACE_GALE';
+   const arch = MYTH_ARCHETYPE[mythId];
+   return (arch && ARCHETYPE_STRIKE[arch]) ? ARCHETYPE_STRIKE[arch]! : 'CLAW_SLASH';
+ }
+@@ -172,6 +172,33 @@ function TwinFireClaw({ side, color, glow, scale }: {
+   );
+ }
+ 
++// ─── ASHQUILL BASIC: FURNACE GALE ──────────────────────────────────────────
++// Two distinct wing closures. Each pressure disc is born at the wing line,
++// expands as it travels and reaches the defender before the second beat starts.
++function FurnaceGale({ side, color, glow, scale }: {
++  side: 'player' | 'wild'; color: string; glow: string; waves: number; scale: number;
++}) {
++  const { from, to } = sides(side);
++  const dir = side === 'player' ? -1 : 1;
++  return (
++    <>
++      {[0, 1].map((beat) => (
++        <motion.div key={beat} data-testid="ashquill-heat-wave" className="absolute pointer-events-none"
++          style={{ top: `${44 + beat * 3}%`, width: 76 * scale, height: 150 * scale, x: '-50%', y: '-50%', borderRadius: '50%', border: `${Math.max(2, 4 * scale)}px solid ${beat ? '#ffcf88' : color}`, borderLeftColor: 'transparent', borderRightColor: 'transparent', boxShadow: `inset 0 0 22px ${glow},0 0 22px ${glow}`, filter: 'blur(.2px)', zIndex: 3 }}
++          initial={{ left: from, opacity: 0, scaleX: .18, scaleY: .45, rotate: dir * (beat ? -7 : 7) }}
++          animate={{ left: [from,from,to], opacity: [0,.9,.72,0], scaleX: [.18,.55,1.75], scaleY: [.45,1,1.25], rotate: [dir * (beat ? -7 : 7),0] }}
++          transition={{ duration: .62, delay: .12 + beat * .46, times: [0,.18,.82,1], ease: [.2,.72,.18,1] }} />
++      ))}
++      {[0, 1].map((beat) => (
++        <motion.div key={`wing-origin-${beat}`} className="absolute rounded-full pointer-events-none"
++          style={{ left: from, top: '45%', width: 90, height: 90, x: '-50%', y: '-50%', background: `radial-gradient(circle,#fff8d3,${color}77 18%,transparent 67%)`, boxShadow: `0 0 34px ${glow}` }}
++          initial={{ scale: .12, opacity: 0 }} animate={{ scale: [.12,1.05,.2], opacity: [0,.9,0] }}
++          transition={{ duration: .4, delay: beat * .46, ease: 'easeOut' }} />
++      ))}
++    </>
++  );
++}
++
+ // ─── Shared geometry helpers ──────────────────────────────────────────────────
+ 
+ // attacker origin X% and defender target X%
+@@ -187,7 +214,7 @@ type LimbProfile = { name: string; y: number };
+ function getSkillDelivery(mythId?: string, skillType?: string): SkillDelivery {
+   const basic = !skillType || skillType === 'normal' || skillType === 'attack';
+   if (mythId === 'flarelynx') return basic || skillType === 'skill2' || skillType === 'ultimate' ? 'projectile' : 'melee';
+-  if (mythId === 'ashquill') return skillType === 'skill1' || skillType === 'skill2' ? 'projectile' : 'melee';
++  if (mythId === 'ashquill') return basic || skillType === 'skill1' || skillType === 'skill2' ? 'projectile' : 'melee';
+   return skillType === 'skill2' || skillType === 'ultimate' ? 'projectile' : 'melee';
+ }
+ 
+@@ -198,7 +225,7 @@ function getLimbProfile(mythId?: string, skillType?: string): LimbProfile {
+     return { name: 'TAIL', y: 55 };
+   }
+   if (mythId === 'ashquill') {
+-    if (basic) return { name: 'BEAK', y: 46 };
++    if (basic) return { name: 'WINGS', y: 45 };
+     if (skillType === 'skill1' || skillType === 'skill2') return { name: 'WINGS', y: 43 };
+     return { name: 'TAIL', y: 54 };
+   }
+@@ -1147,6 +1174,7 @@ function StrikeEffect({ strike, side, color, glow, waves, scale }: {
+   const p = { side, color, glow, waves, scale };
+   switch (strike) {
+     case 'TWIN_FIRE_CLAW': return <TwinFireClaw {...p} />;
++    case 'FURNACE_GALE':   return <FurnaceGale   {...p} />;
+     case 'CLAW_SLASH':    return <ClawSlash    {...p} />;
+     case 'BITE_LUNGE':    return <BiteLunge    {...p} />;
+     case 'FLAME_BURST':   return <FlameBurst   {...p} />;
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index 4b9472a..d96c2e6 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -25,6 +25,7 @@ const PLAYER_PHYSICS_ID = 'battle-player-myth';
+ const WILD_PHYSICS_ID = 'battle-wild-myth';
+ const isPhysicsMyth = (id?: string): id is MythKind => id === 'ashquill' || id === 'flarelynx';
+ const getPhysicsAttackStyle = (skillType?: string, mythId?: string): AttackStyle => {
++  if (mythId === 'ashquill' && (!skillType || skillType === 'normal' || skillType === 'attack')) return 'burst';
+   if (mythId === 'ashquill' && skillType === 'skill1') return 'burst';
+   if (mythId === 'ashquill' && skillType === 'ultimate') return 'leap';
+   if (skillType === 'skill1') return 'leap';
+@@ -36,7 +37,7 @@ type CombatActionPhase = 'idle' | 'anticipate' | 'strike' | 'recover';
+ const getBattleChoreography = (skillType?: string, mythId?: string): BattleChoreography => {
+   const basic = !skillType || skillType === 'normal' || skillType === 'attack';
+   if (mythId === 'flarelynx') return basic || skillType === 'skill2' || skillType === 'ultimate' ? 'projectile' : 'melee';
+-  if (mythId === 'ashquill') return skillType === 'skill1' || skillType === 'skill2' ? 'projectile' : 'melee';
++  if (mythId === 'ashquill') return !skillType || skillType === 'normal' || skillType === 'attack' || skillType === 'skill1' || skillType === 'skill2' ? 'projectile' : 'melee';
+   return skillType === 'skill2' || skillType === 'ultimate' ? 'projectile' : 'melee';
+ };
+ 
+diff --git a/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx b/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx
+index 9c42669..af26733 100644
+--- a/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx
++++ b/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx
+@@ -38,6 +38,25 @@ function getMotion(name: string, t: number, mode: RigMode, myth: string): Motion
+     if (name === 'legFront' || name === 'legBack') r = Math.sin(t * 2.3 + (name === 'legBack' ? 1 : 0)) * .025;
+   } else if (mode === 'attack') {
+     const p = Math.min(t / .9, 1);
++    if (myth === 'ashquill') {
++      // Furnace Gale: grounded inhale, full wing draw, closure, then a second
++      // draw-and-close beat. Talons stay planted while the torso compresses.
++      const firstDraw = Math.sin(Math.min(p / .43, 1) * Math.PI);
++      const secondDraw = p < .45 ? 0 : Math.sin(Math.min((p - .45) / .5, 1) * Math.PI);
++      const draw = Math.max(firstDraw, secondDraw);
++      const close1 = Math.max(0, 1 - Math.abs(p - .40) * 22);
++      const close2 = Math.max(0, 1 - Math.abs(p - .84) * 22);
++      const close = Math.max(close1, close2);
++      const inhale = Math.min(p / .2, 1) * Math.max(0, (1 - p) / .8);
++      if (name === 'body') { y = inhale * -7 + close * 5; sx = 1 + inhale * .035 - close * .025; sy = 1 + inhale * .09 - close * .055; }
++      if (name === 'head') { r = draw * -.08 + close * .16; y = inhale * -3; }
++      if (name === 'wingFront') r = draw * -.72 + close * 1.02;
++      if (name === 'wingBack') r = draw * .62 - close * .88;
++      if (name === 'tail') r = -draw * .16 + close * .24;
++      if (name === 'legFront') { r = close * -.05; sy = 1 + inhale * .025; }
++      if (name === 'legBack') { r = close * .04; sy = 1 + inhale * .025; }
++      return { x, y, r, sx, sy };
++    }
+     const wind = p < .42 ? p / .42 : Math.max(0, (1 - p) / .58);
+     const hit = Math.max(0, 1 - Math.abs(p - .62) * 7);
+     if (name === 'body') { x = hit * 62; y = -hit * 14; r = -hit * .085; sx = 1 + hit * .07; sy = 1 - hit * .04; }
+-- 
+2.51.1
+

@@ -1,0 +1,43 @@
+From 4a70d417f9bd755d3aa3f46998ba8b74244cb76c Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 16:01:10 +0300
+Subject: [PATCH] Separate Litardia wordmark from auth heading
+
+---
+ .../monster-realms/src/components/auth/mythora-entry.css  | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/auth/mythora-entry.css b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+index e9e2ff0..0aba5ff 100644
+--- a/artifacts/monster-realms/src/components/auth/mythora-entry.css
++++ b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+@@ -286,8 +286,8 @@
+    legacy glass-card screen. */
+ .mythora-auth-panel { width: min(440px, calc(100vw - 34px)); padding-top: 25px; }
+ .mythora-auth-brand { position: relative; z-index: 1; text-align: center; }
+-.mythora-auth-brand .mythora-wordmark { height: 88px; margin-top: -10px; margin-bottom: -13px; }
+-.mythora-auth-brand h2 { margin: 0; color: #d8eef1; font: 700 12px var(--app-font-mono); letter-spacing: .16em; }
++.mythora-auth-brand .mythora-wordmark { height: 88px; margin: -10px auto 7px; }
++.mythora-auth-brand h2 { margin: 0; color: #d8eef1; font: 700 12px/1.35 var(--app-font-mono); letter-spacing: .16em; }
+ .mythora-auth-brand > p:last-child { margin: 7px 0 22px; color: #64777e; font: 500 8px var(--app-font-mono); letter-spacing: .08em; }
+ .mythora-auth-form { position: relative; z-index: 1; display: grid; gap: 14px; }
+ .mythora-auth-field { display: grid; gap: 7px; }
+@@ -303,13 +303,13 @@
+ 
+ @media (max-width: 540px) {
+   .mythora-auth-panel { padding: 21px 23px 17px; }
+-  .mythora-auth-brand .mythora-wordmark { height: 75px; }
++  .mythora-auth-brand .mythora-wordmark { height: 75px; margin-bottom: 6px; }
+   .mythora-auth-brand h2 { font-size: 10px; }
+ }
+ 
+ @media (max-height: 640px) {
+   .mythora-auth-panel { transform: scale(.86); padding-top: 15px; }
+-  .mythora-auth-brand .mythora-wordmark { height: 66px; }
++  .mythora-auth-brand .mythora-wordmark { height: 66px; margin-bottom: 5px; }
+   .mythora-auth-brand > p:last-child { margin-bottom: 13px; }
+   .mythora-auth-form { gap: 9px; }
+ }
+-- 
+2.51.1
+

@@ -1,0 +1,193 @@
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index 2b4c362..751fdd3 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -197,6 +197,32 @@ function RockSilhouette({ color }: { color: string }) {
+   );
+ }
+ 
++function BattleBiomeScenery({ regionId, ambientColor }: { regionId?: string | null; ambientColor: string }) {
++  const volcanic = regionId === 'volcanic-rift' || regionId === 'scorched-wastes';
++  return (
++    <>
++      <div className={`battle-celestial ${volcanic ? 'battle-celestial-volcanic' : ''}`} style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
++      <svg className="battle-mountain-layer battle-mountain-back" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
++        <path d="M0 260V205L92 142l55 42 96-104 74 86 88-62 77 90 112-138 89 127 71-69 92 78 102-121 106 117 66-39V260Z" />
++      </svg>
++      <svg className="battle-mountain-layer battle-mountain-front" viewBox="0 0 1200 220" preserveAspectRatio="none" aria-hidden="true">
++        <path d="M0 220V190l112-72 84 58 121-116 99 117 87-72 90 85 126-154 116 144 83-82 115 92 87-61 100 62v29Z" />
++        {volcanic && <path className="battle-volcano-rift" d="M600 38l-18 67 24-21 19 32 17-74-21 18Z" />}
++      </svg>
++      <div className="battle-arena-dais" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
++      <svg className="battle-ground-cracks" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} viewBox="0 0 1200 430" preserveAspectRatio="none" aria-hidden="true">
++        <path d="M610 0l-28 75 34 34-58 58 21 49-96 78M617 106l78 48-14 66 108 75M390 119l-67 52 19 49-119 73M881 104l63 70-22 57 112 67" />
++        <path d="M579 216l-69 14-27 64M680 220l45 22 64 53M342 220l-71 6-48 67M922 231l58 9 54 58" />
++      </svg>
++      {volcanic && (
++        <div className="battle-ash-field" aria-hidden="true">
++          {Array.from({ length: 18 }, (_, i) => <i key={i} style={{ '--ash-i': i, left: `${(i * 37 + 7) % 100}%`, top: `${(i * 23 + 11) % 88}%` } as React.CSSProperties} />)}
++        </div>
++      )}
++    </>
++  );
++}
++
+ // ─── Character front-facing SVG ─────────────────────────────────────────────────
+ 
+ function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: number }) {
+@@ -1456,10 +1482,10 @@ export default function BattleOverlay() {
+   const wildColors  = getElementColors(wildMonster.species.element);
+ 
+   return (
+-    <div className="fixed inset-0 z-50 flex flex-col battle-screen-in" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
++    <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+ 
+       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
+-      <div className="relative flex-1 overflow-hidden battle-arena">
++      <div className="relative flex-1 min-h-0 overflow-hidden battle-arena">
+ 
+         {/* Sky */}
+         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
+@@ -1487,9 +1513,10 @@ export default function BattleOverlay() {
+         <div className="battle-foreground-ridge" aria-hidden="true" />
+         <div className="battle-stage-pool battle-stage-pool-wild" aria-hidden="true" />
+         <div className="battle-stage-pool battle-stage-pool-player" aria-hidden="true" />
++        <BattleBiomeScenery regionId={regionId} ambientColor={theme.ambientColor} />
+ 
+         {/* Wild HP plate — upper left */}
+-        <div className="absolute top-5 left-5 battle-slide-up battle-hp-anchor battle-hp-anchor-left" style={{ animationDelay: '0.75s' }}>
++        <div className="absolute battle-slide-up battle-hp-anchor battle-hp-anchor-left battle-hp-position-left" style={{ animationDelay: '0.75s' }}>
+           <HpPlate
+             name={wildMonster.species.name}
+             level={wildMonster.level}
+@@ -1584,7 +1611,7 @@ export default function BattleOverlay() {
+         </div>
+ 
+         {/* Player myth HP plate — upper right */}
+-        <div className="absolute top-5 right-5 battle-slide-up battle-hp-anchor battle-hp-anchor-right" style={{ animationDelay: '0.8s' }}>
++        <div className="absolute battle-slide-up battle-hp-anchor battle-hp-anchor-right battle-hp-position-right" style={{ animationDelay: '0.8s' }}>
+           <HpPlate
+             name={playerMonster.species.name}
+             level={playerMonster.level}
+@@ -1600,10 +1627,10 @@ export default function BattleOverlay() {
+ 
+         {/* Character — CENTER BACK (smaller, feet on ground) */}
+         <div
+-          className="absolute battle-entrance battle-idle-bob battle-trainer"
++          className="absolute battle-entrance battle-trainer"
+           style={{
+-            bottom: '47%',
+-            left: '82%',
++            bottom: '43%',
++            left: '88%',
+             transform: 'translateX(-50%)',
+             animationDelay: '0.2s',
+             zIndex: 1,
+@@ -1650,7 +1677,7 @@ export default function BattleOverlay() {
+               speciesId={wildMonster.species.id}
+               element={wildMonster.species.element}
+               rarity={wildMonster.species.rarity}
+-              size={276}
++              size={252}
+               shakeKey={wildShake}
+               isFainting={faintCinematic?.side === 'wild'}
+               facing="right"
+@@ -1679,7 +1706,7 @@ export default function BattleOverlay() {
+               speciesId={playerMonster.species.id}
+               element={playerMonster.species.element}
+               rarity={playerMonster.species.rarity}
+-              size={276}
++              size={252}
+               shakeKey={playerShake}
+               isFainting={faintCinematic?.side === 'player'}
+               facing="left"
+@@ -2090,6 +2117,7 @@ export default function BattleOverlay() {
+ 
+       {/* ── BATTLE TEXT BOX ──────────────────────────────────────────────────── */}
+       <div
++        className="battle-text-deck shrink-0"
+         style={{
+           height: 64,
+           borderTop: `2px solid rgba(255,255,255,0.08)`,
+@@ -2105,7 +2133,7 @@ export default function BattleOverlay() {
+ 
+       {/* ── ACTION PANEL ─────────────────────────────────────────────────────── */}
+       <div
+-        className="px-3 py-3"
++        className="px-3 py-3 battle-action-deck shrink-0"
+         style={{
+           background: 'linear-gradient(180deg, rgba(5,5,18,0.99), rgba(3,3,12,1))',
+           minHeight: 148,
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 8756988..bcee0c8 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -517,6 +517,35 @@
+     bottom: 2%;
+   }
+ 
++  .battle-screen-shell { height: 100dvh; max-height: 100dvh; overflow: hidden; isolation: isolate; }
++  .battle-arena { flex: 1 1 0%; min-height: 0; background: #05020a; }
++  .battle-hp-position-left { top: max(14px, env(safe-area-inset-top)); left: 16px; }
++  .battle-hp-position-right { top: max(14px, env(safe-area-inset-top)); right: 16px; }
++
++  .battle-celestial {
++    position: absolute; z-index: 0; left: 50%; top: 13%; width: clamp(120px, 17vw, 260px); aspect-ratio: 1;
++    transform: translateX(-50%); border-radius: 50%; pointer-events: none;
++    background: radial-gradient(circle, rgba(255,255,255,.16), color-mix(in srgb, var(--arena-ambient, #f97316) 28%, transparent) 35%, transparent 70%);
++    filter: blur(1px); opacity: .62;
++  }
++  .battle-celestial-volcanic { background: radial-gradient(circle, #ffcf8555 0 8%, #ef4f2840 23%, transparent 68%); box-shadow: 0 0 90px #ef4f2829; }
++  .battle-mountain-layer { position: absolute; left: 0; right: 0; width: 100%; pointer-events: none; z-index: 0; }
++  .battle-mountain-back { bottom: 54%; height: 34%; fill: rgba(10,7,18,.55); filter: blur(1px); }
++  .battle-mountain-front { bottom: 53%; height: 28%; fill: rgba(16,9,20,.88); filter: drop-shadow(0 -8px 22px rgba(0,0,0,.45)); }
++  .battle-volcano-rift { fill: #ff7a38; filter: drop-shadow(0 0 9px #ff3d18); opacity: .78; }
++  .battle-arena-dais {
++    position: absolute; z-index: 1; left: 5%; right: 5%; bottom: -12%; height: 53%; border-radius: 50%; pointer-events: none;
++    background: radial-gradient(ellipse at 50% 15%, color-mix(in srgb, var(--arena-ambient) 17%, rgba(255,255,255,.05)), rgba(9,4,12,.42) 50%, rgba(2,1,6,.9) 75%);
++    border: 1px solid color-mix(in srgb, var(--arena-ambient) 28%, transparent);
++    box-shadow: inset 0 18px 55px rgba(255,255,255,.025), 0 -3px 40px color-mix(in srgb, var(--arena-ambient) 15%, transparent);
++    transform: perspective(700px) rotateX(57deg); transform-origin: bottom;
++  }
++  .battle-ground-cracks { position: absolute; z-index: 1; inset: auto 0 0; width: 100%; height: 58%; pointer-events: none; }
++  .battle-ground-cracks path { fill: none; stroke: color-mix(in srgb, var(--arena-ambient, #f97316) 68%, #ffca75); stroke-width: 2; opacity: .28; filter: drop-shadow(0 0 5px var(--arena-ambient, #f97316)); }
++  .battle-ash-field { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
++  .battle-ash-field i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #ffba72; opacity: 0; animation: battle-ash-drift calc(4.5s + (var(--ash-i) * .13s)) linear infinite; animation-delay: calc(var(--ash-i) * -.37s); box-shadow: 0 0 5px #ff6a2b; }
++  @keyframes battle-ash-drift { 0%{opacity:0;translate:0 22px} 18%{opacity:.7} 100%{opacity:0;translate:38px -150px} }
++
+   .battle-hit-wild {
+     left: clamp(3%, 8vw, 10%);
+     bottom: 7%;
+@@ -546,7 +575,7 @@
+     height: clamp(50px, 7vw, 94px);
+     bottom: 0;
+     border-radius: 50%;
+-    z-index: 1;
++    z-index: 2;
+     opacity: 0.72;
+     pointer-events: none;
+     background: radial-gradient(ellipse, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.2) 46%, transparent 72%);
+@@ -601,7 +630,7 @@
+     transform: perspective(600px) rotateX(58deg) scaleX(1.15);
+     transform-origin: bottom;
+   }
+-  .battle-hp-anchor { transform: scale(1.08); z-index: 15; }
++  .battle-hp-anchor { transform: scale(1); z-index: 15; }
+   .battle-hp-anchor-left { transform-origin: top left; }
+   .battle-hp-anchor-right { transform-origin: top right; }
+ 
+@@ -723,6 +752,14 @@
+   }
+   .battle-screen-in { animation: battle-screen-in 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+ 
++  @media (max-height: 760px) {
++    .battle-text-deck { height: 52px !important; }
++    .battle-action-deck { min-height: 132px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
++    .battle-combatant-wild, .battle-combatant-player { scale: .82; transform-origin: bottom center; bottom: 0; }
++    .battle-trainer { scale: .8; transform-origin: bottom center; bottom: 42% !important; }
++    .battle-hp-anchor { scale: .88; }
++  }
++
+   @media (prefers-reduced-motion: reduce) {
+     .battle-screen-in { animation-duration: 0.15s; }
+   }

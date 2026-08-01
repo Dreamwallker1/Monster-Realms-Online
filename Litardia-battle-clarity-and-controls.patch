@@ -1,0 +1,422 @@
+From d5f8f4f70ce7b0f74e706906a39b7c1f5cc60bd6 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 17:51:10 +0100
+Subject: [PATCH] Clarify battle health and remove automatic actions
+
+---
+ artifacts/api-server/src/routes/battles.ts    |  32 +-----
+ .../src/__tests__/movement.test.ts            |   4 +
+ .../src/components/game/BattleOverlay.tsx     | 108 +++---------------
+ artifacts/monster-realms/src/index.css        |  24 ++--
+ artifacts/monster-realms/src/lib/movement.ts  |   2 +-
+ 5 files changed, 27 insertions(+), 143 deletions(-)
+
+diff --git a/artifacts/api-server/src/routes/battles.ts b/artifacts/api-server/src/routes/battles.ts
+index 728b4e8..f34a529 100644
+--- a/artifacts/api-server/src/routes/battles.ts
++++ b/artifacts/api-server/src/routes/battles.ts
+@@ -100,31 +100,6 @@ function makeStatDb(drizzle: DrizzleExecutor): StatUpdateDb {
+ const router: IRouter = Router();
+ const battleActionsInFlight = new Set<string>();
+ const battleStartsInFlight = new Set<string>();
+-const MAX_AETHER = 100;
+-const STARTING_AETHER = 45;
+-const ROUND_AETHER_REGEN = 10;
+-const BASIC_AETHER_GAIN = 18;
+-const AETHER_COST: Record<string, number> = { skill1: 30, skill2: 45, ultimate: 70 };
+-
+-function getPlayerAether(turn: number, log: BattleLogEntry[]): number {
+-  let aether = STARTING_AETHER;
+-  let regeneratedThroughTurn = 1;
+-  for (const entry of log) {
+-    if (entry.actor !== "player") continue;
+-    while (regeneratedThroughTurn < entry.turn) {
+-      aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+-      regeneratedThroughTurn += 1;
+-    }
+-    if (entry.action === "attack") aether = Math.min(MAX_AETHER, aether + BASIC_AETHER_GAIN);
+-    else if (entry.action in AETHER_COST) aether = Math.max(0, aether - AETHER_COST[entry.action]!);
+-  }
+-  while (regeneratedThroughTurn < turn) {
+-    aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+-    regeneratedThroughTurn += 1;
+-  }
+-  return aether;
+-}
+-
+ function lockBattleAction(req: Request, res: Response, next: NextFunction): void {
+   const rawId = req.params?.battleId;
+   const battleId = Array.isArray(rawId) ? rawId[0] : rawId;
+@@ -431,17 +406,12 @@ router.post(
+     const skills = (wildSpecies.skills as { name: string; type: string; element: string; power: number; accuracy: number }[]);
+     const playerSkills = (playerSpecies.skills as typeof skills);
+ 
+-    if (action in AETHER_COST) {
++    if (["skill1", "skill2", "ultimate"].includes(action)) {
+       const requestedSkill = playerSkills.find((skill) => skill.type === action);
+       if (!requestedSkill) {
+         res.status(400).json({ error: "That skill is not available to this myth" });
+         return;
+       }
+-      const availableAether = getPlayerAether(battle.turn, log);
+-      if (availableAether < AETHER_COST[action]!) {
+-        res.status(400).json({ error: "Not enough Aether for that skill" });
+-        return;
+-      }
+     }
+ 
+     if (action === "switch") {
+diff --git a/artifacts/monster-realms/src/__tests__/movement.test.ts b/artifacts/monster-realms/src/__tests__/movement.test.ts
+index c553504..a3941bf 100644
+--- a/artifacts/monster-realms/src/__tests__/movement.test.ts
++++ b/artifacts/monster-realms/src/__tests__/movement.test.ts
+@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
+ import { getMoveIntent, getMoveProgress, MOVE_RECOVERY_MS } from '@/lib/movement';
+ 
+ describe('turn-paced world movement', () => {
++  it('allows exactly one step per second', () => {
++    expect(MOVE_RECOVERY_MS).toBe(1_000);
++  });
++
+   it('maps only server-supported cardinal steps', () => {
+     expect(getMoveIntent(0, -1)?.direction).toBe('up');
+     expect(getMoveIntent(0, 1)?.direction).toBe('down');
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index 825a575..b9bd6fe 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -58,42 +58,6 @@ const ACTION_TO_SKILL_TYPE: Record<string, SkillData['type']> = {
+   ultimate: 'ultimate',
+ };
+ 
+-const MAX_AETHER = 100;
+-const AETHER_COST: Record<SkillData['type'], number> = {
+-  normal: 0,
+-  skill1: 30,
+-  skill2: 45,
+-  ultimate: 70,
+-  passive: 0,
+-};
+-const BASIC_AETHER_GAIN = 18;
+-const ROUND_AETHER_REGEN = 10;
+-
+-function restorePlayerAether(
+-  turn: number,
+-  log: Array<{ turn: number; actor: string; action: string }>,
+-): number {
+-  let aether = 45;
+-  let regeneratedThroughTurn = 1;
+-  for (const entry of log) {
+-    if (entry.actor !== 'player') continue;
+-    while (regeneratedThroughTurn < entry.turn) {
+-      aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+-      regeneratedThroughTurn += 1;
+-    }
+-    if (entry.action === 'attack') aether = Math.min(MAX_AETHER, aether + BASIC_AETHER_GAIN);
+-    else {
+-      const type = ACTION_TO_SKILL_TYPE[entry.action];
+-      if (type) aether = Math.max(0, aether - AETHER_COST[type]);
+-    }
+-  }
+-  while (regeneratedThroughTurn < turn) {
+-    aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
+-    regeneratedThroughTurn += 1;
+-  }
+-  return aether;
+-}
+-
+ function getSkillForAction(action: string, skills: SkillData[]): SkillData {
+   const type = ACTION_TO_SKILL_TYPE[action];
+   if (type) {
+@@ -742,11 +706,11 @@ function MythSprite({
+ // ─── HP Plate ───────────────────────────────────────────────────────────────────
+ 
+ function HpPlate({
+-  name, level, element, rarity, currentHp, maxHp, align, aether, statusEffect,
++  name, level, element, rarity, currentHp, maxHp, align, statusEffect,
+ }: {
+   name: string; level: number; element: string; rarity: string;
+   currentHp: number; maxHp: number; align: 'left' | 'right';
+-  aether: number; statusEffect?: string | null;
++  statusEffect?: string | null;
+ }) {
+   const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
+   const [lagPct, setLagPct] = useState(pct);
+@@ -763,13 +727,12 @@ function HpPlate({
+ 
+   return (
+     <div
+-      className={`rounded-xl px-3 py-2.5 battle-hp-card ${pct <= 20 ? 'battle-hp-critical' : ''}`}
++      className={`rounded-xl px-4 py-3 battle-hp-card ${pct <= 20 ? 'battle-hp-critical' : ''}`}
+       style={{
+-        minWidth: 158, maxWidth: 204,
+         background: 'linear-gradient(135deg, rgba(8,8,22,0.92), rgba(4,4,14,0.96))',
+-        border: `1.5px solid ${elColors.primary}44`,
++        border: `2px solid ${elColors.primary}66`,
+         backdropFilter: 'blur(14px)',
+-        boxShadow: `0 4px 20px rgba(0,0,0,0.75), 0 0 10px ${elColors.glow}55`,
++        boxShadow: `0 8px 28px rgba(0,0,0,0.82), 0 0 18px ${elColors.glow}77`,
+       }}
+     >
+       {/* Name + level */}
+@@ -792,10 +755,13 @@ function HpPlate({
+           {qualLabel}
+         </Badge>
+       </div>
++      <div className={`battle-hp-caption ${align === 'right' ? 'text-right' : ''}`}>
++        <b>HP</b><span>{Math.round(pct)}%</span>
++      </div>
+       {/* HP bar — numbers live inside the bar */}
+       <div
+         className="relative w-full rounded-full overflow-hidden battle-vital-bar"
+-        style={{ height: 20, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}
++        style={{ background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(255,255,255,0.16)' }}
+       >
+         <div className="absolute inset-y-0 left-0 rounded-full battle-hp-lag" style={{ width: `${lagPct}%` }} />
+         <div
+@@ -809,21 +775,13 @@ function HpPlate({
+         {/* HP text overlay */}
+         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+           <span
+-            className="text-[10px] font-mono font-bold leading-none"
++            className="text-xs font-mono font-black leading-none"
+             style={{ color: 'rgba(255,255,255,0.92)', textShadow: '0 1px 4px rgba(0,0,0,0.98)' }}
+           >
+             {currentHp}<span style={{ opacity: 0.5 }}>/{maxHp}</span>
+           </span>
+         </div>
+       </div>
+-      <div className="battle-aether-row">
+-        <span>AETHER</span>
+-        <div className="battle-aether-track">
+-          <div className="battle-aether-fill" style={{ width: `${Math.max(0, Math.min(100, aether))}%` }} />
+-          <i /><i /><i /><i />
+-        </div>
+-        <b>{aether}</b>
+-      </div>
+       {statusEffect && <div className="battle-status-chip">{statusEffect}</div>}
+     </div>
+   );
+@@ -885,7 +843,6 @@ function ActionPanel({
+   handleAction,
+   setShowSwitchPanel,
+   setShowOrbPicker,
+-  playerAether,
+ }: {
+   playerMonster: { species?: { skills?: unknown; element?: string } } | null;
+   wildElement: string;
+@@ -898,7 +855,6 @@ function ActionPanel({
+   handleAction: (a: 'capture' | 'flee') => void;
+   setShowSwitchPanel: (v: boolean) => void;
+   setShowOrbPicker: (v: boolean) => void;
+-  playerAether: number;
+ }) {
+   const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
+   const skillDefs: { action: ActionType; type: SkillData['type'] }[] = [
+@@ -918,10 +874,6 @@ function ActionPanel({
+ 
+   return (
+     <div className="flex flex-col gap-2">
+-      <div className="battle-aether-command">
+-        <span><b>◆ {playerAether}</b> / {MAX_AETHER} AETHER</span>
+-        <em>Basic attacks charge · techniques spend</em>
+-      </div>
+       {/* Opponent-turn indicator */}
+       {opponentTurnActive && (
+         <div
+@@ -961,14 +913,12 @@ function ActionPanel({
+             mult >= 1.5 ? '#86EFAC' :
+             mult === 0   ? '#94A3B8' :
+             mult <= 0.5  ? '#FCA5A5' : null;
+-          const aetherCost = AETHER_COST[type];
+-          const lacksAether = playerAether < aetherCost;
+           return (
+             <button
+               key={action}
+               onClick={() => handleSkillAction(action)}
+-              disabled={isBlocked || lacksAether}
+-              className={`relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden battle-skill-card ${lacksAether ? 'battle-skill-locked' : ''}`}
++              disabled={isBlocked}
++              className="relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden battle-skill-card"
+               style={{ background: style.grad, border: `1.5px solid ${matchupColor ? matchupColor + '55' : style.border}`, boxShadow: `0 0 16px ${matchupColor ? matchupColor + '44' : style.glow}, inset 0 1px 0 rgba(255,255,255,0.12)`, minHeight: 52, padding: '8px 10px' }}
+               data-testid={`button-${action}`}
+             >
+@@ -985,9 +935,6 @@ function ActionPanel({
+                 <span className="text-[8px] text-white/30 uppercase font-mono">
+                   {type === 'normal' ? 'normal' : type === 'skill1' ? 'special' : type === 'skill2' ? 'power' : '★ ult'}
+                 </span>
+-                <span className={`battle-skill-cost ${type === 'normal' ? 'battle-skill-gain' : ''}`}>
+-                  {type === 'normal' ? `+${BASIC_AETHER_GAIN}` : `◆ ${aetherCost}`}
+-                </span>
+                 {matchupText && matchupColor && (
+                   <span
+                     className="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+@@ -999,7 +946,6 @@ function ActionPanel({
+               </div>
+               <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                 style={{ background: skill.accuracy >= 90 ? '#22C55E' : skill.accuracy >= 75 ? '#EAB308' : '#EF4444' }} />
+-              {lacksAether && <div className="battle-skill-lock-label">NEED {aetherCost} AETHER</div>}
+             </button>
+           );
+         }) : (
+@@ -1109,8 +1055,6 @@ export default function BattleOverlay() {
+   const [showBattleIntro, setShowBattleIntro]     = useState(false);
+   const [opponentTurnActive, setOpponentTurnActive] = useState(false);
+   const [opponentTimer, setOpponentTimer]           = useState(10);
+-  const [playerAether, setPlayerAether]             = useState(45);
+-  const [wildAether, setWildAether]                 = useState(45);
+   const opponentCinematicFiredRef = useRef(false);
+   const opponentFireAtRef         = useRef(7); // randomised per turn (timer value at which wild fires)
+ 
+@@ -1273,8 +1217,6 @@ export default function BattleOverlay() {
+       seenBattleId.current = battle.battleId;
+       const restoredTurn = battleData?.turn ?? 1;
+       prevRoundRef.current = restoredTurn;
+-      setPlayerAether(restorePlayerAether(restoredTurn, battleData?.log ?? []));
+-      setWildAether(45);
+       setShowBattleIntro(true);
+       setShowPlayerEntrance(true);
+       setShowWildEntrance(true);
+@@ -1349,8 +1291,6 @@ export default function BattleOverlay() {
+     prevRoundRef.current = currentRound;
+     setRoundTimer(10);
+     if (currentRound > 1) {
+-      setPlayerAether(value => Math.min(MAX_AETHER, value + ROUND_AETHER_REGEN));
+-      setWildAether(value => Math.min(MAX_AETHER, value + ROUND_AETHER_REGEN));
+       pendingRoundRef.current = currentRound; // deferred — announced after both turns
+     } else {
+       setDisplayedRound(1); // battle start
+@@ -1497,12 +1437,6 @@ export default function BattleOverlay() {
+     const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
+     const skill = getSkillForAction(action, playerSkills);
+     const skillElement = skill.element ?? playerMonster?.species?.element ?? 'Fire';
+-    const aetherCost = AETHER_COST[skill.type];
+-    if (playerAether < aetherCost) return;
+-    setPlayerAether(value => skill.type === 'normal'
+-      ? Math.min(MAX_AETHER, value + BASIC_AETHER_GAIN)
+-      : Math.max(0, value - aetherCost));
+-
+     // Show player cinematic immediately (optimistic)
+     setCinematic({
+       skillName: skill.name,
+@@ -1530,9 +1464,6 @@ export default function BattleOverlay() {
+         const wildSkill = getDisplaySkills(updated.wildMonster?.species ?? {})
+           .find((candidate) => candidate.name === wildEntry.action);
+         const wildSkillType = wildSkill?.type ?? 'normal';
+-        setWildAether(value => wildSkillType === 'normal'
+-          ? Math.min(MAX_AETHER, value + BASIC_AETHER_GAIN)
+-          : Math.max(0, value - AETHER_COST[wildSkillType]));
+         pendingWildCinematic.current = {
+           skillName: wildEntry.action,
+           element: wildElement,
+@@ -1546,20 +1477,10 @@ export default function BattleOverlay() {
+       pendingBattleResult.current = updated;
+     } catch (err) {
+       console.error('Battle action failed:', err);
+-      setPlayerAether(value => skill.type === 'normal'
+-        ? Math.max(0, value - BASIC_AETHER_GAIN)
+-        : Math.min(MAX_AETHER, value + aetherCost));
+       pendingBattleResult.current = null;
+       pendingWildCinematic.current = null;
+     }
+-  }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction, playerAether]);
+-
+-  // A turn that expires resolves as a basic attack. The timer therefore
+-  // creates pressure without freezing the match or granting a free skip.
+-  useEffect(() => {
+-    if (roundTimer !== 0 || isOver || cinematic || isPending || opponentTurnActive) return;
+-    void handleSkillAction('attack');
+-  }, [roundTimer, isOver, cinematic, isPending, opponentTurnActive, handleSkillAction]);
++  }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction]);
+ 
+   // Keep finalizeCaptureRef.current up-to-date on every render so both
+   // the animation callback and the API promise always call the latest version.
+@@ -1723,7 +1644,6 @@ export default function BattleOverlay() {
+             currentHp={wildMonster.currentHp}
+             maxHp={wildMonster.maxHp}
+             align="left"
+-            aether={wildAether}
+             statusEffect={wildMonster.statusEffect}
+           />
+           {wildMonster.shinyVariant && (
+@@ -1820,7 +1740,6 @@ export default function BattleOverlay() {
+             currentHp={playerMonster.currentHp}
+             maxHp={playerMonster.maxHp}
+             align="right"
+-            aether={playerAether}
+             statusEffect={playerMonster.statusEffect}
+           />
+         </div>
+@@ -2359,7 +2278,6 @@ export default function BattleOverlay() {
+               handleAction={handleAction}
+               setShowSwitchPanel={setShowSwitchPanel}
+               setShowOrbPicker={setShowOrbPicker}
+-              playerAether={playerAether}
+             />
+           </>
+         ) : (
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 899aa2a..8453f06 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -681,30 +681,20 @@
+   .battle-hp-anchor { transform: scale(1); z-index: 15; }
+   .battle-hp-anchor-left { transform-origin: top left; }
+   .battle-hp-anchor-right { transform-origin: top right; }
+-  .battle-hp-card { position:relative; overflow:hidden; }
++  .battle-hp-card { position:relative; overflow:hidden; width:clamp(226px,23vw,290px); }
+   .battle-hp-card::before { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 28% 72%,rgba(255,255,255,.035)); }
+   .battle-hp-card::after { content:""; position:absolute; left:10%; right:10%; top:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent); opacity:.55; }
+-  .battle-vital-bar { box-shadow:inset 0 2px 7px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.06); }
++  .battle-hp-caption { display:flex; align-items:center; justify-content:space-between; margin:0 2px 4px; color:rgba(255,255,255,.72); font:800 9px var(--font-mono,monospace); letter-spacing:.13em; }
++  .battle-hp-caption b { color:#fff; font-size:11px; text-shadow:0 0 8px rgba(255,255,255,.25); }
++  .battle-vital-bar { height:28px; box-shadow:inset 0 2px 7px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.1),0 0 14px rgba(34,197,94,.1); }
+   .battle-hp-lag { background:linear-gradient(90deg,#f4d86a,#fff0a2); opacity:.8; transition:width .72s cubic-bezier(.18,.72,.2,1); box-shadow:0 0 9px #ffe78388; }
+   .battle-hp-critical { animation:battle-hp-critical 1.15s ease-in-out infinite alternate; }
+   @keyframes battle-hp-critical { to { border-color:#ef444488; box-shadow:0 4px 24px rgba(0,0,0,.78),0 0 18px rgba(239,68,68,.3); } }
+-  .battle-aether-row { display:grid; grid-template-columns:auto 1fr 24px; align-items:center; gap:6px; margin-top:7px; color:#73dcff; font:700 7px var(--font-mono,monospace); letter-spacing:.12em; }
+-  .battle-aether-row b { text-align:right; color:#bceeff; font-size:8px; letter-spacing:0; }
+-  .battle-aether-track { position:relative; display:flex; height:7px; overflow:hidden; border:1px solid rgba(100,211,255,.2); border-radius:999px; background:#020911; box-shadow:inset 0 1px 4px #000,0 0 7px rgba(28,180,255,.12); }
+-  .battle-aether-fill { position:absolute; inset:0 auto 0 0; border-radius:inherit; background:linear-gradient(90deg,#175dca,#25bff5 64%,#baf4ff); box-shadow:0 0 9px #20baf5; transition:width .45s cubic-bezier(.2,.75,.25,1); }
+-  .battle-aether-track i { position:relative; z-index:1; width:25%; border-right:1px solid rgba(2,13,26,.8); }
+   .battle-status-chip { width:max-content; margin-top:5px; padding:2px 6px; border:1px solid #fb923c55; border-radius:999px; color:#fdba74; background:#7c2d1233; font:700 7px var(--font-mono,monospace); letter-spacing:.08em; text-transform:uppercase; }
+   .battle-skill-card { isolation:isolate; transform:translateZ(0); }
+   .battle-skill-card::before { content:""; position:absolute; z-index:-1; inset:-80% -35%; background:linear-gradient(110deg,transparent 38%,rgba(255,255,255,.18) 48%,transparent 58%); transform:translateX(-55%) rotate(8deg); transition:transform .65s cubic-bezier(.2,.7,.2,1); }
+   .battle-skill-card:hover:not(:disabled)::before { transform:translateX(55%) rotate(8deg); }
+   .battle-skill-card:hover:not(:disabled) { translate:0 -2px; filter:brightness(1.12) saturate(1.08); }
+-  .battle-aether-command { display:flex; align-items:center; justify-content:space-between; min-height:22px; padding:3px 9px; border:1px solid rgba(56,189,248,.16); border-radius:8px; color:#7dd3fc; background:linear-gradient(90deg,rgba(3,32,54,.78),rgba(7,14,31,.7)); box-shadow:inset 0 1px rgba(255,255,255,.035); font:700 8px var(--font-mono,monospace); letter-spacing:.06em; }
+-  .battle-aether-command b { color:#d7f6ff; font-size:9px; }
+-  .battle-aether-command em { color:rgba(186,230,253,.42); font-size:7px; font-style:normal; }
+-  .battle-skill-cost { margin-left:auto; padding:1px 5px; border:1px solid rgba(125,211,252,.35); border-radius:999px; color:#bae6fd; background:rgba(3,105,161,.25); font:800 8px var(--font-mono,monospace); }
+-  .battle-skill-gain { color:#86efac; border-color:rgba(74,222,128,.35); background:rgba(21,128,61,.22); }
+-  .battle-skill-locked { filter:grayscale(.45) brightness(.62); }
+-  .battle-skill-lock-label { position:absolute; inset:auto 7px 5px auto; color:#7dd3fc; font:800 7px var(--font-mono,monospace); letter-spacing:.06em; text-shadow:0 1px 3px #000; }
+ 
+   /* World-map camera → local battlefield cinematic veil */
+   .battle-transition-veil { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
+@@ -1077,8 +1067,10 @@
+     .myth-lunge-right { --battle-lunge-x: 47vw; --battle-lunge-recoil: 45vw; }
+     .battle-hit-wild { left: 11%; }
+     .battle-hit-player { right: 11%; }
+-    .battle-hp-anchor { scale:.78; }
+-    .battle-aether-command em { display:none; }
++    .battle-hp-anchor { scale:1; }
++    .battle-hp-card { width:min(42vw,190px); padding:8px 9px !important; }
++    .battle-vital-bar { height:23px; }
++    .battle-hp-caption { margin-bottom:3px; }
+   }
+ 
+   @media (max-width: 480px) {
+diff --git a/artifacts/monster-realms/src/lib/movement.ts b/artifacts/monster-realms/src/lib/movement.ts
+index 3c85f27..a120a0a 100644
+--- a/artifacts/monster-realms/src/lib/movement.ts
++++ b/artifacts/monster-realms/src/lib/movement.ts
+@@ -1,4 +1,4 @@
+-export const MOVE_RECOVERY_MS = 2100;
++export const MOVE_RECOVERY_MS = 1000;
+ export const MOVE_ANIMATION_MS = 460;
+ 
+ export type CardinalDirection = 'up' | 'down' | 'left' | 'right';
+-- 
+2.51.1
+

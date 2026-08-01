@@ -1,0 +1,210 @@
+From e1d6eb6f5009018bc895c1b0b6493e468fc735b0 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 19:00:34 -0400
+Subject: [PATCH] Recompose battle arena and preserve encounter region
+
+---
+ .../src/components/game/BattleOverlay.tsx     | 20 ++++++------
+ .../src/components/game/EncounterPopup.tsx    |  6 ++--
+ artifacts/monster-realms/src/index.css        | 32 +++++++++++++++----
+ artifacts/monster-realms/src/pages/game.tsx   |  8 ++++-
+ 4 files changed, 45 insertions(+), 21 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index c66ec2f..ad95507 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -809,8 +809,8 @@ function ActionPanel({
+         }}
+         className="flex flex-col gap-2"
+       >
+-      {/* Skill buttons — 2×2 grid */}
+-      <div className="grid grid-cols-2 gap-2">
++      {/* Skill buttons — use the full width without leaving an orphaned half-row */}
++      <div className="battle-skill-grid">
+         {available.length > 0 ? available.map(({ action, type, skill }) => {
+           const style = SKILL_STYLE[type] ?? SKILL_STYLE['normal']!;
+           const elColors = getElementColors(skill.element);
+@@ -1470,14 +1470,14 @@ export default function BattleOverlay() {
+         <div
+           className="absolute left-0 right-0 bottom-0"
+           style={{
+-            height: '46%',
++            height: '58%',
+             background: theme.groundGrad,
+             borderTop: `2px solid ${theme.groundLine}`,
+           }}
+         />
+ 
+         {/* Horizon decorations */}
+-        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '46%' }}>
++        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '58%' }}>
+           {theme.hasTrees && <ForestSilhouette color={theme.treeColor} />}
+           {theme.hasRocks && !theme.hasTrees && <RockSilhouette color={theme.rockColor} />}
+         </div>
+@@ -1600,16 +1600,16 @@ export default function BattleOverlay() {
+ 
+         {/* Character — CENTER BACK (smaller, feet on ground) */}
+         <div
+-          className="absolute battle-entrance battle-idle-bob"
++          className="absolute battle-entrance battle-idle-bob battle-trainer"
+           style={{
+-            bottom: '34%',
+-            left: '68%',
++            bottom: '47%',
++            left: '82%',
+             transform: 'translateX(-50%)',
+             animationDelay: '0.2s',
+             zIndex: 1,
+           }}
+         >
+-          <CharacterFront char={char} size={92} />
++          <CharacterFront char={char} size={72} />
+           <div style={{
+             width: 48, height: 8, borderRadius: '50%', marginTop: 2, marginLeft: 'auto', marginRight: 'auto',
+             background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 80%)',
+@@ -1650,7 +1650,7 @@ export default function BattleOverlay() {
+               speciesId={wildMonster.species.id}
+               element={wildMonster.species.element}
+               rarity={wildMonster.species.rarity}
+-              size={250}
++              size={276}
+               shakeKey={wildShake}
+               isFainting={faintCinematic?.side === 'wild'}
+               facing="right"
+@@ -1679,7 +1679,7 @@ export default function BattleOverlay() {
+               speciesId={playerMonster.species.id}
+               element={playerMonster.species.element}
+               rarity={playerMonster.species.rarity}
+-              size={250}
++              size={276}
+               shakeKey={playerShake}
+               isFainting={faintCinematic?.side === 'player'}
+               facing="left"
+diff --git a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+index e761282..5f13383 100644
+--- a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
++++ b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+@@ -203,7 +203,7 @@ function ShinyRing() {
+ // ─── Main component ───────────────────────────────────────────────────────────
+ 
+ export default function EncounterPopup() {
+-  const { encounter, clearEncounter, startBattle, player } = useGameStore();
++  const { encounter, clearEncounter, startBattle, player, currentRegionId } = useGameStore();
+   const [isStarting, setIsStarting] = useState(false);
+ 
+   const { data: team } = useGetPlayerTeam(player?.id || '', {
+@@ -234,7 +234,7 @@ export default function EncounterPopup() {
+       const battle = await startBattleMutation.mutateAsync({
+         data: {
+           playerId: player.id,
+-          regionId: player.regionId || 'verdant-meadows',
++          regionId: currentRegionId || player.regionId || 'verdant-meadows',
+           speciesId: sp.id,
+           wildLevel: encounter.wildLevel,
+           shinyVariant: encounter.shinyVariant as any,
+@@ -247,7 +247,7 @@ export default function EncounterPopup() {
+         detail: {
+           x: player.posX,
+           y: player.posY,
+-          regionId: player.regionId,
++          regionId: currentRegionId || player.regionId,
+           element: sp.element,
+         },
+       }));
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 27aab9c..2eb6bfa 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -443,13 +443,13 @@
+   .battle-idle-bob { animation: battle-idle-bob 2s ease-in-out infinite; }
+ 
+   .battle-combatant-wild {
+-    left: clamp(4%, 9vw, 11%);
+-    bottom: 5%;
++    left: clamp(3%, 7vw, 9%);
++    bottom: 2%;
+   }
+ 
+   .battle-combatant-player {
+-    right: clamp(4%, 9vw, 11%);
+-    bottom: 5%;
++    right: clamp(3%, 7vw, 9%);
++    bottom: 2%;
+   }
+ 
+   .battle-hit-wild {
+@@ -465,7 +465,7 @@
+   .battle-ground-perspective {
+     position: absolute;
+     inset: auto 0 0;
+-    height: 46%;
++    height: 58%;
+     z-index: 0;
+     pointer-events: none;
+     background:
+@@ -479,7 +479,7 @@
+     position: absolute;
+     width: clamp(260px, 29vw, 480px);
+     height: clamp(50px, 7vw, 94px);
+-    bottom: 1%;
++    bottom: 0;
+     border-radius: 50%;
+     z-index: 1;
+     opacity: 0.72;
+@@ -491,6 +491,24 @@
+   .battle-stage-pool-wild { left: clamp(0%, 4vw, 6%); }
+   .battle-stage-pool-player { right: clamp(0%, 4vw, 6%); }
+ 
++  .battle-skill-grid {
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    gap: 0.5rem;
++  }
++
++  @media (min-width: 900px) {
++    .battle-skill-grid {
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++    }
++  }
++
++  @media (max-width: 700px) {
++    .battle-trainer { left: 76% !important; bottom: 48% !important; transform: translateX(-50%) scale(.76) !important; }
++    .battle-combatant-wild { left: 1%; }
++    .battle-combatant-player { right: 1%; }
++  }
++
+   .battle-arena-vignette {
+     position: absolute;
+     inset: 0;
+@@ -507,7 +525,7 @@
+     mix-blend-mode: screen; opacity: 0.72;
+   }
+   .battle-horizon-haze {
+-    position: absolute; left: 0; right: 0; bottom: 40%; height: 23%; pointer-events: none;
++    position: absolute; left: 0; right: 0; bottom: 52%; height: 23%; pointer-events: none;
+     background: linear-gradient(to top, color-mix(in srgb, var(--arena-ambient) 24%, transparent), transparent 80%);
+     filter: blur(16px); opacity: 0.78;
+   }
+diff --git a/artifacts/monster-realms/src/pages/game.tsx b/artifacts/monster-realms/src/pages/game.tsx
+index ff6f7ee..d6d5b59 100644
+--- a/artifacts/monster-realms/src/pages/game.tsx
++++ b/artifacts/monster-realms/src/pages/game.tsx
+@@ -104,7 +104,13 @@ export default function Game() {
+     try {
+       const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
+ 
+-      setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
++      setPlayer({
++        ...player,
++        posX: result.newPosX,
++        posY: result.newPosY,
++        energy: result.remainingEnergy,
++        regionId: input.regionId || player.regionId,
++      });
+ 
+       // Update current region whenever the player crosses a zone boundary
+       if (input.regionId && input.regionId !== currentRegionId) {
+-- 
+2.51.1
+

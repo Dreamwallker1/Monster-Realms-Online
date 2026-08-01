@@ -1,0 +1,183 @@
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index f948805..e7b8f97 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -590,14 +590,14 @@ function MythSprite({
+     if (shakeKey <= 0) return;
+     setAnimKey((k) => k + 1);
+     setSheetMode('hit');
+-    const timer = window.setTimeout(() => setSheetMode('idle'), 240);
++    const timer = window.setTimeout(() => setSheetMode('idle'), 650);
+     return () => window.clearTimeout(timer);
+   }, [shakeKey]);
+ 
+   useEffect(() => {
+     if (attackKey <= 0) return;
+     setSheetMode('attack');
+-    const timer = window.setTimeout(() => setSheetMode('idle'), 520);
++    const timer = window.setTimeout(() => setSheetMode('idle'), 900);
+     return () => window.clearTimeout(timer);
+   }, [attackKey]);
+ 
+@@ -1048,6 +1048,8 @@ export default function BattleOverlay() {
+   const prevWildHp      = useRef<number | null>(null);
+   const prevPlayerHp    = useRef<number | null>(null);
+   const prevCapturedId  = useRef<string | null>(null);
++  const optimisticWildHitRef = useRef(0);
++  const optimisticPlayerHitRef = useRef(0);
+ 
+   const { data: battleData } = useGetBattle(battle.battleId || '', {
+     query: {
+@@ -1085,7 +1087,8 @@ export default function BattleOverlay() {
+     const pd = battleData.playerMonster;
+ 
+     if (prevWildHp.current !== null && wd.currentHp < prevWildHp.current) {
+-      setWildShake((k) => k + 1);
++      if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1;
++      else setWildShake((k) => k + 1);
+       // Floating damage number on the wild myth
+       const wildDmg = prevWildHp.current - wd.currentHp;
+       const wildCrit = (battleData.log ?? []).slice(-3).some(
+@@ -1108,7 +1111,8 @@ export default function BattleOverlay() {
+       }
+     }
+     if (prevPlayerHp.current !== null && pd.currentHp < prevPlayerHp.current) {
+-      setPlayerShake((k) => k + 1);
++      if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1;
++      else setPlayerShake((k) => k + 1);
+       // Floating damage number on the player myth
+       const playerDmg = prevPlayerHp.current - pd.currentHp;
+       const playerCrit = (battleData.log ?? []).slice(-3).some(
+@@ -1187,11 +1191,23 @@ export default function BattleOverlay() {
+   // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
+   useEffect(() => {
+     if (!cinematic) return;
++    let impactTimer: number;
+     if (cinematic.attackerSide === 'player') {
+       setPlayerLungeKey(k => k + 1);
++      impactTimer = window.setTimeout(() => {
++        optimisticWildHitRef.current += 1;
++        setWildShake(k => k + 1);
++        window.setTimeout(() => { if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1; }, 4000);
++      }, 520);
+     } else {
+       setWildLungeKey(k => k + 1);
++      impactTimer = window.setTimeout(() => {
++        optimisticPlayerHitRef.current += 1;
++        setPlayerShake(k => k + 1);
++        window.setTimeout(() => { if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1; }, 4000);
++      }, 520);
+     }
++    return () => window.clearTimeout(impactTimer);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [cinematic]);
+ 
+diff --git a/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx b/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx
+index 4b29045..1eff1a3 100644
+--- a/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx
++++ b/artifacts/monster-realms/src/components/game/RiggedMythCanvas.tsx
+@@ -29,32 +29,32 @@ function getMotion(name: string, t: number, mode: RigMode, myth: string): Motion
+   let x = 0, y = 0, r = 0, sx = 1, sy = 1;
+   if (mode === 'idle') {
+     const breath = Math.sin(t * 2.3);
+-    if (name === 'body') { y = breath * 2.6; sx = 1 + breath * .004; sy = 1 + breath * .012; }
+-    if (name === 'head') r = Math.sin(t * 1.7) * .025;
+-    if (name === 'wingFront') r = Math.sin(t * 2.1) * .06;
+-    if (name === 'wingBack') r = -Math.sin(t * 2.1) * .045;
+-    if (name === 'tail') r = Math.sin(t * 2.8) * (myth === 'flarelynx' ? .09 : .065);
+-    if (name === 'legFront' || name === 'legBack') r = Math.sin(t * 2.3 + (name === 'legBack' ? 1 : 0)) * .012;
++    if (name === 'body') { y = breath * 5.2; sx = 1 + breath * .009; sy = 1 + breath * .024; }
++    if (name === 'head') r = Math.sin(t * 1.7) * .05;
++    if (name === 'wingFront') r = Math.sin(t * 2.1) * .125;
++    if (name === 'wingBack') r = -Math.sin(t * 2.1) * .095;
++    if (name === 'tail') r = Math.sin(t * 2.8) * (myth === 'flarelynx' ? .17 : .13);
++    if (name === 'legFront' || name === 'legBack') r = Math.sin(t * 2.3 + (name === 'legBack' ? 1 : 0)) * .025;
+   } else if (mode === 'attack') {
+-    const p = Math.min(t / .52, 1);
++    const p = Math.min(t / .9, 1);
+     const wind = p < .42 ? p / .42 : Math.max(0, (1 - p) / .58);
+     const hit = Math.max(0, 1 - Math.abs(p - .62) * 7);
+-    if (name === 'body') { x = hit * 32; y = -hit * 8; r = -hit * .045; sx = 1 + hit * .035; }
+-    if (name === 'head') r = -wind * .13 - hit * .12;
+-    if (name === 'wingFront') r = -wind * .34 + hit * .5;
+-    if (name === 'wingBack') r = wind * .28 - hit * .35;
+-    if (name === 'tail') r = -wind * .18;
+-    if (name === 'legFront') r = -hit * .28;
+-    if (name === 'legBack') r = hit * .12;
++    if (name === 'body') { x = hit * 62; y = -hit * 14; r = -hit * .085; sx = 1 + hit * .07; sy = 1 - hit * .04; }
++    if (name === 'head') r = -wind * .24 - hit * .2;
++    if (name === 'wingFront') r = -wind * .58 + hit * .82;
++    if (name === 'wingBack') r = wind * .48 - hit * .58;
++    if (name === 'tail') r = -wind * .3;
++    if (name === 'legFront') r = -hit * .46;
++    if (name === 'legBack') r = hit * .22;
+   } else {
+-    const p = Math.min(t / .24, 1);
++    const p = Math.min(t / .65, 1);
+     const impact = Math.max(0, 1 - p);
+     const shake = Math.sin(p * 70) * impact;
+-    if (name === 'body') { x = -impact * 36; y = impact * 8; r = impact * .11 + shake * .015; }
+-    if (name === 'head') r = impact * .22 + shake * .035;
+-    if (name === 'wingFront') r = -impact * .3;
+-    if (name === 'wingBack') r = impact * .25;
+-    if (name === 'tail') r = -impact * .25;
++    if (name === 'body') { x = -impact * 58; y = impact * 14; r = impact * .17 + shake * .025; sx = 1 - impact * .09; sy = 1 + impact * .06; }
++    if (name === 'head') r = impact * .34 + shake * .055;
++    if (name === 'wingFront') r = -impact * .48;
++    if (name === 'wingBack') r = impact * .4;
++    if (name === 'tail') r = -impact * .42;
+   }
+   return { x, y, r, sx, sy };
+ }
+@@ -95,7 +95,8 @@ export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }:
+       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+       ctx.clearRect(0, 0, logical, logical);
+       ctx.save();
+-      if (facing === 'left') { ctx.translate(logical, 0); ctx.scale(-1, 1); }
++      const shouldFlip = speciesId === 'ashquill' ? facing === 'right' : facing === 'left';
++      if (shouldFlip) { ctx.translate(logical, 0); ctx.scale(-1, 1); }
+       const scale = rig.scale;
+       const origin: Point = [(logical - 512 * scale) / 2, (logical - 512 * scale) / 2 + 18];
+       const body = rig.parts.find(part => part.id === 'body')!;
+@@ -116,7 +117,6 @@ export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }:
+         });
+         if (mode === 'idle' && Math.sin(t * .83) > .985) {
+           ctx.save();
+-          if (facing === 'left') { /* parent canvas is already mirrored */ }
+           ctx.fillStyle = '#170b10';
+           ctx.beginPath();
+           ctx.ellipse(origin[0] + rig.eye[0] * scale, origin[1] + rig.eye[1] * scale, 10 * scale, 3 * scale, 0, 0, Math.PI * 2);
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 341cdb4..50868ee 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -926,23 +926,23 @@
+   @keyframes myth-lunge-left {
+     0%   { transform: translateX(0) scaleX(1) scaleY(1); }
+     10%  { transform: translateX(8px) scaleX(0.88) scaleY(1.08); }   /* squash-windup */
+-    30%  { transform: translateX(-60px) scaleX(1.18) scaleY(0.92); } /* dart */
+-    55%  { transform: translateX(-38px) scaleX(0.95) scaleY(1.04); } /* impact recoil */
++    42%  { transform: translateX(-105px) scaleX(1.18) scaleY(0.92); } /* dart */
++    65%  { transform: translateX(-54px) scaleX(0.95) scaleY(1.04); } /* impact recoil */
+     100% { transform: translateX(0) scaleX(1) scaleY(1); }
+   }
+   .myth-lunge-left {
+-    animation: myth-lunge-left 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    animation: myth-lunge-left 0.90s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+   }
+ 
+   @keyframes myth-lunge-right {
+     0%   { transform: translateX(0) scaleX(1) scaleY(1); }
+     10%  { transform: translateX(-8px) scaleX(0.88) scaleY(1.08); }
+-    30%  { transform: translateX(60px) scaleX(1.18) scaleY(0.92); }
+-    55%  { transform: translateX(38px) scaleX(0.95) scaleY(1.04); }
++    42%  { transform: translateX(105px) scaleX(1.18) scaleY(0.92); }
++    65%  { transform: translateX(54px) scaleX(0.95) scaleY(1.04); }
+     100% { transform: translateX(0) scaleX(1) scaleY(1); }
+   }
+   .myth-lunge-right {
+-    animation: myth-lunge-right 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
++    animation: myth-lunge-right 0.90s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+   }
+ 
+   /* ── Floating damage number ─────────────────────────────────────────── */

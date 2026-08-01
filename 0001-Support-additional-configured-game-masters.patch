@@ -1,0 +1,77 @@
+From fb816de4eefcfc8470cdec3f4f1918d8a44a6fca Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 14:33:39 +0300
+Subject: [PATCH] Support additional configured game masters
+
+---
+ artifacts/api-server/src/routes/auth.ts | 34 +++++++++++++++++--------
+ 1 file changed, 24 insertions(+), 10 deletions(-)
+
+diff --git a/artifacts/api-server/src/routes/auth.ts b/artifacts/api-server/src/routes/auth.ts
+index d8265f1..65090c6 100644
+--- a/artifacts/api-server/src/routes/auth.ts
++++ b/artifacts/api-server/src/routes/auth.ts
+@@ -40,20 +40,33 @@ function calcStats(species: typeof monsterSpeciesTable.$inferSelect, level: numb
+ }
+ 
+ function isConfiguredGmUsername(username: string): boolean {
+-  const configuredUsername = process.env.GM_USERNAME;
+-  return Boolean(
+-    configuredUsername &&
+-    username.trim().toLocaleUpperCase() === configuredUsername.trim().toLocaleUpperCase(),
++  return Boolean(resolveConfiguredGm(username));
++}
++
++type ConfiguredGm = { username: string; password: string };
++
++function configuredGameMasters(): ConfiguredGm[] {
++  const suffixes = ["", "_2", "_3", "_4", "_5"];
++  return suffixes.flatMap((suffix) => {
++    const username = process.env[`GM_USERNAME${suffix}`]?.trim();
++    const password = process.env[`GM_PASSWORD${suffix}`];
++    return username && password ? [{ username, password }] : [];
++  });
++}
++
++function resolveConfiguredGm(username: string): ConfiguredGm | undefined {
++  const normalized = username.trim().toLocaleUpperCase();
++  return configuredGameMasters().find(
++    (gm) => gm.username.toLocaleUpperCase() === normalized,
+   );
+ }
+ 
+ function matchesConfiguredGm(username: string, password: string): boolean {
+-  const configuredUsername = process.env.GM_USERNAME;
+-  const configuredPassword = process.env.GM_PASSWORD;
+-  if (!configuredUsername || !configuredPassword || !isConfiguredGmUsername(username)) return false;
++  const configuredGm = resolveConfiguredGm(username);
++  if (!configuredGm) return false;
+ 
+   const supplied = Buffer.from(password);
+-  const expected = Buffer.from(configuredPassword);
++  const expected = Buffer.from(configuredGm.password);
+   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+ }
+ 
+@@ -342,7 +355,8 @@ router.post("/auth/login", async (req, res): Promise<void> => {
+     .where(eq(playersTable.username, username));
+ 
+   if (!player) {
+-    if (!matchesConfiguredGm(username, password)) {
++    const configuredGm = resolveConfiguredGm(username);
++    if (!configuredGm || !matchesConfiguredGm(username, password)) {
+       res.status(401).json({ error: "Invalid credentials" });
+       return;
+     }
+@@ -351,7 +365,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
+     [player] = await db
+       .insert(playersTable)
+       .values({
+-        username: process.env.GM_USERNAME!.trim(),
++        username: configuredGm.username,
+         passwordHash,
+         isGuest: false,
+         avatarColor: "#ffd700",
+-- 
+2.51.1
+

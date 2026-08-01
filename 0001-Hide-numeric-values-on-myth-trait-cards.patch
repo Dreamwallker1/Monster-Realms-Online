@@ -1,0 +1,45 @@
+From d3d4bc0bec90dfbf55bf4994bf384646f3cd98e4 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 17:38:07 -0400
+Subject: [PATCH] Hide numeric values on myth trait cards
+
+---
+ .../monster-realms/src/pages/team-builder.tsx     | 15 +++------------
+ 1 file changed, 3 insertions(+), 12 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/pages/team-builder.tsx b/artifacts/monster-realms/src/pages/team-builder.tsx
+index 6772308..2feae5b 100644
+--- a/artifacts/monster-realms/src/pages/team-builder.tsx
++++ b/artifacts/monster-realms/src/pages/team-builder.tsx
+@@ -98,12 +98,6 @@ function StatRow({
+           transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+         />
+       </div>
+-      <span
+-        className="text-[11px] font-black w-6 text-right shrink-0"
+-        style={{ color }}
+-      >
+-        {value}
+-      </span>
+     </div>
+   );
+ }
+@@ -612,12 +606,9 @@ function CardDetailModal({
+ 
+                 <div className="grid grid-cols-2 gap-2">
+                   {TRAIT_CONFIG.map(({ key, fullLabel, color, icon: Icon }) => (
+-                    <div key={key} className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 flex items-center gap-2">
+-                      <Icon size={17} style={{ color }} />
+-                      <div>
+-                        <div className="text-[8px] font-bold tracking-widest text-white/40">{fullLabel}</div>
+-                        <div className="text-lg leading-none font-black" style={{ color }}>{traits[key]}</div>
+-                      </div>
++                    <div key={key} className="rounded-xl border border-white/10 bg-black/25 px-3 py-3 flex flex-col items-center justify-center gap-2 text-center">
++                      <div className="text-[8px] font-bold tracking-widest text-white/40">{fullLabel}</div>
++                      <Icon size={24} style={{ color }} />
+                     </div>
+                   ))}
+                 </div>
+-- 
+2.51.1
+

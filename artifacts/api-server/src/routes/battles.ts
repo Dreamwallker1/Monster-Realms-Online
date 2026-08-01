@@ -225,15 +225,24 @@ router.post("/battles", requireAuth, lockBattleStart, async (req, res): Promise<
   }
 
   const [activeBattle] = await db
-    .select({ id: battlesTable.id })
+    .select({ id: battlesTable.id, updatedAt: battlesTable.updatedAt })
     .from(battlesTable)
     .where(and(
       eq(battlesTable.playerId, body.data.playerId),
       eq(battlesTable.status, "active"),
     ));
   if (activeBattle) {
-    res.status(409).json({ error: "Finish the active battle before starting another" });
-    return;
+    const staleMs = Date.now() - new Date(activeBattle.updatedAt ?? 0).getTime();
+    if (staleMs < 5 * 60 * 1000) {
+      // Genuinely active battle — do not allow a second one
+      res.status(409).json({ error: "Finish the active battle before starting another" });
+      return;
+    }
+    // Orphaned/stale battle (idle >5 min) — abandon it so the player can start fresh
+    await db
+      .update(battlesTable)
+      .set({ status: "abandoned" })
+      .where(eq(battlesTable.id, activeBattle.id));
   }
 
   const [playerCaptured] = await db

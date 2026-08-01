@@ -205,6 +205,7 @@ function ShinyRing() {
 export default function EncounterPopup() {
   const { encounter, clearEncounter, startBattle, player, currentRegionId } = useGameStore();
   const [isStarting, setIsStarting] = useState(false);
+  const [battleError, setBattleError] = useState<string | null>(null);
 
   const { data: team } = useGetPlayerTeam(player?.id || '', {
     query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
@@ -230,6 +231,7 @@ export default function EncounterPopup() {
   const handleBattle = async () => {
     if (!player || !hasTeam) return;
     setIsStarting(true);
+    setBattleError(null);
     try {
       const battle = await startBattleMutation.mutateAsync({
         data: {
@@ -254,8 +256,11 @@ export default function EncounterPopup() {
       await cameraReady;
       window.dispatchEvent(new Event(BATTLE_OPEN_EVENT));
       startBattle(battle.id, battle);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to start battle:', err);
+      const msg: string =
+        err?.data?.error ?? err?.message ?? 'Could not start battle. Try again.';
+      setBattleError(msg);
     } finally {
       setIsStarting(false);
     }
@@ -459,6 +464,17 @@ export default function EncounterPopup() {
               }}
             />
           </div>
+
+          {/* ── Battle error ───────────────────────────────────────────── */}
+          {battleError && (
+            <div
+              className="enc-buttons-rise mx-5 mb-3 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+            >
+              <AlertTriangle size={15} className="shrink-0" />
+              <span>{battleError}</span>
+            </div>
+          )}
 
           {/* ── No-team warning ────────────────────────────────────────── */}
           {!hasTeam && (

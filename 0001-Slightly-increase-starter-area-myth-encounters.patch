@@ -1,0 +1,84 @@
+From 5e6a1e9849aa177ebdc1c11e6178831e760e68f0 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 09:17:09 +0300
+Subject: [PATCH] Slightly increase starter-area myth encounters
+
+---
+ .../src/__tests__/battle-stats.test.ts        | 21 ++++++++++++++++++-
+ artifacts/api-server/src/lib/gameEngine.ts    |  4 ++--
+ artifacts/api-server/src/lib/regionData.ts    |  2 +-
+ 3 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/artifacts/api-server/src/__tests__/battle-stats.test.ts b/artifacts/api-server/src/__tests__/battle-stats.test.ts
+index cead3bf..fa3f27b 100644
+--- a/artifacts/api-server/src/__tests__/battle-stats.test.ts
++++ b/artifacts/api-server/src/__tests__/battle-stats.test.ts
+@@ -28,7 +28,7 @@ import {
+   type OrbRow,
+   type CapturedMonsterInsert,
+ } from "../lib/battleService.js";
+-import { calculateCaptureChance, getElementMultiplier } from "../lib/gameEngine.js";
++import { calculateCaptureChance, getElementMultiplier, rollEncounter } from "../lib/gameEngine.js";
+ import { MONSTER_SEED_DATA } from "../lib/monsterData.js";
+ import { REGION_SEED_DATA } from "../lib/regionData.js";
+ 
+@@ -67,6 +67,25 @@ describe("Flarelynx catalogue integration", () => {
+   });
+ });
+ 
++describe("exploration encounter pacing", () => {
++  it("allows the two active myths to roam the starter meadow", () => {
++    const meadow = REGION_SEED_DATA.find((item) => item.id === "verdant-meadows");
++    assert.deepEqual(meadow?.monsterSpeciesIds, ["ashquill", "flarelynx"]);
++  });
++
++  it("keeps grass encounters at a moderate 34 percent threshold", () => {
++    const originalRandom = Math.random;
++    try {
++      Math.random = () => 0.339;
++      assert.equal(rollEncounter(0), true);
++      Math.random = () => 0.341;
++      assert.equal(rollEncounter(0), false);
++    } finally {
++      Math.random = originalRandom;
++    }
++  });
++});
++
+ describe("catalogue v3 element matchups", () => {
+   it("applies the renamed Earth and Storm cycle", () => {
+     assert.equal(getElementMultiplier("Fire", "Earth"), 2);
+diff --git a/artifacts/api-server/src/lib/gameEngine.ts b/artifacts/api-server/src/lib/gameEngine.ts
+index 2b7c2a4..c05edb9 100644
+--- a/artifacts/api-server/src/lib/gameEngine.ts
++++ b/artifacts/api-server/src/lib/gameEngine.ts
+@@ -42,11 +42,11 @@ export function rollCritical(): boolean {
+ export function rollEncounter(tileType: number): boolean {
+   // Tile types match terrain.ts: 0=Grass, 1=Path, 2=Tree, 3=Pond, 4=Flower, 5=Building
+   const rates: Record<number, number> = {
+-    0: 0.30,  // Grass — main monster zone (1 in 3 steps)
++    0: 0.34,  // Grass — slightly livelier exploration, still not every step
+     1: 0.12,  // Path — occasional encounters
+     2: 0,     // Tree — impassable
+     3: 0,     // Pond — impassable
+-    4: 0.40,  // Flower — flower beds attract rare monsters (2 in 5 steps)
++    4: 0.44,  // Flower — a modest bonus over ordinary grass
+     5: 0,     // Building — impassable
+   };
+   return Math.random() < (rates[tileType] ?? 0.20);
+diff --git a/artifacts/api-server/src/lib/regionData.ts b/artifacts/api-server/src/lib/regionData.ts
+index 3461c38..e81ae76 100644
+--- a/artifacts/api-server/src/lib/regionData.ts
++++ b/artifacts/api-server/src/lib/regionData.ts
+@@ -3,7 +3,7 @@ import type { InsertRegion } from "@workspace/db";
+ const FIRE_MYTHS = ["ashquill", "flarelynx"];
+ 
+ export const REGION_SEED_DATA: InsertRegion[] = [
+-  { id: "verdant-meadows", name: "Verdant Meadows", biome: "Meadow", description: "A lush park surrounded by ancient trees.", requiredExplorerLevel: 1, width: 50, height: 50, monsterSpeciesIds: [] },
++  { id: "verdant-meadows", name: "Verdant Meadows", biome: "Meadow", description: "A lush park surrounded by ancient trees. Young wandering myths sometimes cross its warm clearings.", requiredExplorerLevel: 1, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
+   { id: "volcanic-rift", name: "Volcanic Rift", biome: "Volcano", description: "Scorched rock, lava vents, and eternal heat. Fire myths thrive here.", requiredExplorerLevel: 5, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
+   { id: "scorched-wastes", name: "Scorched Wastes", biome: "Wasteland", description: "Ancient lava fields cooled to obsidian flatlands.", requiredExplorerLevel: 10, width: 50, height: 50, monsterSpeciesIds: FIRE_MYTHS },
+   { id: "ocean-ruins", name: "Ocean Ruins", biome: "Coastal", description: "A sunken ancient city at the ocean's edge.", requiredExplorerLevel: 5, width: 50, height: 50, monsterSpeciesIds: [] },
+-- 
+2.51.1
+

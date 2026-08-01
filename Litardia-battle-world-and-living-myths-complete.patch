@@ -1,0 +1,1322 @@
+From e1d6eb6f5009018bc895c1b0b6493e468fc735b0 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 19:00:34 -0400
+Subject: [PATCH 1/2] Recompose battle arena and preserve encounter region
+
+---
+ .../src/components/game/BattleOverlay.tsx     | 20 ++++++------
+ .../src/components/game/EncounterPopup.tsx    |  6 ++--
+ artifacts/monster-realms/src/index.css        | 32 +++++++++++++++----
+ artifacts/monster-realms/src/pages/game.tsx   |  8 ++++-
+ 4 files changed, 45 insertions(+), 21 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index c66ec2f..ad95507 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -809,8 +809,8 @@ function ActionPanel({
+         }}
+         className="flex flex-col gap-2"
+       >
+-      {/* Skill buttons — 2×2 grid */}
+-      <div className="grid grid-cols-2 gap-2">
++      {/* Skill buttons — use the full width without leaving an orphaned half-row */}
++      <div className="battle-skill-grid">
+         {available.length > 0 ? available.map(({ action, type, skill }) => {
+           const style = SKILL_STYLE[type] ?? SKILL_STYLE['normal']!;
+           const elColors = getElementColors(skill.element);
+@@ -1470,14 +1470,14 @@ export default function BattleOverlay() {
+         <div
+           className="absolute left-0 right-0 bottom-0"
+           style={{
+-            height: '46%',
++            height: '58%',
+             background: theme.groundGrad,
+             borderTop: `2px solid ${theme.groundLine}`,
+           }}
+         />
+ 
+         {/* Horizon decorations */}
+-        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '46%' }}>
++        <div className="absolute left-0 right-0 battle-horizon-layer" style={{ bottom: '58%' }}>
+           {theme.hasTrees && <ForestSilhouette color={theme.treeColor} />}
+           {theme.hasRocks && !theme.hasTrees && <RockSilhouette color={theme.rockColor} />}
+         </div>
+@@ -1600,16 +1600,16 @@ export default function BattleOverlay() {
+ 
+         {/* Character — CENTER BACK (smaller, feet on ground) */}
+         <div
+-          className="absolute battle-entrance battle-idle-bob"
++          className="absolute battle-entrance battle-idle-bob battle-trainer"
+           style={{
+-            bottom: '34%',
+-            left: '68%',
++            bottom: '47%',
++            left: '82%',
+             transform: 'translateX(-50%)',
+             animationDelay: '0.2s',
+             zIndex: 1,
+           }}
+         >
+-          <CharacterFront char={char} size={92} />
++          <CharacterFront char={char} size={72} />
+           <div style={{
+             width: 48, height: 8, borderRadius: '50%', marginTop: 2, marginLeft: 'auto', marginRight: 'auto',
+             background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 80%)',
+@@ -1650,7 +1650,7 @@ export default function BattleOverlay() {
+               speciesId={wildMonster.species.id}
+               element={wildMonster.species.element}
+               rarity={wildMonster.species.rarity}
+-              size={250}
++              size={276}
+               shakeKey={wildShake}
+               isFainting={faintCinematic?.side === 'wild'}
+               facing="right"
+@@ -1679,7 +1679,7 @@ export default function BattleOverlay() {
+               speciesId={playerMonster.species.id}
+               element={playerMonster.species.element}
+               rarity={playerMonster.species.rarity}
+-              size={250}
++              size={276}
+               shakeKey={playerShake}
+               isFainting={faintCinematic?.side === 'player'}
+               facing="left"
+diff --git a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+index e761282..5f13383 100644
+--- a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
++++ b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+@@ -203,7 +203,7 @@ function ShinyRing() {
+ // ─── Main component ───────────────────────────────────────────────────────────
+ 
+ export default function EncounterPopup() {
+-  const { encounter, clearEncounter, startBattle, player } = useGameStore();
++  const { encounter, clearEncounter, startBattle, player, currentRegionId } = useGameStore();
+   const [isStarting, setIsStarting] = useState(false);
+ 
+   const { data: team } = useGetPlayerTeam(player?.id || '', {
+@@ -234,7 +234,7 @@ export default function EncounterPopup() {
+       const battle = await startBattleMutation.mutateAsync({
+         data: {
+           playerId: player.id,
+-          regionId: player.regionId || 'verdant-meadows',
++          regionId: currentRegionId || player.regionId || 'verdant-meadows',
+           speciesId: sp.id,
+           wildLevel: encounter.wildLevel,
+           shinyVariant: encounter.shinyVariant as any,
+@@ -247,7 +247,7 @@ export default function EncounterPopup() {
+         detail: {
+           x: player.posX,
+           y: player.posY,
+-          regionId: player.regionId,
++          regionId: currentRegionId || player.regionId,
+           element: sp.element,
+         },
+       }));
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 27aab9c..2eb6bfa 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -443,13 +443,13 @@
+   .battle-idle-bob { animation: battle-idle-bob 2s ease-in-out infinite; }
+ 
+   .battle-combatant-wild {
+-    left: clamp(4%, 9vw, 11%);
+-    bottom: 5%;
++    left: clamp(3%, 7vw, 9%);
++    bottom: 2%;
+   }
+ 
+   .battle-combatant-player {
+-    right: clamp(4%, 9vw, 11%);
+-    bottom: 5%;
++    right: clamp(3%, 7vw, 9%);
++    bottom: 2%;
+   }
+ 
+   .battle-hit-wild {
+@@ -465,7 +465,7 @@
+   .battle-ground-perspective {
+     position: absolute;
+     inset: auto 0 0;
+-    height: 46%;
++    height: 58%;
+     z-index: 0;
+     pointer-events: none;
+     background:
+@@ -479,7 +479,7 @@
+     position: absolute;
+     width: clamp(260px, 29vw, 480px);
+     height: clamp(50px, 7vw, 94px);
+-    bottom: 1%;
++    bottom: 0;
+     border-radius: 50%;
+     z-index: 1;
+     opacity: 0.72;
+@@ -491,6 +491,24 @@
+   .battle-stage-pool-wild { left: clamp(0%, 4vw, 6%); }
+   .battle-stage-pool-player { right: clamp(0%, 4vw, 6%); }
+ 
++  .battle-skill-grid {
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    gap: 0.5rem;
++  }
++
++  @media (min-width: 900px) {
++    .battle-skill-grid {
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++    }
++  }
++
++  @media (max-width: 700px) {
++    .battle-trainer { left: 76% !important; bottom: 48% !important; transform: translateX(-50%) scale(.76) !important; }
++    .battle-combatant-wild { left: 1%; }
++    .battle-combatant-player { right: 1%; }
++  }
++
+   .battle-arena-vignette {
+     position: absolute;
+     inset: 0;
+@@ -507,7 +525,7 @@
+     mix-blend-mode: screen; opacity: 0.72;
+   }
+   .battle-horizon-haze {
+-    position: absolute; left: 0; right: 0; bottom: 40%; height: 23%; pointer-events: none;
++    position: absolute; left: 0; right: 0; bottom: 52%; height: 23%; pointer-events: none;
+     background: linear-gradient(to top, color-mix(in srgb, var(--arena-ambient) 24%, transparent), transparent 80%);
+     filter: blur(16px); opacity: 0.78;
+   }
+diff --git a/artifacts/monster-realms/src/pages/game.tsx b/artifacts/monster-realms/src/pages/game.tsx
+index ff6f7ee..d6d5b59 100644
+--- a/artifacts/monster-realms/src/pages/game.tsx
++++ b/artifacts/monster-realms/src/pages/game.tsx
+@@ -104,7 +104,13 @@ export default function Game() {
+     try {
+       const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
+ 
+-      setPlayer({ ...player, posX: result.newPosX, posY: result.newPosY, energy: result.remainingEnergy });
++      setPlayer({
++        ...player,
++        posX: result.newPosX,
++        posY: result.newPosY,
++        energy: result.remainingEnergy,
++        regionId: input.regionId || player.regionId,
++      });
+ 
+       // Update current region whenever the player crosses a zone boundary
+       if (input.regionId && input.regionId !== currentRegionId) {
+-- 
+2.51.1
+
+
+From a81a6cca6e294288e523821fedce70481025d31a Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 31 Jul 2026 19:25:57 -0400
+Subject: [PATCH 2/2] Stabilize world movement minimap and living myth rigs
+
+---
+ .../src/__tests__/LivingMythArt.test.tsx      |  19 ++++
+ .../src/__tests__/movement.test.ts            |  20 ++++
+ .../src/components/game/BattleOverlay.tsx     |  16 +--
+ .../src/components/game/DPad.tsx              | 102 +++++++++---------
+ .../src/components/game/EncounterPopup.tsx    |   2 +-
+ .../src/components/game/GameHUD.tsx           |   2 +-
+ .../src/components/game/LivingMythArt.tsx     |  34 ++++++
+ .../src/components/game/MinimapOverlay.tsx    |  73 +++++++++++--
+ .../src/components/phaser/PhaserGame.tsx      |   8 +-
+ .../src/components/phaser/WorldScene.ts       |  90 +++++++++++-----
+ artifacts/monster-realms/src/index.css        |  65 +++++++++++
+ .../monster-realms/src/lib/dpad-events.ts     |  10 ++
+ artifacts/monster-realms/src/lib/movement.ts  |  23 ++++
+ .../monster-realms/src/lib/myth-svgs.tsx      |   2 +-
+ .../monster-realms/src/pages/collection.tsx   |   5 +-
+ .../monster-realms/src/pages/encyclopedia.tsx |   2 -
+ artifacts/monster-realms/src/pages/game.tsx   |  13 ++-
+ .../monster-realms/src/pages/leaderboard.tsx  |   4 +-
+ .../monster-realms/src/pages/myths-tree.tsx   |   4 +-
+ .../monster-realms/src/pages/profile.tsx      |   4 +-
+ .../monster-realms/src/pages/team-builder.tsx |   2 +-
+ artifacts/monster-realms/vitest.config.ts     |   1 +
+ .../src/generated/api.schemas.ts              |  27 +++--
+ lib/api-spec/openapi.yaml                     |  30 +++++-
+ 24 files changed, 428 insertions(+), 130 deletions(-)
+ create mode 100644 artifacts/monster-realms/src/__tests__/LivingMythArt.test.tsx
+ create mode 100644 artifacts/monster-realms/src/__tests__/movement.test.ts
+ create mode 100644 artifacts/monster-realms/src/components/game/LivingMythArt.tsx
+ create mode 100644 artifacts/monster-realms/src/lib/movement.ts
+
+diff --git a/artifacts/monster-realms/src/__tests__/LivingMythArt.test.tsx b/artifacts/monster-realms/src/__tests__/LivingMythArt.test.tsx
+new file mode 100644
+index 0000000..a0aa12b
+--- /dev/null
++++ b/artifacts/monster-realms/src/__tests__/LivingMythArt.test.tsx
+@@ -0,0 +1,19 @@
++import { render, screen } from '@testing-library/react';
++import { describe, expect, it } from 'vitest';
++import LivingMythArt from '@/components/game/LivingMythArt';
++
++describe('LivingMythArt rigs', () => {
++  it('gives Ashquill independent wing, head and eyelid layers', () => {
++    const { container } = render(<LivingMythArt speciesId="ashquill" src="/ash.webp" size={300} facing="right" reactionKey={0} />);
++    expect(screen.getByTestId('living-myth-ashquill')).toBeInTheDocument();
++    expect(container.querySelectorAll('.living-myth-part')).toHaveLength(3);
++    expect(container.querySelectorAll('.living-myth-eyelid')).toHaveLength(1);
++  });
++
++  it('gives Flarelynx tail, chest, head and two eyelids', () => {
++    const { container } = render(<LivingMythArt speciesId="flarelynx" src="/flare.webp" size={300} facing="left" reactionKey={2} />);
++    expect(screen.getByTestId('living-myth-flarelynx')).toHaveClass('living-myth-react');
++    expect(container.querySelectorAll('.living-myth-part')).toHaveLength(3);
++    expect(container.querySelectorAll('.living-myth-eyelid')).toHaveLength(2);
++  });
++});
+diff --git a/artifacts/monster-realms/src/__tests__/movement.test.ts b/artifacts/monster-realms/src/__tests__/movement.test.ts
+new file mode 100644
+index 0000000..c553504
+--- /dev/null
++++ b/artifacts/monster-realms/src/__tests__/movement.test.ts
+@@ -0,0 +1,20 @@
++import { describe, expect, it } from 'vitest';
++import { getMoveIntent, getMoveProgress, MOVE_RECOVERY_MS } from '@/lib/movement';
++
++describe('turn-paced world movement', () => {
++  it('maps only server-supported cardinal steps', () => {
++    expect(getMoveIntent(0, -1)?.direction).toBe('up');
++    expect(getMoveIntent(0, 1)?.direction).toBe('down');
++    expect(getMoveIntent(-1, 0)?.direction).toBe('left');
++    expect(getMoveIntent(1, 0)?.direction).toBe('right');
++    expect(getMoveIntent(1, 1)).toBeNull();
++    expect(getMoveIntent(0, 0)).toBeNull();
++  });
++
++  it('reports deterministic recovery progress', () => {
++    const now = 10_000;
++    expect(getMoveProgress(now + MOVE_RECOVERY_MS, now)).toBe(0);
++    expect(getMoveProgress(now + MOVE_RECOVERY_MS / 2, now)).toBeCloseTo(0.5);
++    expect(getMoveProgress(now, now)).toBe(1);
++  });
++});
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index ad95507..2b4c362 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -16,6 +16,7 @@ import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components
+ import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
+ import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
+ import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
++import LivingMythArt from './LivingMythArt';
+ 
+ // ─── Skill types ─────────────────────────────────────────────────────────────
+ 
+@@ -581,15 +582,13 @@ function MythSprite({
+           {hasBattleArt ? (
+             <div
+               className="relative w-full h-full"
+-              style={{ transform: facing === 'left' ? 'scaleX(-1)' : undefined }}
+             >
+-              <img
++              <LivingMythArt
++                speciesId={speciesId}
+                 src={battleArtSrc}
+-                alt={`${speciesId} ready for battle`}
+-                width={renderedSize}
+-                height={renderedSize}
+-                className="flarelynx-battle-sprite w-full h-full object-contain"
+-                draggable={false}
++                size={renderedSize}
++                facing={facing}
++                reactionKey={animKey}
+               />
+               {[0, 1, 2].map((ember) => (
+                 <span
+@@ -1020,7 +1019,7 @@ export default function BattleOverlay() {
+   });
+ 
+   const { data: teamCollection } = useGetPlayerCollection(player?.id ?? '', undefined, {
+-    query: { enabled: !!player?.id && battle.active },
++    query: { enabled: !!player?.id && battle.active, queryKey: ['battle-team-collection', player?.id] },
+   });
+ 
+   const { data: inventory } = useGetPlayerInventory(player?.id ?? '', {
+@@ -1122,6 +1121,7 @@ export default function BattleOverlay() {
+       const t = setTimeout(() => setShowBattleIntro(false), 2800);
+       return () => clearTimeout(t);
+     }
++    return undefined;
+   }, [battle.battleId]);
+ 
+   // Trigger player entrance on myth switch
+diff --git a/artifacts/monster-realms/src/components/game/DPad.tsx b/artifacts/monster-realms/src/components/game/DPad.tsx
+index b72b9e5..1bc2c97 100644
+--- a/artifacts/monster-realms/src/components/game/DPad.tsx
++++ b/artifacts/monster-realms/src/components/game/DPad.tsx
+@@ -1,58 +1,64 @@
+-import { dispatchMove } from '@/lib/dpad-events';
++import { useEffect, useState } from 'react';
++import { dispatchMove, MRO_MOVE_STATE_EVENT, type MoveStateDetail } from '@/lib/dpad-events';
++import { getMoveProgress, MOVE_RECOVERY_MS } from '@/lib/movement';
+ 
+ const DIRS = [
+-  { label: '↖', dx: -1, dy: -1, col: 1, row: 1 },
+-  { label: '↑',  dx:  0, dy: -1, col: 2, row: 1 },
+-  { label: '↗', dx:  1, dy: -1, col: 3, row: 1 },
+-  { label: '←',  dx: -1, dy:  0, col: 1, row: 2 },
+-  { label: '→',  dx:  1, dy:  0, col: 3, row: 2 },
+-  { label: '↙', dx: -1, dy:  1, col: 1, row: 3 },
+-  { label: '↓',  dx:  0, dy:  1, col: 2, row: 3 },
+-  { label: '↘', dx:  1, dy:  1, col: 3, row: 3 },
++  { label: '↑', key: 'W', dx: 0, dy: -1, col: 2, row: 1 },
++  { label: '←', key: 'A', dx: -1, dy: 0, col: 1, row: 2 },
++  { label: '→', key: 'D', dx: 1, dy: 0, col: 3, row: 2 },
++  { label: '↓', key: 'S', dx: 0, dy: 1, col: 2, row: 3 },
+ ] as const;
+ 
+ export default function DPad() {
++  const [movement, setMovement] = useState<MoveStateDetail>({ locked: false, readyAt: 0 });
++  const [now, setNow] = useState(Date.now());
++
++  useEffect(() => {
++    const onState = (event: Event) => setMovement((event as CustomEvent<MoveStateDetail>).detail);
++    window.addEventListener(MRO_MOVE_STATE_EVENT, onState);
++    return () => window.removeEventListener(MRO_MOVE_STATE_EVENT, onState);
++  }, []);
++
++  useEffect(() => {
++    if (!movement.locked) return;
++    const timer = window.setInterval(() => setNow(Date.now()), 50);
++    return () => window.clearInterval(timer);
++  }, [movement.locked]);
++
++  const progress = movement.locked ? getMoveProgress(movement.readyAt, now) : 1;
++  const remaining = movement.locked ? Math.max(0, movement.readyAt - now) : 0;
++
+   return (
+-    <div
+-      className="fixed left-5 z-30 select-none"
+-      style={{ bottom: 100, width: 138, height: 138 }}
+-    >
+-      <div
+-        style={{
+-          display: 'grid',
+-          gridTemplateColumns: 'repeat(3, 1fr)',
+-          gridTemplateRows: 'repeat(3, 1fr)',
+-          gap: 5,
+-          width: '100%',
+-          height: '100%',
+-        }}
+-      >
+-        {DIRS.map(({ label, dx, dy, col, row }) => {
+-          const diagonal = dx !== 0 && dy !== 0;
+-          return (
+-            <button
+-              key={label}
+-              onClick={() => dispatchMove(dx, dy)}
+-              style={{ gridColumn: col, gridRow: row }}
+-              className={[
+-                'flex items-center justify-center rounded-xl text-xl font-bold leading-none',
+-                'transition-all duration-75 active:scale-90',
+-                diagonal
+-                  ? 'bg-white/8 border border-white/12 text-white/50 hover:bg-white/15 hover:text-white/80'
+-                  : 'bg-white/18 border border-white/25 text-white shadow-md hover:bg-primary/40 hover:border-primary/60',
+-              ].join(' ')}
+-            >
+-              {label}
+-            </button>
+-          );
+-        })}
++    <div className="fixed left-5 z-30 select-none" style={{ bottom: 112, width: 126 }}>
++      <div className="mb-2 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 backdrop-blur-md">
++        <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest">
++          <span className={movement.locked ? 'text-amber-300' : 'text-emerald-300'}>
++            {movement.locked ? 'Recovering' : 'Ready'}
++          </span>
++          <span className="text-white/45">{movement.locked ? `${(remaining / 1000).toFixed(1)}s` : `${(MOVE_RECOVERY_MS / 1000).toFixed(1)}s/step`}</span>
++        </div>
++        <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
++          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-[width] duration-75" style={{ width: `${progress * 100}%` }} />
++        </div>
++      </div>
+ 
+-        {/* Centre cosmetic dot */}
+-        <div
+-          style={{ gridColumn: 2, gridRow: 2 }}
+-          className="flex items-center justify-center pointer-events-none"
+-        >
+-          <div className="w-3 h-3 rounded-full bg-white/20 border border-white/30" />
++      <div className="grid aspect-square grid-cols-3 grid-rows-3 gap-1.5">
++        {DIRS.map(({ label, key, dx, dy, col, row }) => (
++          <button
++            key={label}
++            type="button"
++            disabled={movement.locked}
++            onClick={() => dispatchMove(dx, dy)}
++            style={{ gridColumn: col, gridRow: row }}
++            className="relative flex items-center justify-center rounded-xl border border-white/20 bg-slate-950/80 text-xl font-bold text-white shadow-lg backdrop-blur-md transition-all active:scale-90 disabled:cursor-wait disabled:opacity-35"
++            aria-label={`Move ${key}`}
++          >
++            {label}
++            <span className="absolute bottom-1 right-1.5 text-[7px] font-mono text-white/30">{key}</span>
++          </button>
++        ))}
++        <div style={{ gridColumn: 2, gridRow: 2 }} className="flex items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/10">
++          <div className="h-2.5 w-2.5 rounded-full bg-cyan-300/70 shadow-[0_0_10px_rgba(103,232,249,.8)]" />
+         </div>
+       </div>
+     </div>
+diff --git a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+index 5f13383..999552b 100644
+--- a/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
++++ b/artifacts/monster-realms/src/components/game/EncounterPopup.tsx
+@@ -207,7 +207,7 @@ export default function EncounterPopup() {
+   const [isStarting, setIsStarting] = useState(false);
+ 
+   const { data: team } = useGetPlayerTeam(player?.id || '', {
+-    query: { enabled: !!player?.id },
++    query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
+   });
+ 
+   const startBattleMutation = useStartBattle();
+diff --git a/artifacts/monster-realms/src/components/game/GameHUD.tsx b/artifacts/monster-realms/src/components/game/GameHUD.tsx
+index f3c788b..feb0ad2 100644
+--- a/artifacts/monster-realms/src/components/game/GameHUD.tsx
++++ b/artifacts/monster-realms/src/components/game/GameHUD.tsx
+@@ -11,7 +11,7 @@ export default function GameHUD() {
+   const [mythsOpen, setMythsOpen] = useState(false);
+ 
+   const { data: team } = useGetPlayerTeam(player?.id || '', {
+-    query: { enabled: !!player?.id },
++    query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
+   });
+ 
+   if (!player) return null;
+diff --git a/artifacts/monster-realms/src/components/game/LivingMythArt.tsx b/artifacts/monster-realms/src/components/game/LivingMythArt.tsx
+new file mode 100644
+index 0000000..8321d23
+--- /dev/null
++++ b/artifacts/monster-realms/src/components/game/LivingMythArt.tsx
+@@ -0,0 +1,34 @@
++interface LivingMythArtProps {
++  speciesId: string;
++  src: string;
++  size: number;
++  facing: 'left' | 'right';
++  reactionKey: number;
++}
++
++const PARTS: Record<string, string[]> = {
++  ashquill: ['wing-left', 'wing-right', 'head'],
++  flarelynx: ['tail', 'chest', 'head'],
++};
++
++export default function LivingMythArt({ speciesId, src, size, facing, reactionKey }: LivingMythArtProps) {
++  const parts = PARTS[speciesId] ?? [];
++  const eyes = speciesId === 'flarelynx' ? ['eye-left', 'eye-right'] : ['eye-main'];
++
++  return (
++    <div
++      key={`${speciesId}-${reactionKey}`}
++      className={`living-myth living-myth-${speciesId} ${reactionKey > 0 ? 'living-myth-react' : ''}`}
++      style={{ width: size, height: size, transform: facing === 'left' ? 'scaleX(-1)' : undefined }}
++      data-testid={`living-myth-${speciesId}`}
++    >
++      <img className="living-myth-base" src={src} alt={`${speciesId} ready for battle`} draggable={false} />
++      {parts.map((part) => (
++        <img key={part} className={`living-myth-part living-myth-part-${part}`} src={src} alt="" aria-hidden="true" draggable={false} />
++      ))}
++      <div className="living-myth-eyes" aria-hidden="true">
++        {eyes.map((eye) => <span key={eye} className={`living-myth-eyelid living-myth-${eye}`} />)}
++      </div>
++    </div>
++  );
++}
+diff --git a/artifacts/monster-realms/src/components/game/MinimapOverlay.tsx b/artifacts/monster-realms/src/components/game/MinimapOverlay.tsx
+index ba670b2..fc76142 100644
+--- a/artifacts/monster-realms/src/components/game/MinimapOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/MinimapOverlay.tsx
+@@ -1,15 +1,18 @@
+-import { useEffect, useRef, useState } from 'react';
++import { useEffect, useMemo, useRef, useState } from 'react';
+ import { useGameStore } from '@/store/game-store';
+ import {
+   getRegionIdForPosition,
+   REGION_PALETTE,
+   WORLD_W,
+   WORLD_H,
++  generateTerrain,
++  TileType,
+ } from '@/lib/terrain';
+ import { Map } from 'lucide-react';
++import { MRO_MOVE_STATE_EVENT, type MoveStateDetail } from '@/lib/dpad-events';
+ 
+ /** Tile size in canvas pixels — 3 gives a 150×150 minimap for a 50×50 world */
+-const TILE_PX = 3;
++const TILE_PX = 4;
+ /** Match WorldScene's fog-of-war reveal radius */
+ const REVEAL_RADIUS = 6;
+ 
+@@ -51,10 +54,12 @@ function buildRevealedSet(exploredTiles: Set<string>): Set<string> {
+ }
+ 
+ export default function MinimapOverlay() {
+-  const [open, setOpen] = useState(false);
++  const [open, setOpen] = useState(true);
++  const [movement, setMovement] = useState<MoveStateDetail>({ locked: false, readyAt: 0 });
+   const canvasRef = useRef<HTMLCanvasElement>(null);
+ 
+-  const { player, exploredTiles } = useGameStore();
++  const { player, exploredTiles, otherPlayers } = useGameStore();
++  const terrain = useMemo(() => generateTerrain(WORLD_W, WORLD_H), []);
+   const playerX = player?.posX ?? 25;
+   const playerY = player?.posY ?? 4;
+ 
+@@ -79,7 +84,13 @@ export default function MinimapOverlay() {
+         if (revealed.has(`${x},${y}`)) {
+           const regionId = getRegionIdForPosition(x, y);
+           const palette = REGION_PALETTE[regionId] ?? REGION_PALETTE['verdant-meadows']!;
+-          ctx.fillStyle = numToHex(palette.grass[0]);
++          const tile = terrain[y]?.[x] ?? TileType.Grass;
++          ctx.fillStyle = tile === TileType.Path ? '#b7a484'
++            : tile === TileType.Pond ? '#176b87'
++            : tile === TileType.Tree ? numToHex(palette.treeCanopy[0])
++            : tile === TileType.Building ? '#9b6b47'
++            : tile === TileType.Flower ? numToHex(palette.grass[2])
++            : numToHex(palette.grass[0]);
+         } else {
+           ctx.fillStyle = '#08090f';
+         }
+@@ -142,7 +153,19 @@ export default function MinimapOverlay() {
+       });
+     });
+ 
+-    // ── 4. Player marker ──────────────────────────────────────────────────
++    // ── 4. Other explorers ────────────────────────────────────────────────
++    otherPlayers.forEach((other) => {
++      if (!revealed.has(`${other.x},${other.y}`)) return;
++      ctx.beginPath();
++      ctx.arc(other.x * TILE_PX + TILE_PX / 2, other.y * TILE_PX + TILE_PX / 2, 2.5, 0, Math.PI * 2);
++      ctx.fillStyle = other.color || '#f0abfc';
++      ctx.fill();
++      ctx.strokeStyle = 'rgba(255,255,255,.85)';
++      ctx.lineWidth = 0.75;
++      ctx.stroke();
++    });
++
++    // ── 5. Player marker ──────────────────────────────────────────────────
+     const px = playerX * TILE_PX + TILE_PX / 2;
+     const py = playerY * TILE_PX + TILE_PX / 2;
+ 
+@@ -164,7 +187,20 @@ export default function MinimapOverlay() {
+     ctx.strokeStyle = '#00ffff';
+     ctx.lineWidth = 1.5;
+     ctx.stroke();
+-  }, [open, exploredTiles, playerX, playerY]);
++  }, [open, exploredTiles, playerX, playerY, otherPlayers, terrain]);
++
++  useEffect(() => {
++    const onKey = (event: KeyboardEvent) => {
++      if (event.key === 'm' || event.key === 'M') setOpen((value) => !value);
++    };
++    const onMovement = (event: Event) => setMovement((event as CustomEvent<MoveStateDetail>).detail);
++    window.addEventListener('keydown', onKey);
++    window.addEventListener(MRO_MOVE_STATE_EVENT, onMovement);
++    return () => {
++      window.removeEventListener('keydown', onKey);
++      window.removeEventListener(MRO_MOVE_STATE_EVENT, onMovement);
++    };
++  }, []);
+ 
+   const currentRegionId = player
+     ? getRegionIdForPosition(playerX, playerY)
+@@ -213,11 +249,12 @@ export default function MinimapOverlay() {
+               className="text-[9px] font-mono uppercase tracking-widest"
+               style={{ color: accentHex }}
+             >
+-              World Map
+-            </span>
+-            <span className="text-[9px] font-mono text-muted-foreground">
+-              {REGION_ZONES.find((z) => z.id === currentRegionId)?.label ?? ''}
++              Litardia · World Map
+             </span>
++            <div className="text-right">
++              <div className="text-[9px] font-mono text-muted-foreground">{REGION_ZONES.find((z) => z.id === currentRegionId)?.label ?? ''}</div>
++              <div className="text-[8px] font-mono text-white/30">X {playerX} · Y {playerY}</div>
++            </div>
+           </div>
+ 
+           {/* Canvas */}
+@@ -229,6 +266,17 @@ export default function MinimapOverlay() {
+             }}
+           />
+ 
++          <div className="h-1 bg-white/5">
++            <div
++              className="h-full transition-all duration-200"
++              style={{
++                width: movement.locked ? '38%' : '100%',
++                background: movement.locked ? '#f59e0b' : '#34d399',
++                boxShadow: `0 0 8px ${movement.locked ? '#f59e0b' : '#34d399'}`,
++              }}
++            />
++          </div>
++
+           {/* Legend */}
+           <div
+             className="px-3 py-1.5 flex items-center gap-3 border-t flex-wrap"
+@@ -248,6 +296,9 @@ export default function MinimapOverlay() {
+               />
+               <span className="text-[9px] font-mono text-muted-foreground">Unexplored</span>
+             </div>
++            <div className="ml-auto text-[8px] font-mono uppercase" style={{ color: movement.locked ? '#fbbf24' : '#6ee7b7' }}>
++              {movement.locked ? 'Move recovering' : 'Move ready'}
++            </div>
+           </div>
+         </div>
+       )}
+diff --git a/artifacts/monster-realms/src/components/phaser/PhaserGame.tsx b/artifacts/monster-realms/src/components/phaser/PhaserGame.tsx
+index 1fa8e69..7c1608f 100644
+--- a/artifacts/monster-realms/src/components/phaser/PhaserGame.tsx
++++ b/artifacts/monster-realms/src/components/phaser/PhaserGame.tsx
+@@ -7,7 +7,7 @@ interface PhaserGameProps {
+   playerX: number;
+   playerY: number;
+   characterType: string;
+-  onMove: (input: ExploreInput) => void;
++  onMove: (input: ExploreInput) => Promise<boolean>;
+   onRadarUpdate: () => void;
+   exploredTiles: Set<string>;
+   otherPlayers: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>;
+@@ -79,6 +79,12 @@ export default function PhaserGame({
+     sceneRef.current?.updateCharacterType(characterType);
+   }, [characterType]);
+ 
++  // Keep the scene callback current; otherwise Phaser retains the first React
++  // render's player/region state for the entire session.
++  useEffect(() => {
++    sceneRef.current?.updateMoveHandler(onMove);
++  }, [onMove]);
++
+   return (
+     <div ref={containerRef} className="fixed inset-0 z-0" style={{ width: '100%', height: '100%' }} />
+   );
+diff --git a/artifacts/monster-realms/src/components/phaser/WorldScene.ts b/artifacts/monster-realms/src/components/phaser/WorldScene.ts
+index 776830c..8d662cb 100644
+--- a/artifacts/monster-realms/src/components/phaser/WorldScene.ts
++++ b/artifacts/monster-realms/src/components/phaser/WorldScene.ts
+@@ -11,7 +11,8 @@ import {
+   WORLD_W, WORLD_H,
+ } from '@/lib/terrain';
+ import { getCharacter, type CharacterConfig } from '@/lib/characters';
+-import { MRO_MOVE_EVENT } from '@/lib/dpad-events';
++import { MRO_MOVE_EVENT, dispatchMoveState } from '@/lib/dpad-events';
++import { MOVE_ANIMATION_MS, MOVE_RECOVERY_MS, getMoveIntent } from '@/lib/movement';
+ import {
+   BATTLE_FOCUS_EVENT,
+   BATTLE_FOCUS_READY_EVENT,
+@@ -47,8 +48,10 @@ export default class WorldScene extends Phaser.Scene {
+   private exploredTiles: Set<string> = new Set();
+   private otherPlayerContainers: Map<string, Phaser.GameObjects.Container> = new Map();
+   private battleFocusActive = false;
++  private movementLocked = false;
++  private movementUnlockTimer?: Phaser.Time.TimerEvent;
+ 
+-  private onMove?: (input: ExploreInput) => void;
++  private onMove?: (input: ExploreInput) => Promise<boolean>;
+   private onRadarUpdate?: () => void;
+ 
+   constructor() {
+@@ -59,7 +62,7 @@ export default class WorldScene extends Phaser.Scene {
+     playerX: number;
+     playerY: number;
+     characterType: string;
+-    onMove: (input: ExploreInput) => void;
++    onMove: (input: ExploreInput) => Promise<boolean>;
+     onRadarUpdate: () => void;
+     exploredTiles: Set<string>;
+   }>) {
+@@ -131,6 +134,8 @@ export default class WorldScene extends Phaser.Scene {
+       window.removeEventListener(MRO_MOVE_EVENT, onDpadMove);
+       window.removeEventListener(BATTLE_FOCUS_EVENT, onBattleFocus);
+       window.removeEventListener(BATTLE_RELEASE_EVENT, onBattleRelease);
++      this.movementUnlockTimer?.remove(false);
++      dispatchMoveState({ locked: false, readyAt: 0 });
+     });
+ 
+     this.revealNearbyTiles();
+@@ -583,18 +588,24 @@ export default class WorldScene extends Phaser.Scene {
+ 
+   /** Called from keyboard handler and from the React D-pad overlay */
+   public moveInDirection(dx: number, dy: number) {
+-    if (this.battleFocusActive) return;
++    if (this.battleFocusActive || this.movementLocked) return;
++    const intent = getMoveIntent(dx, dy);
++    if (!intent) return;
++
++    const oldX = this.playerX;
++    const oldY = this.playerY;
+     const newX = this.playerX + dx;
+     const newY = this.playerY + dy;
+ 
+     if (newX < 0 || newX >= WORLD_WIDTH || newY < 0 || newY >= WORLD_HEIGHT) return;
+ 
+-    // For diagonals, both target tile AND the two corner tiles must be passable
++    // Only destination passability is needed: the public movement contract is
++    // cardinal-only so client and API can never disagree about a step.
+     if (!isPassable(this.terrain[newY]?.[newX] ?? TileType.Tree)) return;
+-    if (dx !== 0 && dy !== 0) {
+-      if (!isPassable(this.terrain[this.playerY]?.[newX] ?? TileType.Tree)) return;
+-      if (!isPassable(this.terrain[newY]?.[this.playerX] ?? TileType.Tree)) return;
+-    }
++
++    this.movementLocked = true;
++    const readyAt = Date.now() + MOVE_RECOVERY_MS;
++    dispatchMoveState({ locked: true, readyAt });
+ 
+     this.playerX = newX;
+     this.playerY = newY;
+@@ -604,8 +615,8 @@ export default class WorldScene extends Phaser.Scene {
+       targets: this.playerContainer,
+       x: this.playerX * TILE_SIZE + TILE_SIZE / 2,
+       y: this.playerY * TILE_SIZE + TILE_SIZE / 2,
+-      duration: 105,
+-      ease: 'Cubic.easeOut',
++      duration: MOVE_ANIMATION_MS,
++      ease: 'Sine.easeInOut',
+     });
+ 
+     // Squash & stretch: quick scale-down during movement, snap back
+@@ -614,7 +625,7 @@ export default class WorldScene extends Phaser.Scene {
+         targets: this.playerContainer,
+         scaleX: 0.88,
+         scaleY: 1.10,
+-        duration: 50,
++        duration: Math.round(MOVE_ANIMATION_MS * 0.42),
+         ease: 'Sine.easeIn',
+         yoyo: true,
+         onComplete: () => {
+@@ -625,11 +636,41 @@ export default class WorldScene extends Phaser.Scene {
+       });
+     }
+ 
+-    // Map dx/dy → API direction (cardinal only for API; diagonals handled locally)
+-    const apiDir = this.toApiDirection(dx, dy);
+     const regionId = getRegionIdForPosition(this.playerX, this.playerY);
+-    this.onMove?.({ direction: apiDir ?? 'up', regionId, posX: this.playerX, posY: this.playerY });
+-    this.revealNearbyTiles();
++    void this.commitMove({
++      direction: intent.direction,
++      regionId,
++      // The API applies direction to these coordinates. They must therefore
++      // be the origin tile, not the already-updated destination tile.
++      posX: oldX,
++      posY: oldY,
++    }, oldX, oldY, readyAt);
++  }
++
++  private async commitMove(input: ExploreInput, oldX: number, oldY: number, readyAt: number) {
++    const accepted = await this.onMove?.(input);
++    if (accepted === false) {
++      this.playerX = oldX;
++      this.playerY = oldY;
++      this.tweens.add({
++        targets: this.playerContainer,
++        x: oldX * TILE_SIZE + TILE_SIZE / 2,
++        y: oldY * TILE_SIZE + TILE_SIZE / 2,
++        duration: 260,
++        ease: 'Back.easeOut',
++      });
++    } else {
++      this.revealNearbyTiles();
++    }
++
++    // A step is unlocked only when both conditions are true: the server has
++    // answered and the pacing recovery has elapsed. Slow connections can no
++    // longer create overlapping movement requests.
++    const remaining = Math.max(0, readyAt - Date.now());
++    this.movementUnlockTimer = this.time.delayedCall(remaining, () => {
++      this.movementLocked = false;
++      dispatchMoveState({ locked: false, readyAt: 0 });
++    });
+   }
+ 
+   private focusBattleCamera() {
+@@ -661,25 +702,16 @@ export default class WorldScene extends Phaser.Scene {
+     });
+   }
+ 
+-  private toApiDirection(dx: number, dy: number): 'up' | 'down' | 'left' | 'right' | null {
+-    if (dx === 0 && dy === -1) return 'up';
+-    if (dx === 0 && dy === 1)  return 'down';
+-    if (dx === -1 && dy === 0) return 'left';
+-    if (dx === 1 && dy === 0)  return 'right';
+-    return null; // diagonal — local only; we still pass posX/posY to server
+-  }
+-
+   private handleKeyDown(key: string) {
+     // Cardinal
+     if (key === 'ArrowUp'    || key === 'w' || key === 'W' || key === '8') { this.moveInDirection(0, -1);  return; }
+     if (key === 'ArrowDown'  || key === 's' || key === 'S' || key === '2') { this.moveInDirection(0,  1);  return; }
+     if (key === 'ArrowLeft'  || key === 'a' || key === 'A' || key === '4') { this.moveInDirection(-1, 0);  return; }
+     if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === '6') { this.moveInDirection(1,  0);  return; }
+-    // Diagonal
+-    if (key === 'q' || key === 'Q' || key === '7') { this.moveInDirection(-1, -1); return; }
+-    if (key === 'e' || key === 'E' || key === '9') { this.moveInDirection(1,  -1); return; }
+-    if (key === 'z' || key === 'Z' || key === '1') { this.moveInDirection(-1,  1); return; }
+-    if (key === 'c' || key === 'C' || key === '3') { this.moveInDirection(1,   1); return; }
++  }
++
++  public updateMoveHandler(onMove: (input: ExploreInput) => Promise<boolean>) {
++    this.onMove = onMove;
+   }
+ 
+   // ─── Fog of war ───────────────────────────────────────────────────────────
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index 2eb6bfa..8756988 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -436,6 +436,71 @@
+     animation: battle-grounded-idle 2.8s ease-in-out infinite;
+   }
+ 
++  /* Layered 2.5D rig: preserves the source artwork while giving large body
++     masses different spring timings. The cloned layers are clipped to the
++     anatomical zones that need secondary motion. */
++  .living-myth { position: relative; transform-origin: 50% 88%; isolation: isolate; }
++  .living-myth-base,
++  .living-myth-part { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; user-select: none; pointer-events: none; }
++  .living-myth-base { animation: living-breath 3.4s cubic-bezier(.45,0,.55,1) infinite; transform-origin: 50% 82%; }
++  .living-myth-part { z-index: 2; will-change: transform; }
++
++  .living-myth-ashquill .living-myth-part-wing-left {
++    clip-path: polygon(0 7%, 53% 8%, 58% 72%, 0 70%);
++    transform-origin: 48% 58%;
++    animation: ashquill-wing-left 4.2s cubic-bezier(.37,0,.22,1) infinite;
++  }
++  .living-myth-ashquill .living-myth-part-wing-right {
++    clip-path: polygon(69% 24%, 100% 27%, 100% 75%, 61% 69%);
++    transform-origin: 70% 58%;
++    animation: ashquill-wing-right 4.2s cubic-bezier(.37,0,.22,1) infinite;
++  }
++  .living-myth-ashquill .living-myth-part-head {
++    clip-path: polygon(49% 24%, 82% 22%, 85% 61%, 51% 67%);
++    transform-origin: 67% 55%;
++    animation: ashquill-head-focus 5.8s ease-in-out infinite;
++  }
++  .living-myth-flarelynx .living-myth-part-tail {
++    clip-path: polygon(0 5%, 36% 4%, 43% 68%, 0 73%);
++    transform-origin: 36% 59%;
++    animation: flarelynx-tail-spring 3.1s cubic-bezier(.45,.05,.25,1) infinite;
++  }
++  .living-myth-flarelynx .living-myth-part-chest {
++    clip-path: polygon(34% 35%, 73% 34%, 77% 83%, 34% 86%);
++    transform-origin: 58% 78%;
++    animation: flarelynx-chest-breath 3.4s ease-in-out infinite;
++  }
++  .living-myth-flarelynx .living-myth-part-head {
++    clip-path: polygon(48% 17%, 96% 15%, 98% 66%, 54% 69%);
++    transform-origin: 72% 62%;
++    animation: flarelynx-head-focus 5.1s ease-in-out infinite;
++  }
++
++  .living-myth-eyes { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
++  .living-myth-eyelid { position: absolute; display: block; height: 1.6%; border-radius: 100%; background: #160807; opacity: 0; box-shadow: 0 0 2px rgba(255,70,20,.5); animation: living-blink 5.6s linear infinite; }
++  .living-myth-flarelynx .living-myth-eye-left { left: 62.4%; top: 47.7%; width: 8.2%; transform: rotate(13deg); }
++  .living-myth-flarelynx .living-myth-eye-right { left: 76.8%; top: 47.2%; width: 7.8%; transform: rotate(-12deg); animation-delay: .02s; }
++  .living-myth-ashquill .living-myth-eye-main { left: 68%; top: 42.8%; width: 5.4%; transform: rotate(-10deg); animation-delay: 1.1s; }
++
++  .living-myth-react { animation: living-spring-reaction .52s cubic-bezier(.2,.9,.25,1); }
++  .living-myth-react .living-myth-part-tail,
++  .living-myth-react .living-myth-part-wing-left,
++  .living-myth-react .living-myth-part-wing-right { animation-duration: .48s; }
++
++  @keyframes living-breath { 0%,100%{transform:translateY(0) scale(1)} 48%{transform:translateY(-1.2%) scale(1.008,1.018)} }
++  @keyframes living-blink { 0%,45%,47.5%,100%{opacity:0;transform:scaleY(.15)} 46%,47%{opacity:.96;transform:scaleY(1)} }
++  @keyframes ashquill-wing-left { 0%,100%{transform:rotate(-.8deg) translateY(0)} 50%{transform:rotate(1.8deg) translateY(-1.2%)} }
++  @keyframes ashquill-wing-right { 0%,100%{transform:rotate(.7deg) translateY(0)} 50%{transform:rotate(-2.2deg) translateY(-1.5%)} }
++  @keyframes ashquill-head-focus { 0%,72%,100%{transform:rotate(0)} 78%{transform:rotate(-1.5deg)} 84%{transform:rotate(.6deg)} }
++  @keyframes flarelynx-tail-spring { 0%,100%{transform:rotate(-1.4deg)} 45%{transform:rotate(2.4deg) translateY(-.8%)} 70%{transform:rotate(.4deg)} }
++  @keyframes flarelynx-chest-breath { 0%,100%{transform:scale(1)} 50%{transform:scale(1.018,1.028) translateY(-.5%)} }
++  @keyframes flarelynx-head-focus { 0%,68%,100%{transform:rotate(0)} 75%{transform:rotate(1.3deg) translateY(-.5%)} 82%{transform:rotate(-.5deg)} }
++  @keyframes living-spring-reaction { 0%{transform:translateX(0) rotate(0)} 25%{transform:translateX(-4%) rotate(-1deg)} 58%{transform:translateX(1.8%) rotate(.5deg)} 100%{transform:translateX(0) rotate(0)} }
++
++  @media (prefers-reduced-motion: reduce) {
++    .living-myth-base, .living-myth-part, .living-myth-eyelid { animation: none !important; }
++  }
++
+   @keyframes battle-idle-bob {
+     0%, 100% { transform: translateY(0px); }
+     50%       { transform: translateY(-5px); }
+diff --git a/artifacts/monster-realms/src/lib/dpad-events.ts b/artifacts/monster-realms/src/lib/dpad-events.ts
+index 8be8bbe..3ecc0c3 100644
+--- a/artifacts/monster-realms/src/lib/dpad-events.ts
++++ b/artifacts/monster-realms/src/lib/dpad-events.ts
+@@ -1,5 +1,15 @@
+ export const MRO_MOVE_EVENT = 'mro:move';
++export const MRO_MOVE_STATE_EVENT = 'mro:move-state';
++
++export interface MoveStateDetail {
++  locked: boolean;
++  readyAt: number;
++}
+ 
+ export function dispatchMove(dx: number, dy: number) {
+   window.dispatchEvent(new CustomEvent(MRO_MOVE_EVENT, { detail: { dx, dy } }));
+ }
++
++export function dispatchMoveState(detail: MoveStateDetail) {
++  window.dispatchEvent(new CustomEvent(MRO_MOVE_STATE_EVENT, { detail }));
++}
+diff --git a/artifacts/monster-realms/src/lib/movement.ts b/artifacts/monster-realms/src/lib/movement.ts
+new file mode 100644
+index 0000000..3c85f27
+--- /dev/null
++++ b/artifacts/monster-realms/src/lib/movement.ts
+@@ -0,0 +1,23 @@
++export const MOVE_RECOVERY_MS = 2100;
++export const MOVE_ANIMATION_MS = 460;
++
++export type CardinalDirection = 'up' | 'down' | 'left' | 'right';
++
++export interface MoveIntent {
++  direction: CardinalDirection;
++  dx: number;
++  dy: number;
++}
++
++export function getMoveIntent(dx: number, dy: number): MoveIntent | null {
++  if (dx === 0 && dy === -1) return { direction: 'up', dx, dy };
++  if (dx === 0 && dy === 1) return { direction: 'down', dx, dy };
++  if (dx === -1 && dy === 0) return { direction: 'left', dx, dy };
++  if (dx === 1 && dy === 0) return { direction: 'right', dx, dy };
++  return null;
++}
++
++export function getMoveProgress(readyAt: number, now: number): number {
++  if (readyAt <= now) return 1;
++  return Math.max(0, Math.min(1, 1 - (readyAt - now) / MOVE_RECOVERY_MS));
++}
+diff --git a/artifacts/monster-realms/src/lib/myth-svgs.tsx b/artifacts/monster-realms/src/lib/myth-svgs.tsx
+index 24b1ca7..10ab603 100644
+--- a/artifacts/monster-realms/src/lib/myth-svgs.tsx
++++ b/artifacts/monster-realms/src/lib/myth-svgs.tsx
+@@ -1839,7 +1839,7 @@ const ARCHETYPE_COLORS: Record<string, [string, string, string]> = {
+   Dark:     ['#0A0015', '#26004A', '#9B40E0'],
+ };
+ 
+-const ARCHETYPE_COMPONENTS: Record<ArchetypeName, (p: SvgCreatureProps) => JSX.Element> = {
++const ARCHETYPE_COMPONENTS: Record<ArchetypeName, (p: SvgCreatureProps) => React.ReactElement> = {
+   // Original 20
+   FireWolf:       (p) => <FireWolfSvg {...p} />,
+   FireDrake:      (p) => <FireDrakeSvg {...p} />,
+diff --git a/artifacts/monster-realms/src/pages/collection.tsx b/artifacts/monster-realms/src/pages/collection.tsx
+index 222e597..41fd717 100644
+--- a/artifacts/monster-realms/src/pages/collection.tsx
++++ b/artifacts/monster-realms/src/pages/collection.tsx
+@@ -20,11 +20,10 @@ export default function Collection() {
+   const [selectedMonster, setSelectedMonster] = useState<CapturedMonster | null>(null);
+   
+   const { data: collection, isLoading } = useGetPlayerCollection(player?.id || '', {
+-    params: {
+       element: elementFilter || undefined,
+       rarity: rarityFilter || undefined,
+-    },
+-    query: { enabled: !!player?.id },
++    }, {
++    query: { enabled: !!player?.id, queryKey: ['player-collection', player?.id, elementFilter, rarityFilter] },
+   });
+   
+   const filteredCollection = collection?.filter((m) =>
+diff --git a/artifacts/monster-realms/src/pages/encyclopedia.tsx b/artifacts/monster-realms/src/pages/encyclopedia.tsx
+index 2a2f440..b128850 100644
+--- a/artifacts/monster-realms/src/pages/encyclopedia.tsx
++++ b/artifacts/monster-realms/src/pages/encyclopedia.tsx
+@@ -17,11 +17,9 @@ export default function Encyclopedia() {
+   const [selectedSpecies, setSelectedSpecies] = useState<MonsterSpecies | null>(null);
+   
+   const { data: species, isLoading } = useListMonsterSpecies({
+-    params: {
+       element: elementFilter || undefined,
+       rarity: rarityFilter || undefined,
+       search: search || undefined,
+-    },
+   });
+   
+   return (
+diff --git a/artifacts/monster-realms/src/pages/game.tsx b/artifacts/monster-realms/src/pages/game.tsx
+index d6d5b59..1202405 100644
+--- a/artifacts/monster-realms/src/pages/game.tsx
++++ b/artifacts/monster-realms/src/pages/game.tsx
+@@ -35,7 +35,7 @@ export default function Game() {
+   } = useGameStore();
+ 
+   const { data: me, isLoading } = useGetMe({
+-    query: { enabled: !!getToken() },
++    query: { enabled: !!getToken(), queryKey: ['authenticated-player'] },
+   });
+ 
+   const exploreTile = useExploreTile();
+@@ -100,16 +100,17 @@ export default function Game() {
+   }, [player?.id]);
+ 
+   const handleMove = async (input: ExploreInput) => {
+-    if (!player) return;
++    const livePlayer = useGameStore.getState().player;
++    if (!livePlayer) return false;
+     try {
+-      const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
++      const result = await exploreTile.mutateAsync({ playerId: livePlayer.id, data: input });
+ 
+       setPlayer({
+-        ...player,
++        ...livePlayer,
+         posX: result.newPosX,
+         posY: result.newPosY,
+         energy: result.remainingEnergy,
+-        regionId: input.regionId || player.regionId,
++        regionId: input.regionId || livePlayer.regionId,
+       });
+ 
+       // Update current region whenever the player crosses a zone boundary
+@@ -132,8 +133,10 @@ export default function Game() {
+         posY: result.newPosY,
+         regionId: input.regionId,
+       });
++      return true;
+     } catch (err) {
+       console.error('Failed to explore tile:', err);
++      return false;
+     }
+   };
+ 
+diff --git a/artifacts/monster-realms/src/pages/leaderboard.tsx b/artifacts/monster-realms/src/pages/leaderboard.tsx
+index a0bb158..b99845c 100644
+--- a/artifacts/monster-realms/src/pages/leaderboard.tsx
++++ b/artifacts/monster-realms/src/pages/leaderboard.tsx
+@@ -18,9 +18,7 @@ export default function Leaderboard() {
+   const { player } = useGameStore();
+   const [activeTab, setActiveTab] = useState<GetLeaderboardType>('explorer');
+   
+-  const { data: leaderboard, isLoading } = useGetLeaderboard({
+-    params: { type: activeTab, limit: 50 },
+-  });
++  const { data: leaderboard, isLoading } = useGetLeaderboard({ type: activeTab, limit: 50 });
+   
+   const getRankIcon = (rank: number) => {
+     if (rank === 1) return <Crown className="text-yellow-400" size={20} />;
+diff --git a/artifacts/monster-realms/src/pages/myths-tree.tsx b/artifacts/monster-realms/src/pages/myths-tree.tsx
+index a29ec72..a432cfa 100644
+--- a/artifacts/monster-realms/src/pages/myths-tree.tsx
++++ b/artifacts/monster-realms/src/pages/myths-tree.tsx
+@@ -19,8 +19,8 @@ export default function MythsTree() {
+   const [selectedMyth, setSelectedMyth] = useState<MythEntry | null>(null);
+   const [selectedLevel, setSelectedLevel] = useState<number | undefined>(undefined);
+ 
+-  const { data: collection } = useGetPlayerCollection(player?.id ?? '', {
+-    query: { enabled: !!player?.id },
++  const { data: collection } = useGetPlayerCollection(player?.id ?? '', undefined, {
++    query: { enabled: !!player?.id, queryKey: ['myths-tree-collection', player?.id] },
+   });
+ 
+   // Build a map of owned myth IDs → highest level
+diff --git a/artifacts/monster-realms/src/pages/profile.tsx b/artifacts/monster-realms/src/pages/profile.tsx
+index 836dca1..cd74936 100644
+--- a/artifacts/monster-realms/src/pages/profile.tsx
++++ b/artifacts/monster-realms/src/pages/profile.tsx
+@@ -11,11 +11,11 @@ export default function Profile() {
+   const { player } = useGameStore();
+   
+   const { data: stats, isLoading: statsLoading } = useGetPlayerStats(player?.id || '', {
+-    query: { enabled: !!player?.id },
++    query: { enabled: !!player?.id, queryKey: ['player-stats', player?.id] },
+   });
+   
+   const { data: team, isLoading: teamLoading } = useGetPlayerTeam(player?.id || '', {
+-    query: { enabled: !!player?.id },
++    query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
+   });
+   
+   if (!player) return null;
+diff --git a/artifacts/monster-realms/src/pages/team-builder.tsx b/artifacts/monster-realms/src/pages/team-builder.tsx
+index 6772308..3484748 100644
+--- a/artifacts/monster-realms/src/pages/team-builder.tsx
++++ b/artifacts/monster-realms/src/pages/team-builder.tsx
+@@ -771,7 +771,7 @@ export default function TeamBuilder() {
+   const { data: collection = [], isLoading } = useGetPlayerCollection(
+     player?.id ?? '',
+     undefined,
+-    { query: { enabled: !!player?.id } as any },
++    { query: { enabled: !!player?.id, queryKey: ['team-builder-collection', player?.id] } },
+   );
+ 
+   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+diff --git a/artifacts/monster-realms/vitest.config.ts b/artifacts/monster-realms/vitest.config.ts
+index a43020f..0366c04 100644
+--- a/artifacts/monster-realms/vitest.config.ts
++++ b/artifacts/monster-realms/vitest.config.ts
+@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
+ import path from 'path';
+ 
+ export default defineConfig({
++  root: __dirname,
+   plugins: [react()],
+   test: {
+     environment: 'jsdom',
+diff --git a/lib/api-client-react/src/generated/api.schemas.ts b/lib/api-client-react/src/generated/api.schemas.ts
+index 15b46af..c57b71c 100644
+--- a/lib/api-client-react/src/generated/api.schemas.ts
++++ b/lib/api-client-react/src/generated/api.schemas.ts
+@@ -16,6 +16,7 @@ export interface GuestLoginInput {
+      */
+   username: string;
+   avatarColor?: string;
++  starterElement?: string;
+ }
+ 
+ export interface RegisterInput {
+@@ -29,6 +30,16 @@ export interface RegisterInput {
+   /** @nullable */
+   email?: string | null;
+   avatarColor?: string;
++  starterElement?: string;
++}
++
++export interface StarterPackMyth {
++  capturedId: string;
++  speciesId: string;
++  speciesName: string;
++  element: string;
++  rarity: 'C' | 'B' | 'A' | 'S';
++  level: number;
+ }
+ 
+ export interface LoginInput {
+@@ -60,6 +71,7 @@ export interface Player {
+ export interface AuthResponse {
+   token: string;
+   player: Player;
++  starterPack?: StarterPackMyth[];
+ }
+ 
+ export interface PlayerUpdate {
+@@ -159,15 +171,10 @@ export type MonsterSpeciesRarity = typeof MonsterSpeciesRarity[keyof typeof Mons
+ 
+ 
+ export const MonsterSpeciesRarity = {
+-  Common: 'Common',
+-  Uncommon: 'Uncommon',
+-  Rare: 'Rare',
+-  Epic: 'Epic',
+-  Legendary: 'Legendary',
+-  Mythic: 'Mythic',
+-  Ancient: 'Ancient',
+-  Celestial: 'Celestial',
+-  Void: 'Void',
++  C: 'C',
++  B: 'B',
++  A: 'A',
++  S: 'S',
+ } as const;
+ 
+ export interface MonsterSpecies {
+@@ -331,6 +338,7 @@ export interface Battle {
+   playerId: string;
+   status: BattleStatus;
+   turn: number;
++  round: number;
+   wildMonster: BattleMonsterState;
+   playerMonster: BattleMonsterState;
+   log: BattleLogEntry[];
+@@ -562,4 +570,3 @@ export const GetLeaderboardType = {
+   pvp: 'pvp',
+   tiles: 'tiles',
+ } as const;
+-
+diff --git a/lib/api-spec/openapi.yaml b/lib/api-spec/openapi.yaml
+index 564f1ba..da44ebb 100644
+--- a/lib/api-spec/openapi.yaml
++++ b/lib/api-spec/openapi.yaml
+@@ -644,6 +644,8 @@ components:
+           maxLength: 20
+         avatarColor:
+           type: string
++        starterElement:
++          type: string
+       required:
+         - username
+ 
+@@ -661,6 +663,8 @@ components:
+           type: ["string", "null"]
+         avatarColor:
+           type: string
++        starterElement:
++          type: string
+       required:
+         - username
+         - password
+@@ -683,10 +687,27 @@ components:
+           type: string
+         player:
+           $ref: "#/components/schemas/Player"
++        starterPack:
++          type: array
++          items:
++            $ref: "#/components/schemas/StarterPackMyth"
+       required:
+         - token
+         - player
+ 
++    StarterPackMyth:
++      type: object
++      properties:
++        capturedId: { type: string }
++        speciesId: { type: string }
++        speciesName: { type: string }
++        element: { type: string }
++        rarity:
++          type: string
++          enum: [C, B, A, S]
++        level: { type: number }
++      required: [capturedId, speciesId, speciesName, element, rarity, level]
++
+     # PLAYER
+     Player:
+       type: object
+@@ -854,7 +875,7 @@ components:
+           enum: [Fire, Water, Nature, Electric, Ice, Earth, Air, Light, Dark, Metal, Crystal, Void]
+         rarity:
+           type: string
+-          enum: [Common, Uncommon, Rare, Epic, Legendary, Mythic, Ancient, Celestial, Void]
++          enum: [C, B, A, S]
+         baseHp:
+           type: number
+         baseAttack:
+@@ -1036,6 +1057,8 @@ components:
+       properties:
+         turn:
+           type: number
++        round:
++          type: number
+         actor:
+           type: string
+           enum: [player, wild]
+@@ -1049,6 +1072,7 @@ components:
+           type: boolean
+       required:
+         - turn
++        - round
+         - actor
+         - action
+         - description
+@@ -1126,7 +1150,9 @@ components:
+       properties:
+         action:
+           type: string
+-          enum: [attack, skill1, skill2, ultimate, capture, flee]
++          enum: [attack, skill1, skill2, ultimate, capture, flee, switch]
++        switchCapturedMonsterId:
++          type: ["string", "null"]
+         orbType:
+           type: ["string", "null"]
+           enum: [Basic, Explorer, Hunter, Elite, Master, Celestial, Infinity, null]
+-- 
+2.51.1
+

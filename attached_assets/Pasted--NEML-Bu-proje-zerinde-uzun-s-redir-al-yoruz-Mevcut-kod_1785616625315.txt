@@ -1,0 +1,76 @@
+ÖNEMLİ: Bu proje üzerinde uzun süredir çalışıyoruz. Mevcut kodu eski commitlere döndürme, resetleme, restore etme, revert yapma ve çalışan özellikleri silme. Başka branch’ten eski dosya getirme. Yalnızca aşağıdaki battle giriş bug’ını teşhis edip minimum değişiklikle düzelt.
+
+KORUNMASI GEREKEN MEVCUT SİSTEMLER:
+
+- Litardia premium giriş ve giriş yapma ekranları
+- Dünya haritası, minimap ve mobil arayüz
+- Bir saniyede bir adım hareket mekaniği
+- Myth encounter penceresi
+- Haritadan arenaya sinematik kamera geçişi
+- Yeni PvP arena görünümü ve altın oranlı yerleşim
+- Ashquill ve Flarelynx modelleri
+- 2.5D Myth hareketleri ve fizik sistemi
+- Hazırlık → saldırı → bitiriş pozlarından oluşan skill animasyonları
+- Yakın saldırı ve uzaktan projectile sistemleri
+- Sıra tabanlı battle sistemi ve 10 saniyelik tur süreleri
+- Yalnızca savunan Myth’e uygulanan hasar, sarsılma ve HP düşüş zamanlaması
+- Myth’lerin üzerinde bulunan element temalı HP barları
+- Ateş Myth’lerinin metal ve cam hazne içindeki hareketli alev HP sistemi
+- Hasar alınca alevin azalması, gecikmeli hasar katmanı, köz ve kül efektleri
+- Mobil PvP yerleşimi
+- Battle bittikten sonra tekrar yürüyebilme düzeltmesi
+
+Bunların hiçbirini kaldırma, sadeleştirme veya eski sürümleriyle değiştirme. Büyük çaplı refactor yapma. UI tasarımına dokunma.
+
+KRİTİK BUG:
+
+Haritada Myth encounter penceresi açılıyor fakat “Battle!” butonuna bastığımda battle arena açılmıyor. Buton çalışıyor gibi görünüyor ancak kullanıcıya hata gösterilmiyor.
+
+Önce çalışan uygulamada problemi yeniden üret. Browser console, Network ve API server loglarını incele. Tahmin ederek patch yazma.
+
+Şunları sırayla kontrol et:
+
+1. EncounterPopup.tsx içindeki handleBattle
+2. POST /battles isteğinin status kodu ve gerçek response’u
+3. Oyuncuya ait yarım kalmış active battle kaydı
+4. Sunucudaki pending encounter kaydı
+5. Gönderilen regionId ve speciesId değerleri
+6. Aktif takım Myth’inin currentHp değeri
+7. waitForBattleFocus ve BATTLE_FOCUS_READY_EVENT
+8. BATTLE_FOCUS_EVENT ile BATTLE_RELEASE_EVENT çakışması
+9. startBattle(battle.id, battle) çağrısının çalışması
+10. BattleOverlay’ın açılmasını engelleyen state veya runtime hata
+
+UYGULAMA KURALLARI:
+
+- POST /battles başarılı olmadan encounter penceresini kapatma.
+- API başarılı olduğunda battle state’ini güvenli şekilde kaydet.
+- Kamera sinyali gelmezse maksimum 2.6 saniye sonra arena yine açılsın.
+- BATTLE_RELEASE yalnızca gerçek active → inactive geçişinde çalışsın.
+- Yarım kalmış eski battle varsa gerçek devam eden battle’a zarar vermeden çöz.
+- API hatasını yalnızca console’a yazma; encounter penceresinde kullanıcıya göster.
+- Hata düzeltmesi dışında hiçbir dosyaya gereksiz değişiklik yapma.
+- Patch veya restore dosyalarını projeye ekleme.
+- Mevcut commit geçmişini değiştirme.
+
+Düzeltmeden sonra gerçek uygulamada şu testi yap:
+
+1. Haritada yürü.
+2. Myth encounter bul.
+3. Battle’a gir.
+4. Skill kullan.
+5. Battle’ı bitir veya kaç.
+6. Haritada yeniden yürü.
+7. İkinci bir encounter bul.
+8. Yeniden battle’a gir.
+9. Sayfayı yenileyip akışı tekrar dene.
+10. Mobil ekranda Battle butonunu kontrol et.
+
+Sonunda bana şunları bildir:
+
+- Gerçek hata sebebi
+- API’nin verdiği status ve hata mesajı
+- Değiştirilen dosyalar
+- Yapılan minimum düzeltme
+- Çalıştırılan testler
+- Korunan sistemlerin değişmediğinin doğrulaması

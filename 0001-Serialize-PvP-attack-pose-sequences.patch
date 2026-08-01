@@ -1,0 +1,267 @@
+From b5d5d265085c57a3fa87f176cc43fcbf9dd484ce Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 13:57:22 +0300
+Subject: [PATCH] Serialize PvP attack pose sequences
+
+---
+ .../src/__tests__/SkillCinematic.test.tsx     | 13 ++++
+ .../src/components/battle/SkillCinematic.tsx  | 16 +++--
+ .../src/components/game/BattleOverlay.tsx     | 72 ++++++++++++-------
+ artifacts/monster-realms/src/index.css        | 11 +++
+ 4 files changed, 82 insertions(+), 30 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx b/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx
+index a15101c..088a4f9 100644
+--- a/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx
++++ b/artifacts/monster-realms/src/__tests__/SkillCinematic.test.tsx
+@@ -37,4 +37,17 @@ describe('Flarelynx basic attack cinematic', () => {
+ 
+     expect(screen.queryByTestId('flarelynx-target-burn')).not.toBeInTheDocument();
+   });
++
++  it('holds the effect during anticipation and releases it only on strike', () => {
++    const props = {
++      skillName: 'Twinflare Claw', element: 'Fire', power: 44,
++      attackerSide: 'player' as const, attackerMythId: 'flarelynx',
++      attackerRarity: 'C', skillType: 'normal', onComplete: vi.fn(),
++    };
++    const { rerender } = render(<SkillCinematic {...props} actionPhase="anticipate" />);
++
++    expect(screen.queryByTestId('flarelynx-fire-claw-wave')).not.toBeInTheDocument();
++    rerender(<SkillCinematic {...props} actionPhase="strike" />);
++    expect(screen.getAllByTestId('flarelynx-fire-claw-wave')).toHaveLength(2);
++  });
+ });
+diff --git a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+index e992b0d..ac18edc 100644
+--- a/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
++++ b/artifacts/monster-realms/src/components/battle/SkillCinematic.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect } from 'react';
++import { useEffect, useState } from 'react';
+ import { motion, AnimatePresence } from 'framer-motion';
+ import { MYTH_ARCHETYPE } from '@/lib/myth-svgs';
+ 
+@@ -16,6 +16,7 @@ interface Props {
+   attackerMythId?: string;
+   attackerRarity?: string;
+   skillType?: string; // 'normal' | 'skill1' | 'skill2' | 'ultimate'
++  actionPhase?: 'idle' | 'anticipate' | 'strike' | 'recover';
+ }
+ 
+ // ─── Rarity config ────────────────────────────────────────────────────────────
+@@ -1352,13 +1353,14 @@ function ImpactFlash({ side, color, scale }: { side: 'player' | 'wild'; color: s
+ 
+ export default function SkillCinematic({
+   skillName, skillDesc, element, power, attackerSide, isCritical, onComplete,
+-  attackerMythId, attackerRarity = 'C', skillType = 'normal',
++  attackerMythId, attackerRarity = 'C', skillType = 'normal', actionPhase = 'strike',
+ }: Props) {
+   const el = getEl(element);
+   const rc = getRarityCfg(attackerRarity);
+   const isNormalAttack = skillType === 'normal' || skillType === 'attack';
+   const strike = isNormalAttack ? getStrike(attackerMythId) : null;
+   const isFlarelynxBasic = isNormalAttack && attackerMythId === 'flarelynx';
++  const [effectReady, setEffectReady] = useState(actionPhase === 'strike' || actionPhase === 'recover');
+ 
+   // S-tier gets a longer timeout
+   const timeout = isCritical ? rc.timeout + 120 : rc.timeout;
+@@ -1368,6 +1370,10 @@ export default function SkillCinematic({
+     return () => clearTimeout(t);
+   }, [onComplete, timeout]);
+ 
++  useEffect(() => {
++    if (actionPhase === 'strike' || actionPhase === 'recover') setEffectReady(true);
++  }, [actionPhase]);
++
+   return (
+     <AnimatePresence>
+       <motion.div
+@@ -1465,7 +1471,7 @@ export default function SkillCinematic({
+         </motion.div>
+ 
+         {/* ── Strike / element effect ── */}
+-        <div className="absolute inset-0" style={{ zIndex: 2 }}>
++        {effectReady && <div className="absolute inset-0" style={{ zIndex: 2 }}>
+           <PhysicalSkillStage side={attackerSide} skillType={skillType} color={el.color} glow={el.glow} />
+           {isNormalAttack && strike ? (
+             <StrikeEffect
+@@ -1479,10 +1485,10 @@ export default function SkillCinematic({
+           ) : (
+             <ElementParticles element={element} side={attackerSide} particleScale={rc.particleScale} />
+           )}
+-        </div>
++        </div>}
+ 
+         {/* ── Impact flash ── */}
+-        <ImpactFlash side={attackerSide} color={el.color} scale={rc.scale} />
++        {effectReady && <ImpactFlash side={attackerSide} color={el.color} scale={rc.scale} />}
+ 
+         {/* ── Screen vignette flash ── */}
+         <motion.div
+diff --git a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+index 08b610b..6aebd2d 100644
+--- a/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
++++ b/artifacts/monster-realms/src/components/game/BattleOverlay.tsx
+@@ -30,6 +30,7 @@ const getPhysicsAttackStyle = (skillType?: string): AttackStyle => {
+   return 'combo';
+ };
+ type BattleChoreography = 'melee' | 'projectile';
++type CombatActionPhase = 'idle' | 'anticipate' | 'strike' | 'recover';
+ const getBattleChoreography = (skillType?: string, mythId?: string): BattleChoreography => {
+   // Flarelynx's basic is the authored twin fire-claw wave. Skill 2 / ultimates
+   // are ranged finishers; skill 1 and Ashquill's basic make physical contact.
+@@ -1084,6 +1085,7 @@ export default function BattleOverlay() {
+     phase: 'player' | 'wild';
+     attackerMythId?: string; attackerRarity?: string; skillType?: string;
+   } | null>(null);
++  const [combatActionPhase, setCombatActionPhase] = useState<CombatActionPhase>('idle');
+   const pendingBattleResult = useRef<Parameters<typeof updateBattle>[0] | null>(null);
+   const pendingWildCinematic = useRef<{
+     skillName: string; element: string; power: number; isCritical?: boolean;
+@@ -1233,37 +1235,55 @@ export default function BattleOverlay() {
+     }
+   }, [isOver]);
+ 
+-  // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
++  // ── Authoritative attack sequence ────────────────────────────────────────
++  // One cinematic owns one cancellable pose chain. This prevents stale player
++  // timers from overlapping the opponent action and guarantees a neutral reset.
+   useEffect(() => {
+-    if (!cinematic) return;
++    if (!cinematic) {
++      setCombatActionPhase('idle');
++      return;
++    }
+     const choreography = getBattleChoreography(cinematic.skillType, cinematic.attackerMythId);
+-    mythPhysics.attack(
+-      cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
+-      cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
+-      cinematic.power,
+-      310,
+-      getPhysicsAttackStyle(cinematic.skillType),
+-    );
+-    let impactTimer: number;
++    const style = getPhysicsAttackStyle(cinematic.skillType);
++    setCombatActionPhase('anticipate');
+     const impactDelay = choreography === 'melee'
+-      ? (getPhysicsAttackStyle(cinematic.skillType) === 'leap' ? 1120 : 980)
+-      : (getPhysicsAttackStyle(cinematic.skillType) === 'burst' ? 1180 : 820);
+-    if (cinematic.attackerSide === 'player') {
+-      setPlayerLungeKey(k => k + 1);
+-      impactTimer = window.setTimeout(() => {
++      ? (style === 'leap' ? 1120 : 980)
++      : (style === 'burst' ? 1180 : 820);
++    const preparationMs = choreography === 'melee' ? 420 : 360;
++
++    const strikeTimer = window.setTimeout(() => {
++      setCombatActionPhase('strike');
++      mythPhysics.attack(
++        cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
++        cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
++        cinematic.power,
++        310,
++        style,
++      );
++      if (cinematic.attackerSide === 'player') setPlayerLungeKey(k => k + 1);
++      else setWildLungeKey(k => k + 1);
++    }, preparationMs);
++
++    const impactTimer = window.setTimeout(() => {
++      if (cinematic.attackerSide === 'player') {
+         optimisticWildHitRef.current += 1;
+         setWildShake(k => k + 1);
+         window.setTimeout(() => { if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1; }, 4000);
+-      }, impactDelay);
+-    } else {
+-      setWildLungeKey(k => k + 1);
+-      impactTimer = window.setTimeout(() => {
++      } else {
+         optimisticPlayerHitRef.current += 1;
+         setPlayerShake(k => k + 1);
+         window.setTimeout(() => { if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1; }, 4000);
+-      }, impactDelay);
+-    }
+-    return () => window.clearTimeout(impactTimer);
++      }
++    }, preparationMs + impactDelay);
++
++    const recoverTimer = window.setTimeout(() => setCombatActionPhase('recover'), preparationMs + impactDelay + 210);
++    const neutralTimer = window.setTimeout(() => setCombatActionPhase('idle'), preparationMs + 1880);
++    return () => {
++      window.clearTimeout(strikeTimer);
++      window.clearTimeout(impactTimer);
++      window.clearTimeout(recoverTimer);
++      window.clearTimeout(neutralTimer);
++    };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [cinematic, mythPhysics]);
+ 
+@@ -1398,6 +1418,7 @@ export default function BattleOverlay() {
+       if (wild && result?.status === 'active') {
+         // Hand off to opponent turn phase — the countdown will fire the wild cinematic
+         // (pendingWildCinematic.current still holds `wild`; opponent effect consumes it)
++        setCinematic(null);
+         setOpponentTurnActive(true);
+       } else {
+         pendingWildCinematic.current = null;
+@@ -1589,7 +1610,7 @@ export default function BattleOverlay() {
+     <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+ 
+       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
+-      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? `battle-focus-cinematic battle-action-${getBattleChoreography(cinematic.skillType, cinematic.attackerMythId)}` : ''}`}>
++      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? `battle-focus-cinematic battle-action-${getBattleChoreography(cinematic.skillType, cinematic.attackerMythId)} battle-action-phase-${combatActionPhase}` : ''}`}>
+ 
+         {/* Sky */}
+         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
+@@ -1758,7 +1779,7 @@ export default function BattleOverlay() {
+           {/* Inner lunge wrapper — re-keyed on each wild attack to replay animation */}
+           <div
+             key={`wlunge-${wildLungeKey}`}
+-            className={`flex flex-col items-center ${wildLungeKey > 0 && cinematic?.attackerSide === 'wild' ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-right' : 'myth-lunge-right') : ''}`}
++            className={`flex flex-col items-center ${cinematic?.attackerSide === 'wild' && combatActionPhase === 'anticipate' ? 'myth-anticipate-right' : ''} ${wildLungeKey > 0 && cinematic?.attackerSide === 'wild' && (combatActionPhase === 'strike' || combatActionPhase === 'recover') ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-right' : 'myth-lunge-right') : ''}`}
+           >
+             {/* Type matchup badge */}
+             {(() => {
+@@ -1804,7 +1825,7 @@ export default function BattleOverlay() {
+           {/* Inner lunge wrapper — re-keyed on each player attack to replay animation */}
+           <div
+             key={`plunge-${playerLungeKey}`}
+-            className={`flex flex-col items-center ${playerLungeKey > 0 && cinematic?.attackerSide === 'player' ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-left' : 'myth-lunge-left') : ''}`}
++            className={`flex flex-col items-center ${cinematic?.attackerSide === 'player' && combatActionPhase === 'anticipate' ? 'myth-anticipate-left' : ''} ${playerLungeKey > 0 && cinematic?.attackerSide === 'player' && (combatActionPhase === 'strike' || combatActionPhase === 'recover') ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-left' : 'myth-lunge-left') : ''}`}
+           >
+             <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
+               Your Myth
+@@ -2193,6 +2214,7 @@ export default function BattleOverlay() {
+             attackerMythId={cinematic.attackerMythId}
+             attackerRarity={cinematic.attackerRarity}
+             skillType={cinematic.skillType}
++            actionPhase={combatActionPhase}
+           />
+         )}
+ 
+diff --git a/artifacts/monster-realms/src/index.css b/artifacts/monster-realms/src/index.css
+index b9e197f..905caf8 100644
+--- a/artifacts/monster-realms/src/index.css
++++ b/artifacts/monster-realms/src/index.css
+@@ -1002,6 +1002,17 @@
+     animation: myth-lunge-right 1.65s cubic-bezier(0.18, 0.72, 0.22, 1) forwards;
+   }
+ 
++  @keyframes myth-anticipate-left {
++    0%{transform:translateX(0) translateY(0) scale(1)}
++    100%{transform:translateX(16px) translateY(7px) scale(.91,1.08) rotate(1.5deg)}
++  }
++  @keyframes myth-anticipate-right {
++    0%{transform:translateX(0) translateY(0) scale(1)}
++    100%{transform:translateX(-16px) translateY(7px) scale(.91,1.08) rotate(-1.5deg)}
++  }
++  .myth-anticipate-left{animation:myth-anticipate-left .42s cubic-bezier(.2,.72,.2,1) forwards}
++  .myth-anticipate-right{animation:myth-anticipate-right .42s cubic-bezier(.2,.72,.2,1) forwards}
++
+   @keyframes myth-cast-left {
+     0%,100%{transform:translateX(0) scale(1)} 18%{transform:translateX(18px) translateY(5px) scale(.94,1.06)}
+     42%{transform:translateX(-24px) translateY(-10px) scale(1.08,.96)} 58%{transform:translateX(-14px) translateY(-5px) scale(1.03)}
+-- 
+2.51.1
+

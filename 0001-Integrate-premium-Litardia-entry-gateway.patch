@@ -1,0 +1,474 @@
+From 545974ecbb88e95de1cee0b0d1f0fddf0fd89591 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 14:52:40 +0300
+Subject: [PATCH] Integrate premium Litardia entry gateway
+
+---
+ .../src/__tests__/MythoraEntry.test.tsx       |  39 ++++
+ .../src/components/auth/MythoraEntry.tsx      | 101 ++++++++++
+ .../src/components/auth/mythora-entry.css     | 178 ++++++++++++++++++
+ .../monster-realms/src/pages/landing.tsx      |  78 ++------
+ 4 files changed, 336 insertions(+), 60 deletions(-)
+ create mode 100644 artifacts/monster-realms/src/__tests__/MythoraEntry.test.tsx
+ create mode 100644 artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+ create mode 100644 artifacts/monster-realms/src/components/auth/mythora-entry.css
+
+diff --git a/artifacts/monster-realms/src/__tests__/MythoraEntry.test.tsx b/artifacts/monster-realms/src/__tests__/MythoraEntry.test.tsx
+new file mode 100644
+index 0000000..087cc75
+--- /dev/null
++++ b/artifacts/monster-realms/src/__tests__/MythoraEntry.test.tsx
+@@ -0,0 +1,39 @@
++import { fireEvent, render, screen } from '@testing-library/react';
++import { act } from 'react';
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import MythoraEntry from '@/components/auth/MythoraEntry';
++
++describe('MythoraEntry', () => {
++  afterEach(() => {
++    vi.useRealTimers();
++  });
++
++  it('opens the Litardia gate before continuing with a trimmed explorer name', () => {
++    vi.useFakeTimers();
++    const onContinue = vi.fn();
++
++    render(<MythoraEntry onContinue={onContinue} onSignIn={vi.fn()} />);
++    fireEvent.change(screen.getByTestId('input-username'), { target: { value: '  Ember  ' } });
++    fireEvent.click(screen.getByTestId('button-next-character'));
++
++    expect(screen.getByTestId('premium-entry')).toHaveClass('phase-opening');
++    expect(screen.getByText('OPENING THE GATE')).toBeInTheDocument();
++
++    act(() => vi.advanceTimersByTime(920));
++    expect(screen.getByTestId('premium-entry')).toHaveClass('phase-leaving');
++    expect(onContinue).not.toHaveBeenCalled();
++
++    act(() => vi.advanceTimersByTime(840));
++    expect(onContinue).toHaveBeenCalledWith('Ember');
++  });
++
++  it('carries the typed username into the existing-player sign-in flow', () => {
++    const onSignIn = vi.fn();
++    render(<MythoraEntry onContinue={vi.fn()} onSignIn={onSignIn} />);
++
++    fireEvent.change(screen.getByTestId('input-username'), { target: { value: 'GMeskijoe' } });
++    fireEvent.click(screen.getByText('Sign in'));
++
++    expect(onSignIn).toHaveBeenCalledWith('GMeskijoe');
++  });
++});
+diff --git a/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx b/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+new file mode 100644
+index 0000000..f408bf3
+--- /dev/null
++++ b/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+@@ -0,0 +1,101 @@
++import { FormEvent, useEffect, useRef, useState } from 'react';
++import './mythora-entry.css';
++
++type EntryPhase = 'ready' | 'opening' | 'leaving';
++
++type Props = {
++  initialName?: string;
++  onContinue: (explorerName: string) => void;
++  onSignIn: (explorerName: string) => void;
++};
++
++export default function MythoraEntry({ initialName = '', onContinue, onSignIn }: Props) {
++  const [name, setName] = useState(initialName);
++  const [phase, setPhase] = useState<EntryPhase>('ready');
++  const timers = useRef<number[]>([]);
++
++  useEffect(() => () => {
++    timers.current.forEach(window.clearTimeout);
++  }, []);
++
++  const schedule = (callback: () => void, delay: number) => {
++    const timer = window.setTimeout(callback, delay);
++    timers.current.push(timer);
++  };
++
++  function submit(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    const cleanName = name.trim().slice(0, 20);
++    if (cleanName.length < 2 || phase !== 'ready') return;
++
++    setPhase('opening');
++    schedule(() => setPhase('leaving'), 920);
++    // Swap screens under the brightest part of the portal flash so the next
++    // onboarding step feels like the other side of the same gateway.
++    schedule(() => onContinue(cleanName), 1760);
++  }
++
++  const cleanName = name.trim().slice(0, 20);
++
++  return (
++    <main className={`mythora-entry phase-${phase}`} data-testid="premium-entry">
++      <div className="mythora-nebula" aria-hidden="true" />
++      <div className="mythora-stars mythora-stars-a" aria-hidden="true" />
++      <div className="mythora-stars mythora-stars-b" aria-hidden="true" />
++      <div className="mythora-portal" aria-hidden="true"><i /><i /><i /></div>
++      <div className="mythora-transition-flash" aria-hidden="true" />
++
++      <section className="mythora-entry-panel" aria-labelledby="litardia-title">
++        <div className="mythora-sigil" aria-hidden="true">
++          <svg viewBox="0 0 64 64">
++            <path d="M32 8v14M32 42v14M8 32h14M42 32h14M20 20l8 8M44 20l-8 8M20 44l8-8M44 44l-8-8" />
++            <circle cx="32" cy="32" r="7" />
++          </svg>
++        </div>
++        <p className="mythora-eyebrow">ENTER THE MYTHIC REALM</p>
++        <h1 id="litardia-title">LITARDIA</h1>
++        <p className="mythora-tagline">Discover. Bond. Become legendary.</p>
++
++        <form onSubmit={submit}>
++          <label htmlFor="explorer-name">EXPLORER NAME</label>
++          <div className="mythora-name-field">
++            <span aria-hidden="true">◇</span>
++            <input
++              id="explorer-name"
++              value={name}
++              maxLength={20}
++              autoComplete="username"
++              autoCapitalize="none"
++              spellCheck={false}
++              autoFocus
++              onChange={(event) => setName(event.target.value)}
++              placeholder="Enter your name"
++              disabled={phase !== 'ready'}
++              data-testid="input-username"
++            />
++          </div>
++          <button
++            className="mythora-enter-button"
++            disabled={cleanName.length < 2 || phase !== 'ready'}
++            data-testid="button-next-character"
++          >
++            <span>{phase === 'ready' ? 'ENTER LITARDIA' : 'OPENING THE GATE'}</span>
++            <b aria-hidden="true">→</b>
++          </button>
++        </form>
++
++        <button
++          type="button"
++          className="mythora-sign-in"
++          onClick={() => onSignIn(cleanName)}
++          disabled={phase !== 'ready'}
++        >
++          Already an Explorer? <u>Sign in</u>
++        </button>
++        <div className="mythora-system-line"><i /> LITARDIA NETWORK ONLINE</div>
++      </section>
++
++      <p className="mythora-footer-mark">MONSTER REALMS ONLINE <span>·</span> ALPHA</p>
++    </main>
++  );
++}
+diff --git a/artifacts/monster-realms/src/components/auth/mythora-entry.css b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+new file mode 100644
+index 0000000..53a7784
+--- /dev/null
++++ b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+@@ -0,0 +1,178 @@
++.mythora-entry {
++  --entry-cyan: #61dcff;
++  --entry-violet: #9878ff;
++  position: fixed;
++  inset: 0;
++  display: grid;
++  place-items: center;
++  min-height: 100dvh;
++  overflow: hidden;
++  isolation: isolate;
++  color: #edf8ff;
++  background:
++    radial-gradient(ellipse at 50% 38%, #161c49 0, #090b21 40%, #04050f 78%);
++  font-family: var(--app-font-sans), system-ui, sans-serif;
++}
++
++.mythora-nebula {
++  position: absolute;
++  inset: -30%;
++  background:
++    radial-gradient(ellipse at 34% 45%, #44217266 0, transparent 28%),
++    radial-gradient(ellipse at 70% 36%, #0b75994d 0, transparent 25%),
++    radial-gradient(ellipse at 52% 80%, #1e235c70 0, transparent 33%);
++  filter: blur(24px);
++  animation: mythora-nebula-drift 18s ease-in-out infinite alternate;
++}
++
++.mythora-stars {
++  position: absolute;
++  inset: -50%;
++  background-image: radial-gradient(circle, #9feaff 0 1px, transparent 1.5px);
++  background-size: 97px 83px;
++  opacity: .24;
++  transform: rotate(10deg);
++  animation: mythora-stars-drift 34s linear infinite;
++}
++
++.mythora-stars-b {
++  background-size: 173px 137px;
++  opacity: .15;
++  animation-duration: 55s;
++  animation-direction: reverse;
++}
++
++.mythora-entry-panel {
++  position: relative;
++  z-index: 4;
++  width: min(410px, calc(100vw - 36px));
++  padding: 38px 34px 24px;
++  border: 1px solid #8bdfff28;
++  border-radius: 24px;
++  text-align: center;
++  background: linear-gradient(155deg, #171a3de8, #0a0c20f2);
++  box-shadow: 0 30px 100px #000b, 0 0 0 1px #8f7cff12 inset, 0 0 65px #477bff12;
++  backdrop-filter: blur(20px);
++  transition: transform .8s cubic-bezier(.16, 1, .3, 1), opacity .5s, filter .5s;
++}
++
++.mythora-entry-panel::before {
++  content: '';
++  position: absolute;
++  top: -1px;
++  left: 17%;
++  right: 17%;
++  height: 1px;
++  background: linear-gradient(90deg, transparent, var(--entry-cyan), transparent);
++  box-shadow: 0 0 20px var(--entry-cyan);
++}
++
++.mythora-sigil {
++  display: grid;
++  place-items: center;
++  width: 68px;
++  height: 68px;
++  margin: 0 auto 17px;
++  border-radius: 21px;
++  background: linear-gradient(135deg, #4edcff, #9979ff);
++  box-shadow: 0 0 30px #58ceff55, 0 12px 30px #0008;
++}
++
++.mythora-sigil svg { width: 37px; fill: none; stroke: #071026; stroke-width: 3; stroke-linecap: round; }
++.mythora-eyebrow { margin: 0 0 8px; color: #86dfff; font: 600 9px var(--app-font-mono); letter-spacing: .28em; }
++.mythora-entry-panel h1 { margin: 0; color: transparent; font: 800 clamp(35px, 8vw, 52px)/1 var(--app-font-sans); letter-spacing: .08em; background: linear-gradient(180deg, #f6fbff 12%, #6bd7ff 58%, #8877ff); background-clip: text; -webkit-background-clip: text; text-shadow: 0 8px 38px #55cfff38; }
++.mythora-tagline { margin: 11px 0 29px; color: #8d95af; font-size: 11px; letter-spacing: .06em; }
++.mythora-entry form { text-align: left; }
++.mythora-entry label { display: block; margin: 0 0 8px; color: #a7b3ca; font: 600 9px var(--app-font-mono); letter-spacing: .14em; }
++
++.mythora-name-field {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  height: 49px;
++  padding: 0 14px;
++  border: 1px solid #8ebdff24;
++  border-radius: 11px;
++  background: #050819aa;
++  transition: border-color .25s, box-shadow .25s;
++}
++
++.mythora-name-field:focus-within { border-color: #67dfff88; box-shadow: 0 0 0 3px #5ad5ff12, 0 0 28px #5ad5ff12; }
++.mythora-name-field span { color: #62d9ff; }
++.mythora-name-field input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #edfaff; font: 600 13px var(--app-font-sans); }
++.mythora-name-field input::placeholder { color: #526079; }
++
++.mythora-enter-button {
++  position: relative;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  width: 100%;
++  height: 51px;
++  margin-top: 13px;
++  padding: 0 18px;
++  overflow: hidden;
++  border: 0;
++  border-radius: 11px;
++  color: #04111c;
++  background: linear-gradient(100deg, #56d8ff, #6ac7ef 46%, #9a80ff);
++  box-shadow: 0 12px 32px #49c8ff26;
++  font: 700 11px var(--app-font-mono);
++  letter-spacing: .12em;
++  cursor: pointer;
++  transition: transform .2s, filter .2s, box-shadow .2s;
++}
++
++.mythora-enter-button::before { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, #fff9 50%, transparent 70%); transform: translateX(-140%); transition: transform .7s; }
++.mythora-enter-button:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); box-shadow: 0 16px 40px #49c8ff46; }
++.mythora-enter-button:hover::before { transform: translateX(140%); }
++.mythora-enter-button b { position: absolute; right: 18px; font-size: 18px; }
++.mythora-enter-button:disabled { cursor: not-allowed; filter: saturate(.25) brightness(.55); }
++.mythora-sign-in { margin: 17px 0 0; border: 0; background: none; color: #737d96; font-size: 10px; cursor: pointer; }
++.mythora-sign-in:disabled { cursor: default; opacity: .55; }
++.mythora-sign-in u { color: #b6c9e8; text-underline-offset: 3px; }
++.mythora-sign-in:hover:not(:disabled) u { color: #72ddff; }
++.mythora-system-line { display: flex; justify-content: center; align-items: center; gap: 7px; margin: 23px -34px -5px; padding-top: 14px; border-top: 1px solid #ffffff0a; color: #4e5a72; font: 500 7px var(--app-font-mono); letter-spacing: .16em; }
++.mythora-system-line i { width: 5px; height: 5px; border-radius: 50%; background: #62f5be; box-shadow: 0 0 8px #62f5be; }
++.mythora-footer-mark { position: absolute; bottom: max(19px, env(safe-area-inset-bottom)); color: #3f4960; font: 500 8px var(--app-font-mono); letter-spacing: .16em; }
++.mythora-footer-mark span { color: #54cbee; }
++
++.mythora-portal { position: absolute; z-index: 2; top: 50%; left: 50%; width: 14vmin; height: 14vmin; opacity: 0; transform: translate(-50%, -50%) scale(.05); }
++.mythora-portal i { position: absolute; inset: 0; border: 2px solid #75e8ff; border-radius: 50%; box-shadow: 0 0 30px #54dfff, 0 0 90px #7d68ff inset; }
++.mythora-portal i:nth-child(2) { inset: -12%; border-color: #a681ff; animation: mythora-portal-spin 1.8s linear infinite reverse; }
++.mythora-portal i:nth-child(3) { inset: 20%; border-color: white; filter: blur(2px); }
++.mythora-transition-flash { position: absolute; z-index: 8; inset: 0; pointer-events: none; background: white; opacity: 0; }
++.phase-opening .mythora-entry-panel { transform: scale(.96); filter: brightness(.75); }
++.phase-opening .mythora-portal { animation: mythora-portal-open .95s cubic-bezier(.2, .8, .2, 1) forwards; }
++.phase-opening .mythora-stars { animation-duration: 2s; }
++.phase-opening .mythora-enter-button { filter: brightness(1.35); }
++.phase-leaving .mythora-entry-panel { transform: scale(.25); opacity: 0; filter: blur(12px); }
++.phase-leaving .mythora-portal { opacity: 1; animation: mythora-portal-warp .9s cubic-bezier(.2, .8, .2, 1) forwards; }
++.phase-leaving .mythora-transition-flash { animation: mythora-flash .85s ease-in forwards; }
++.phase-leaving .mythora-stars { animation: mythora-star-warp .8s ease-in forwards; }
++
++@keyframes mythora-nebula-drift { to { transform: translate3d(4%, -2%, 0) scale(1.08); } }
++@keyframes mythora-stars-drift { to { transform: rotate(10deg) translate3d(80px, 70px, 0); } }
++@keyframes mythora-portal-spin { to { transform: rotate(360deg); } }
++@keyframes mythora-portal-open { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.05) rotate(0); } 65% { opacity: 1; } 100% { opacity: 1; transform: translate(-50%, -50%) scale(3.7) rotate(120deg); } }
++@keyframes mythora-portal-warp { to { transform: translate(-50%, -50%) scale(18) rotate(260deg); filter: brightness(2); } }
++@keyframes mythora-flash { 0%, 54% { opacity: 0; } 82% { opacity: .92; } 100% { opacity: 0; } }
++@keyframes mythora-star-warp { to { transform: scale(2.8) rotate(12deg); opacity: .75; filter: blur(1px); } }
++
++@media (max-width: 540px) {
++  .mythora-entry-panel { padding: 31px 24px 20px; border-radius: 20px; }
++  .mythora-sigil { width: 60px; height: 60px; border-radius: 18px; }
++  .mythora-system-line { margin-left: -24px; margin-right: -24px; }
++  .mythora-footer-mark { bottom: max(13px, env(safe-area-inset-bottom)); }
++  .mythora-stars { background-size: 74px 71px; }
++}
++
++@media (max-height: 640px) {
++  .mythora-entry-panel { padding-top: 22px; padding-bottom: 17px; transform: scale(.9); }
++  .mythora-sigil { width: 54px; height: 54px; margin-bottom: 11px; }
++  .mythora-tagline { margin-bottom: 19px; }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .mythora-entry * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
++}
+diff --git a/artifacts/monster-realms/src/pages/landing.tsx b/artifacts/monster-realms/src/pages/landing.tsx
+index af3f571..05f80f7 100644
+--- a/artifacts/monster-realms/src/pages/landing.tsx
++++ b/artifacts/monster-realms/src/pages/landing.tsx
+@@ -10,7 +10,8 @@ import { useGameStore } from '@/store/game-store';
+ import { CHARACTERS } from '@/lib/characters';
+ import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
+ import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
+-import { Sparkles, ArrowRight, ArrowLeft, User, Package } from 'lucide-react';
++import { Sparkles, ArrowRight, ArrowLeft, Package } from 'lucide-react';
++import MythoraEntry from '@/components/auth/MythoraEntry';
+ 
+ // ─── SVG character preview ────────────────────────────────────────────────────
+ 
+@@ -81,6 +82,7 @@ export default function Landing() {
+   const [starterPack, setStarterPack] = useState<StarterMyth[]>([]);
+   const [boxOpened, setBoxOpened] = useState(false);
+   const [isRegistering, setIsRegistering] = useState(false);
++  const [authReturnStep, setAuthReturnStep] = useState<'name' | 'element'>('name');
+ 
+   const guestLogin = useGuestLogin();
+   const register = useRegisterPlayer();
+@@ -149,66 +151,22 @@ export default function Landing() {
+     }
+   };
+ 
+-  const canProceedFromName = username.trim().length >= 2;
+-
+   // ─── Step: Enter username ───────────────────────────────────────────────────
+   if (step === 'name') {
+     return (
+-      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
+-        <ParticleBackground />
+-        <div className="glass-panel p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative z-10">
+-          <div className="text-center space-y-3">
+-            <div className="flex justify-center mb-2">
+-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-cyan">
+-                <Sparkles size={40} className="text-primary-foreground" />
+-              </div>
+-            </div>
+-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+-              Mythora
+-            </h1>
+-            <p className="text-muted-foreground text-sm">Discover. Bond. Become legendary.</p>
+-          </div>
+-
+-          <div className="space-y-4">
+-            <div className="space-y-2">
+-              <Label htmlFor="username" className="flex items-center gap-2">
+-                <User size={14} /> Explorer Name
+-              </Label>
+-              <Input
+-                id="username"
+-                placeholder="Enter your name"
+-                value={username}
+-                onChange={(e) => setUsername(e.target.value)}
+-                onKeyDown={(e) => e.key === 'Enter' && canProceedFromName && setStep('character')}
+-                maxLength={20}
+-                autoFocus
+-                data-testid="input-username"
+-              />
+-            </div>
+-
+-            <Button
+-              variant="default"
+-              size="lg"
+-              className="w-full glow-cyan font-bold text-base flex items-center justify-center gap-2"
+-              onClick={() => setStep('character')}
+-              disabled={!canProceedFromName}
+-              data-testid="button-next-character"
+-            >
+-              Choose Your Character <ArrowRight size={18} />
+-            </Button>
+-
+-            <div className="text-center">
+-              <button
+-                className="text-xs text-muted-foreground underline underline-offset-2"
+-                onClick={() => { setStep('register'); setIsRegistering(false); }}
+-              >
+-                Already have an account? Sign in
+-              </button>
+-            </div>
+-
+-          </div>
+-        </div>
+-      </div>
++      <MythoraEntry
++        initialName={username}
++        onContinue={(explorerName) => {
++          setUsername(explorerName);
++          setStep('character');
++        }}
++        onSignIn={(explorerName) => {
++          if (explorerName) setUsername(explorerName);
++          setAuthReturnStep('name');
++          setIsRegistering(false);
++          setStep('register');
++        }}
++      />
+     );
+   }
+ 
+@@ -362,7 +320,7 @@ export default function Landing() {
+               variant="outline"
+               size="lg"
+               className="flex-1"
+-              onClick={() => setStep('register')}
++              onClick={() => { setAuthReturnStep('element'); setStep('register'); }}
+               disabled={!selectedElement}
+             >
+               Create Account
+@@ -566,7 +524,7 @@ export default function Landing() {
+           </Button>
+ 
+           <div className="flex gap-3">
+-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(selectedElement ? 'element' : 'character')}>
++            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(authReturnStep)}>
+               <ArrowLeft size={14} className="mr-1" /> Back
+             </Button>
+             <button
+-- 
+2.51.1
+

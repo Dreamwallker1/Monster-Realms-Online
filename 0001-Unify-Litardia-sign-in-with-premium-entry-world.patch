@@ -1,0 +1,254 @@
+From 7c494c6949df0829922f073ff2e14841f0a7bd45 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 1 Aug 2026 15:43:28 +0300
+Subject: [PATCH] Unify Litardia sign-in with premium entry world
+
+---
+ .../src/components/auth/MythoraEntry.tsx      | 47 ++++++++-----
+ .../src/components/auth/mythora-entry.css     | 32 +++++++++
+ .../monster-realms/src/pages/landing.tsx      | 67 +++++++++++--------
+ 3 files changed, 101 insertions(+), 45 deletions(-)
+
+diff --git a/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx b/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+index 46a4718..6b7032d 100644
+--- a/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
++++ b/artifacts/monster-realms/src/components/auth/MythoraEntry.tsx
+@@ -9,6 +9,34 @@ type Props = {
+   onSignIn: (explorerName: string) => void;
+ };
+ 
++const entryAsset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
++
++export function LitardiaBackdrop() {
++  return (
++    <>
++      <div className="mythora-nebula" aria-hidden="true" />
++      <div className="mythora-stars mythora-stars-a" aria-hidden="true" />
++      <div className="mythora-stars mythora-stars-b" aria-hidden="true" />
++      <div className="mythora-world" aria-hidden="true">
++        <div className="mythora-moon" />
++        <div className="mythora-mountains mythora-mountains-far" />
++        <div className="mythora-mountains mythora-mountains-near" />
++        <div className="mythora-world-grid" />
++        <div className="mythora-rift" />
++      </div>
++      <img className="mythora-guardian mythora-guardian-ashquill" src={entryAsset('myths/ashquill-battle.webp')} alt="" aria-hidden="true" />
++      <img className="mythora-guardian mythora-guardian-flarelynx" src={entryAsset('myths/flarelynx-battle.webp')} alt="" aria-hidden="true" />
++      <div className="mythora-embers" aria-hidden="true">
++        {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
++      </div>
++    </>
++  );
++}
++
++export function LitardiaWordmark() {
++  return <img className="mythora-wordmark" src={entryAsset('branding/litardia-wordmark.png')} alt="LITARDIA" />;
++}
++
+ export default function MythoraEntry({ initialName = '', onContinue, onSignIn }: Props) {
+   const [name, setName] = useState(initialName);
+   const [phase, setPhase] = useState<EntryPhase>('ready');
+@@ -36,25 +64,10 @@ export default function MythoraEntry({ initialName = '', onContinue, onSignIn }:
+   }
+ 
+   const cleanName = name.trim().slice(0, 20);
+-  const asset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+ 
+   return (
+     <main className={`mythora-entry phase-${phase}`} data-testid="premium-entry">
+-      <div className="mythora-nebula" aria-hidden="true" />
+-      <div className="mythora-stars mythora-stars-a" aria-hidden="true" />
+-      <div className="mythora-stars mythora-stars-b" aria-hidden="true" />
+-      <div className="mythora-world" aria-hidden="true">
+-        <div className="mythora-moon" />
+-        <div className="mythora-mountains mythora-mountains-far" />
+-        <div className="mythora-mountains mythora-mountains-near" />
+-        <div className="mythora-world-grid" />
+-        <div className="mythora-rift" />
+-      </div>
+-      <img className="mythora-guardian mythora-guardian-ashquill" src={asset('myths/ashquill-battle.webp')} alt="" aria-hidden="true" />
+-      <img className="mythora-guardian mythora-guardian-flarelynx" src={asset('myths/flarelynx-battle.webp')} alt="" aria-hidden="true" />
+-      <div className="mythora-embers" aria-hidden="true">
+-        {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
+-      </div>
++      <LitardiaBackdrop />
+       <div className="mythora-portal" aria-hidden="true"><i /><i /><i /></div>
+       <div className="mythora-transition-flash" aria-hidden="true" />
+ 
+@@ -67,7 +80,7 @@ export default function MythoraEntry({ initialName = '', onContinue, onSignIn }:
+         </div>
+         <p className="mythora-eyebrow">ENTER THE MYTHIC REALM</p>
+         <h1 id="litardia-title" className="mythora-title-text">LITARDIA</h1>
+-        <img className="mythora-wordmark" src={asset('branding/litardia-wordmark.png')} alt="" aria-hidden="true" />
++        <LitardiaWordmark />
+         <p className="mythora-tagline"><span /> Discover. Bond. Become legendary. <span /></p>
+ 
+         <form onSubmit={submit}>
+diff --git a/artifacts/monster-realms/src/components/auth/mythora-entry.css b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+index 72fb6be..712630e 100644
+--- a/artifacts/monster-realms/src/components/auth/mythora-entry.css
++++ b/artifacts/monster-realms/src/components/auth/mythora-entry.css
+@@ -271,3 +271,35 @@
+   .mythora-wordmark { height: 76px; }
+   .mythora-tagline { margin-bottom: 15px; }
+ }
++
++/* Login and registration share the same world instead of falling back to the
++   legacy glass-card screen. */
++.mythora-auth-panel { width: min(440px, calc(100vw - 34px)); padding-top: 25px; }
++.mythora-auth-brand { position: relative; z-index: 1; text-align: center; }
++.mythora-auth-brand .mythora-wordmark { height: 88px; margin-top: -10px; margin-bottom: -13px; }
++.mythora-auth-brand h2 { margin: 0; color: #d8eef1; font: 700 12px var(--app-font-mono); letter-spacing: .16em; }
++.mythora-auth-brand > p:last-child { margin: 7px 0 22px; color: #64777e; font: 500 8px var(--app-font-mono); letter-spacing: .08em; }
++.mythora-auth-form { position: relative; z-index: 1; display: grid; gap: 14px; }
++.mythora-auth-field { display: grid; gap: 7px; }
++.mythora-auth-field input { width: 100%; height: 47px; padding: 0 14px; border: 1px solid #678d982e; border-radius: 4px; outline: none; color: #e7f5f6; background: #010609c7; box-shadow: inset 0 1px 9px #000b; font: 600 12px var(--app-font-sans); transition: border-color .2s, box-shadow .2s; }
++.mythora-auth-field input:focus { border-color: #68dcf899; box-shadow: 0 0 0 2px #48cfe614, inset 0 1px 9px #000b; }
++.mythora-auth-field input::placeholder { color: #46575e; }
++.mythora-auth-submit { margin-top: 2px; }
++.mythora-auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
++.mythora-auth-back, .mythora-auth-switch { display: flex; align-items: center; justify-content: center; min-height: 38px; border: 1px solid #59727a2e; border-radius: 3px; color: #71858c; background: #050b0e80; font: 600 8px var(--app-font-mono); letter-spacing: .06em; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
++.mythora-auth-back:hover, .mythora-auth-switch:hover { color: #bce9ef; border-color: #64cce24f; background: #0c1b20cc; }
++.mythora-auth-error { position: relative; z-index: 1; margin: 12px 0 0; padding: 9px 11px; border: 1px solid #ff633b3d; color: #ff9478; background: #54170f36; font: 600 9px var(--app-font-mono); text-align: center; }
++.mythora-auth-entry .mythora-guardian { opacity: .19; }
++
++@media (max-width: 540px) {
++  .mythora-auth-panel { padding: 21px 23px 17px; }
++  .mythora-auth-brand .mythora-wordmark { height: 75px; }
++  .mythora-auth-brand h2 { font-size: 10px; }
++}
++
++@media (max-height: 640px) {
++  .mythora-auth-panel { transform: scale(.86); padding-top: 15px; }
++  .mythora-auth-brand .mythora-wordmark { height: 66px; }
++  .mythora-auth-brand > p:last-child { margin-bottom: 13px; }
++  .mythora-auth-form { gap: 9px; }
++}
+diff --git a/artifacts/monster-realms/src/pages/landing.tsx b/artifacts/monster-realms/src/pages/landing.tsx
+index 05f80f7..6b300ec 100644
+--- a/artifacts/monster-realms/src/pages/landing.tsx
++++ b/artifacts/monster-realms/src/pages/landing.tsx
+@@ -11,7 +11,7 @@ import { CHARACTERS } from '@/lib/characters';
+ import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
+ import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
+ import { Sparkles, ArrowRight, ArrowLeft, Package } from 'lucide-react';
+-import MythoraEntry from '@/components/auth/MythoraEntry';
++import MythoraEntry, { LitardiaBackdrop, LitardiaWordmark } from '@/components/auth/MythoraEntry';
+ 
+ // ─── SVG character preview ────────────────────────────────────────────────────
+ 
+@@ -475,20 +475,24 @@ export default function Landing() {
+ 
+   // ─── Step: Register / Login ─────────────────────────────────────────────────
+   return (
+-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
+-      <ParticleBackground />
+-      <div className="glass-panel p-8 rounded-3xl w-full max-w-md shadow-2xl relative z-10 space-y-6">
+-        <div className="text-center space-y-1">
+-          <h2 className="text-2xl font-bold text-primary">
+-            {isRegistering ? 'Create Account' : 'Welcome Back'}
+-          </h2>
+-          <div className="flex justify-center my-3">
+-            <CharacterSVG char={selectedChar} size={80} />
+-          </div>
++    <main className="mythora-entry mythora-auth-entry" data-testid="litardia-auth-screen">
++      <LitardiaBackdrop />
++      <section className="mythora-entry-panel mythora-auth-panel" aria-labelledby="auth-title">
++        <div className="mythora-auth-brand">
++          <p className="mythora-eyebrow">SECURE EXPLORER ACCESS</p>
++          <LitardiaWordmark />
++          <h2 id="auth-title">{isRegistering ? 'FORGE YOUR ACCOUNT' : 'WELCOME BACK, EXPLORER'}</h2>
++          <p>{isRegistering ? 'Bind your name to the realm.' : 'Your bonded Myths are waiting.'}</p>
+         </div>
+ 
+-        <div className="space-y-4">
+-          <div className="space-y-2">
++        <form
++          className="mythora-auth-form"
++          onSubmit={(event) => {
++            event.preventDefault();
++            void (isRegistering ? handleRegister() : handleLogin());
++          }}
++        >
++          <div className="mythora-auth-field">
+             <Label htmlFor="reg-username">Username</Label>
+             <Input
+               id="reg-username"
+@@ -496,9 +500,13 @@ export default function Landing() {
+               onChange={(e) => setUsername(e.target.value)}
+               placeholder="Explorer name"
+               data-testid="input-username-register"
++              autoComplete="username"
++              autoCapitalize="none"
++              spellCheck={false}
++              autoFocus
+             />
+           </div>
+-          <div className="space-y-2">
++          <div className="mythora-auth-field">
+             <Label htmlFor="password">Password</Label>
+             <Input
+               id="password"
+@@ -507,42 +515,45 @@ export default function Landing() {
+               onChange={(e) => setPassword(e.target.value)}
+               placeholder="Password"
+               data-testid="input-password"
++              autoComplete={isRegistering ? 'new-password' : 'current-password'}
+             />
+           </div>
+ 
+-          <Button
+-            variant="default"
+-            size="lg"
+-            className="w-full glow-violet font-bold"
+-            onClick={isRegistering ? handleRegister : handleLogin}
++          <button
++            type="submit"
++            className="mythora-enter-button mythora-auth-submit"
+             disabled={!username.trim() || !password || register.isPending || login.isPending}
+             data-testid="button-register"
+           >
+             {isRegistering
+               ? (register.isPending ? 'Creating account...' : 'Create & Play')
+               : (login.isPending ? 'Signing in...' : 'Sign In')}
+-          </Button>
++            <b aria-hidden="true">→</b>
++          </button>
+ 
+-          <div className="flex gap-3">
+-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(authReturnStep)}>
++          <div className="mythora-auth-actions">
++            <button type="button" className="mythora-auth-back" onClick={() => setStep(authReturnStep)}>
+               <ArrowLeft size={14} className="mr-1" /> Back
+-            </Button>
++            </button>
+             <button
+-              className="text-xs text-muted-foreground underline underline-offset-2"
++              type="button"
++              className="mythora-auth-switch"
+               onClick={() => setIsRegistering(!isRegistering)}
+             >
+               {isRegistering ? 'Sign in instead' : 'Create account'}
+             </button>
+           </div>
+-        </div>
++        </form>
+ 
+         {(isRegistering ? register.isError : login.isError) && (
+-          <p className="text-sm text-destructive text-center">
++          <p className="mythora-auth-error" role="alert">
+             {((isRegistering ? register.error : login.error) as Error)?.message || 'Something went wrong.'}
+           </p>
+         )}
+-      </div>
+-    </div>
++        <div className="mythora-system-line"><i /> LITARDIA NETWORK ONLINE</div>
++      </section>
++      <p className="mythora-footer-mark">MONSTER REALMS ONLINE <span>·</span> ALPHA</p>
++    </main>
+   );
+ }
+ 
+-- 
+2.51.1
+
