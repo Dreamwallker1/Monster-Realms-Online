@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { RenderPose } from '@/lib/myth-physics/myth-physics-engine';
 
 type RigMode = 'idle' | 'attack' | 'hit';
 type Point = [number, number];
@@ -69,8 +70,9 @@ function applyMotion(ctx: CanvasRenderingContext2D, pivot: Point, m: Motion, ori
   ctx.translate(-px, -py);
 }
 
-export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }: {
+export default function RiggedMythCanvas({ speciesId, src, size, facing, mode, getPhysicsPose }: {
   speciesId: string; src: string; size: number; facing: 'left' | 'right'; mode: RigMode;
+  getPhysicsPose?: () => RenderPose | undefined;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -95,27 +97,51 @@ export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }:
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, logical, logical);
       ctx.save();
+      const physics = getPhysicsPose?.();
+      if (physics) {
+        ctx.translate(logical / 2, logical / 2);
+        ctx.translate(physics.root.x, physics.root.y);
+        ctx.rotate(physics.root.rotation);
+        ctx.scale(physics.root.scaleX, physics.root.scaleY);
+        ctx.translate(-logical / 2, -logical / 2);
+      }
       const shouldFlip = speciesId === 'ashquill' ? facing === 'right' : facing === 'left';
       if (shouldFlip) { ctx.translate(logical, 0); ctx.scale(-1, 1); }
       const scale = rig.scale;
       const origin: Point = [(logical - 512 * scale) / 2, (logical - 512 * scale) / 2 + 18];
       const body = rig.parts.find(part => part.id === 'body')!;
       const bodyMotion = getMotion('body', t, mode, speciesId);
+      const mergePhysics = (part: Part, authored: Motion): Motion => {
+        const physical = physics?.bones[part.motion];
+        if (!physical) return authored;
+        return {
+          x: authored.x + physical.x,
+          y: authored.y + physical.y,
+          r: authored.r + physical.rotation,
+          sx: authored.sx * physical.scaleX,
+          sy: authored.sy * physical.scaleY,
+        };
+      };
+      const physicalBodyMotion = mergePhysics(body, bodyMotion);
       if (image.complete && image.naturalWidth) {
         rig.parts.forEach(part => {
           ctx.save();
-          if (part.parent === 'body') applyMotion(ctx, body.pivot, bodyMotion, origin, scale);
-          applyMotion(ctx, part.pivot, getMotion(part.motion, t, mode, speciesId), origin, scale);
+          if (part.parent === 'body') applyMotion(ctx, body.pivot, physicalBodyMotion, origin, scale);
+          applyMotion(ctx, part.pivot, mergePhysics(part, getMotion(part.motion, t, mode, speciesId)), origin, scale);
           ctx.beginPath();
           part.poly.forEach(([x,y], index) => index
             ? ctx.lineTo(origin[0] + x * scale, origin[1] + y * scale)
             : ctx.moveTo(origin[0] + x * scale, origin[1] + y * scale));
           ctx.closePath();
           ctx.clip();
+          if (physics?.burning) {
+            ctx.shadowColor = '#ff4b12';
+            ctx.shadowBlur = 24 + Math.sin(t * 18) * 7;
+          }
           ctx.drawImage(image, origin[0], origin[1], 512 * scale, 512 * scale);
           ctx.restore();
         });
-        if (mode === 'idle' && Math.sin(t * .83) > .985) {
+        if ((physics?.blink ?? 0) > .35 || (mode === 'idle' && Math.sin(t * .83) > .985)) {
           ctx.save();
           ctx.fillStyle = '#170b10';
           ctx.beginPath();
@@ -140,7 +166,7 @@ export default function RiggedMythCanvas({ speciesId, src, size, facing, mode }:
       image.onload = null;
       cancelAnimationFrame(frameId);
     };
-  }, [speciesId, src, facing, mode]);
+  }, [speciesId, src, facing, mode, getPhysicsPose]);
 
   return <canvas ref={canvasRef} className="rigged-myth-canvas" style={{ width: size, height: size }} role="img" aria-label={`${speciesId} living battle rig`} />;
 }

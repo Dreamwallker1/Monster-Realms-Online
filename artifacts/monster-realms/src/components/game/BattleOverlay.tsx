@@ -17,6 +17,12 @@ import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
 import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
 import RiggedMythCanvas from './RiggedMythCanvas';
+import { useMythPhysics } from '@/lib/myth-physics/use-myth-physics';
+import type { MythKind, RenderPose } from '@/lib/myth-physics/myth-physics-engine';
+
+const PLAYER_PHYSICS_ID = 'battle-player-myth';
+const WILD_PHYSICS_ID = 'battle-wild-myth';
+const isPhysicsMyth = (id?: string): id is MythKind => id === 'ashquill' || id === 'flarelynx';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -570,10 +576,11 @@ function HitReactionOverlay({ speciesId, element, animKey }: {
 // ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
 function MythSprite({
-  speciesId, element, rarity = 'C', size = 110, shakeKey, attackKey = 0, isFainting = false, facing = 'right',
+  speciesId, element, rarity = 'C', size = 110, shakeKey, attackKey = 0, isFainting = false, facing = 'right', getPhysicsPose,
 }: {
   speciesId: string; element: string; rarity?: string;
   size?: number; shakeKey: number; attackKey?: number; isFainting?: boolean; facing?: 'left' | 'right';
+  getPhysicsPose?: () => RenderPose | undefined;
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
@@ -633,6 +640,7 @@ function MythSprite({
                 size={renderedSize}
                 facing={facing}
                 mode={sheetMode}
+                getPhysicsPose={getPhysicsPose}
               />
               {[0, 1, 2].map((ember) => (
                 <span
@@ -971,6 +979,9 @@ function ActionPanel({
 export default function BattleOverlay() {
   const { battle, endBattle, updateBattle, characterType, player } = useGameStore();
   const queryClient = useQueryClient();
+  const { engine: mythPhysics, getPose: getPhysicsPose } = useMythPhysics(0);
+  const getPlayerPhysicsPose = useCallback(() => getPhysicsPose(PLAYER_PHYSICS_ID), [getPhysicsPose]);
+  const getWildPhysicsPose = useCallback(() => getPhysicsPose(WILD_PHYSICS_ID), [getPhysicsPose]);
 
   const [wildShake, setWildShake]         = useState(0);
   const [playerShake, setPlayerShake]     = useState(0);
@@ -1196,6 +1207,11 @@ export default function BattleOverlay() {
   // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
   useEffect(() => {
     if (!cinematic) return;
+    mythPhysics.attack(
+      cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
+      cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
+      cinematic.power,
+    );
     let impactTimer: number;
     if (cinematic.attackerSide === 'player') {
       setPlayerLungeKey(k => k + 1);
@@ -1214,7 +1230,7 @@ export default function BattleOverlay() {
     }
     return () => window.clearTimeout(impactTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cinematic]);
+  }, [cinematic, mythPhysics]);
 
   // ── Round tracking — banner fires AFTER opponent's turn ends ────────────
   // When the API returns a new round number we don't immediately show the banner
@@ -1313,6 +1329,22 @@ export default function BattleOverlay() {
   const status       = battle.battle?.status ?? 'active';
   const isPending    = performAction.isPending;
   // isOver is declared above (near the isOver effect) so we don't redeclare it here
+
+  useEffect(() => {
+    const playerKind = playerMonster?.species?.id;
+    const wildKind = wildMonster?.species?.id;
+    if (isPhysicsMyth(playerKind)) mythPhysics.add(PLAYER_PHYSICS_ID, playerKind, 'player');
+    if (isPhysicsMyth(wildKind)) mythPhysics.add(WILD_PHYSICS_ID, wildKind, 'wild');
+    return () => {
+      mythPhysics.remove(PLAYER_PHYSICS_ID);
+      mythPhysics.remove(WILD_PHYSICS_ID);
+    };
+  }, [mythPhysics, playerMonster?.species?.id, wildMonster?.species?.id, battle.battleId]);
+
+  useEffect(() => {
+    if (!faintCinematic) return;
+    mythPhysics.faint(faintCinematic.side === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID);
+  }, [faintCinematic, mythPhysics]);
 
   // ── Cinematic complete handler ────────────────────────────────────────────
   const onCinematicComplete = useCallback(() => {
@@ -1716,6 +1748,7 @@ export default function BattleOverlay() {
               attackKey={wildLungeKey}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
+              getPhysicsPose={getWildPhysicsPose}
             />
           </div>
           </div> {/* ← close stagger wrapper */}
@@ -1746,6 +1779,7 @@ export default function BattleOverlay() {
               attackKey={playerLungeKey}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"
+              getPhysicsPose={getPlayerPhysicsPose}
             />
           </div>
           </div> {/* ← close stagger wrapper */}
