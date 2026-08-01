@@ -10,7 +10,7 @@ describe('MythPhysicsEngine', () => {
     engine.add('player', 'flarelynx', 'player');
     engine.add('wild', 'ashquill', 'wild');
     engine.attack('player', 'wild', 20);
-    vi.advanceTimersByTime(260);
+    vi.advanceTimersByTime(530);
     const poses = engine.tick(1000);
     expect(poses.find((pose) => pose.entityId === 'wild')?.state).toBe('hit');
     expect(poses.find((pose) => pose.entityId === 'player')?.state).not.toBe('hit');
@@ -44,7 +44,7 @@ describe('MythPhysicsEngine', () => {
     engine.add('player', 'flarelynx', 'player');
     engine.add('wild', 'ashquill', 'wild');
     engine.attack('player', 'wild', 20);
-    vi.advanceTimersByTime(410);
+    vi.advanceTimersByTime(790);
     expect(impacts).toEqual(['wild', 'wild']);
     engine.destroy();
   });
@@ -63,5 +63,27 @@ describe('MythPhysicsEngine', () => {
     expect(impacts).toEqual([]);
     expect(engine.tick(1000).find((pose) => pose.entityId === 'wild')?.state).toBe('idle');
     engine.destroy();
+  });
+
+  it('uses separate physical choreography for combo, leap and burst skills', () => {
+    vi.useFakeTimers();
+    const directions: Array<{ x: number; y: number; force: number }> = [];
+    const run = (style: 'combo' | 'leap' | 'burst', wait: number) => {
+      const engine = new MythPhysicsEngine();
+      engine.add('player', 'flarelynx', 'player');
+      engine.add('wild', 'ashquill', 'wild');
+      engine.onImpact = (event) => directions.push({ ...event.direction, force: event.force });
+      engine.attack('player', 'wild', 20, 310, style);
+      vi.advanceTimersByTime(wait);
+      engine.destroy();
+    };
+    run('combo', 530);
+    run('leap', 950);
+    run('burst', 800);
+    expect(directions).toHaveLength(3);
+    expect(directions[0]?.y).toBeLessThan(0);
+    expect(directions[1]?.y).toBeGreaterThan(0);
+    expect(directions[1]!.force).toBeGreaterThan(directions[0]!.force);
+    expect(Math.abs(directions[2]!.y)).toBeLessThan(Math.abs(directions[0]!.y));
   });
 });

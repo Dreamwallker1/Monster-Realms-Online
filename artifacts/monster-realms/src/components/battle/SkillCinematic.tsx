@@ -24,10 +24,10 @@ const RARITY_CFG: Record<string, {
   hitWaves: number; scale: number; particleScale: number;
   dur: number; timeout: number; extraGlow: number;
 }> = {
-  C: { hitWaves: 1, scale: 0.65, particleScale: 0.6, dur: 0.85, timeout: 1400, extraGlow: 0 },
-  B: { hitWaves: 2, scale: 0.90, particleScale: 1.0, dur: 1.05, timeout: 1700, extraGlow: 0.4 },
-  A: { hitWaves: 2, scale: 1.10, particleScale: 1.3, dur: 1.30, timeout: 2000, extraGlow: 0.8 },
-  S: { hitWaves: 3, scale: 1.40, particleScale: 1.8, dur: 1.65, timeout: 2500, extraGlow: 1.4 },
+  C: { hitWaves: 1, scale: 0.65, particleScale: 0.6, dur: 1.25, timeout: 2400, extraGlow: 0 },
+  B: { hitWaves: 2, scale: 0.90, particleScale: 1.0, dur: 1.45, timeout: 2700, extraGlow: 0.4 },
+  A: { hitWaves: 2, scale: 1.10, particleScale: 1.3, dur: 1.70, timeout: 3000, extraGlow: 0.8 },
+  S: { hitWaves: 3, scale: 1.40, particleScale: 1.8, dur: 2.05, timeout: 3400, extraGlow: 1.4 },
 };
 const getRarityCfg = (r?: string) => RARITY_CFG[r ?? 'C'] ?? RARITY_CFG['C']!;
 
@@ -178,6 +178,38 @@ function sides(side: 'player' | 'wild') {
   return side === 'player'
     ? { from: '70%', to: '20%', fromN: 70, toN: 20 }
     : { from: '25%', to: '75%', fromN: 25, toN: 75 };
+}
+
+function PhysicalSkillStage({ side, skillType, color, glow }: {
+  side: 'player' | 'wild'; skillType: string; color: string; glow: string;
+}) {
+  const { from, to } = sides(side);
+  const style = skillType === 'skill1' ? 'leap' : skillType === 'skill2' || skillType === 'ultimate' ? 'burst' : 'combo';
+  if (style === 'leap') return (
+    <>
+      <motion.div className="absolute w-24 h-24 rounded-full border-2" style={{ left: from, top: '52%', borderColor: color, boxShadow: `0 0 32px ${glow}` }}
+        initial={{ x: '-50%', y: '-10%', scale: .25, opacity: 0 }}
+        animate={{ y: ['-10%', '-230%', '-35%'], scale: [.25, 1.15, .65], opacity: [0, .9, .75, 0] }}
+        transition={{ duration: 1.25, ease: [.22,.72,.18,1], times: [0,.42,.78,1] }} />
+      {[0, 1, 2].map((ring) => <motion.div key={ring} className="absolute rounded-full border-2" style={{ left: to, top: '64%', borderColor: ring === 0 ? '#fff2bd' : color, boxShadow: `0 0 22px ${glow}` }}
+        initial={{ x: '-50%', y: '-50%', width: 8, height: 8, opacity: 0 }} animate={{ width: 90 + ring * 55, height: 24 + ring * 18, opacity: [0, .9, 0] }}
+        transition={{ duration: .9, delay: .92 + ring * .09, ease: 'easeOut' }} />)}
+    </>
+  );
+  if (style === 'burst') return (
+    <>
+      <motion.div className="absolute rounded-full" style={{ left: from, top: '48%', width: 84, height: 84, background: `radial-gradient(circle,#fff7cf,${color} 32%,transparent 70%)`, boxShadow: `0 0 58px ${glow}` }}
+        initial={{ x: '-50%', y: '-50%', scale: .08, opacity: 0 }} animate={{ scale: [.08,.55,1.18,.2], opacity: [0,.65,1,0] }} transition={{ duration: 1.55, times: [0,.35,.72,1] }} />
+      <motion.div className="absolute h-3 rounded-full" style={{ top: '48%', left: side === 'player' ? '20%' : '25%', width: '55%', transformOrigin: side === 'player' ? 'right' : 'left', background: `linear-gradient(90deg,transparent,${color},#fff8d0,${color},transparent)`, boxShadow: `0 0 34px ${glow}` }}
+        initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: [0,0,1,.3], opacity: [0,0,1,0] }} transition={{ duration: 1.7, times: [0,.48,.7,1] }} />
+      <motion.div className="absolute rounded-full" style={{ left: to, top: '49%', width: 180, height: 220, background: `radial-gradient(circle,${color}88,${color}22 48%,transparent 72%)`, boxShadow: `0 0 70px ${glow}` }}
+        initial={{ x: '-50%', y: '-50%', scale: .1, opacity: 0 }} animate={{ scale: [.1,.1,1.25,.85], opacity: [0,0,1,0] }} transition={{ duration: 2.05, times: [0,.48,.7,1] }} />
+    </>
+  );
+  return (
+    <>{[0,1].map((beat) => <motion.div key={beat} className="absolute h-px" style={{ left: side === 'player' ? '20%' : '25%', top: `${43 + beat * 11}%`, width: '55%', background: `linear-gradient(90deg,transparent,${color},transparent)`, boxShadow: `0 0 18px ${glow}` }}
+      initial={{ scaleX: 0, opacity: 0 }} animate={{ scaleX: [0,1,.35], opacity: [0,1,0] }} transition={{ duration: .72, delay: .34 + beat * .34, ease: [.18,.74,.2,1] }} />)}</>
+  );
 }
 
 // ─── 1. CLAW_SLASH ────────────────────────────────────────────────────────────
@@ -1425,6 +1457,7 @@ export default function SkillCinematic({
 
         {/* ── Strike / element effect ── */}
         <div className="absolute inset-0" style={{ zIndex: 2 }}>
+          <PhysicalSkillStage side={attackerSide} skillType={skillType} color={el.color} glow={el.glow} />
           {isNormalAttack && strike ? (
             <StrikeEffect
               strike={strike}

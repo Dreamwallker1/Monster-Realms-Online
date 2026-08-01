@@ -2,6 +2,7 @@ export type MythKind = 'ashquill' | 'flarelynx';
 export type MythSide = 'player' | 'wild';
 export type MythState = 'idle' | 'anticipation' | 'attack' | 'recovery' | 'hit' | 'faint';
 export type PhysicsQuality = 'low' | 'medium' | 'high';
+export type AttackStyle = 'combo' | 'leap' | 'burst';
 
 export interface Vec2 { x: number; y: number }
 export interface PhysicsTransform { x: number; y: number; rotation: number; scaleX: number; scaleY: number }
@@ -302,27 +303,35 @@ export class MythPhysicsEngine {
     this.bodies.get(entityId)?.setState(state);
   }
 
-  attack(attackerId: string, targetId: string, damage: number, force = 310) {
+  attack(attackerId: string, targetId: string, damage: number, force = 310, style: AttackStyle = 'combo') {
     const attacker = this.bodies.get(attackerId);
     const target = this.bodies.get(targetId);
     if (!attacker || !target || attackerId === targetId) return false;
 
     const stillCurrent = () => this.bodies.get(attackerId) === attacker && this.bodies.get(targetId) === target;
+    const directionX = attacker.side === 'player' ? -1 : 1;
+    const firstImpactAt = style === 'combo' ? 520 : style === 'leap' ? 940 : 790;
     attacker.setState('anticipation');
-    this.schedule(() => { if (stillCurrent()) attacker.setState('attack'); }, 130);
+    this.schedule(() => {
+      if (!stillCurrent()) return;
+      attacker.setState('attack');
+      if (style === 'leap') attacker.impulse({ x: directionX * 150, y: -430 }, directionX * .18);
+      else if (style === 'combo') attacker.impulse({ x: directionX * 105, y: -65 }, directionX * .08);
+      else attacker.impulse({ x: -directionX * 42, y: -35 }, -directionX * .12);
+    }, style === 'combo' ? 260 : style === 'leap' ? 330 : 410);
     this.schedule(() => { if (stillCurrent()) this.impact({
       attackerId,
       targetId,
       damage,
-      direction: { x: attacker.side === 'player' ? -1 : 1, y: -.24 },
-      force,
-      hitStopMs: 65,
+      direction: { x: directionX, y: style === 'leap' ? .42 : style === 'burst' ? -.08 : -.24 },
+      force: style === 'leap' ? force * 1.28 : style === 'burst' ? force * 1.12 : force,
+      hitStopMs: style === 'leap' ? 105 : style === 'burst' ? 88 : 70,
       burnMs: attacker.kind === 'flarelynx' ? 1050 : 0,
-    }); }, 250);
+    }); }, firstImpactAt);
 
     // Twinflare Claw is a physical two-beat action. This second impulse is
     // visual only; battle HP remains exclusively server-authoritative.
-    if (attacker.kind === 'flarelynx') {
+    if (style === 'combo') {
       this.schedule(() => { if (stillCurrent()) this.impact({
         attackerId,
         targetId,
@@ -331,9 +340,10 @@ export class MythPhysicsEngine {
         force: force * .74,
         hitStopMs: 42,
         burnMs: 1150,
-      }); }, 390);
+      }); }, firstImpactAt + 260);
     }
-    this.schedule(() => { if (stillCurrent()) attacker.setState('recovery'); }, attacker.kind === 'flarelynx' ? 470 : 340);
+    this.schedule(() => { if (stillCurrent()) attacker.setState('recovery'); },
+      style === 'combo' ? firstImpactAt + 390 : style === 'leap' ? 1160 : 1030);
     return true;
   }
 

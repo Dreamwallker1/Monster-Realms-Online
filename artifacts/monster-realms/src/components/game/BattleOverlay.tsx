@@ -19,10 +19,16 @@ import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
 import RiggedMythCanvas from './RiggedMythCanvas';
 import { useMythPhysics } from '@/lib/myth-physics/use-myth-physics';
 import type { MythKind, RenderPose } from '@/lib/myth-physics/myth-physics-engine';
+import type { AttackStyle } from '@/lib/myth-physics/myth-physics-engine';
 
 const PLAYER_PHYSICS_ID = 'battle-player-myth';
 const WILD_PHYSICS_ID = 'battle-wild-myth';
 const isPhysicsMyth = (id?: string): id is MythKind => id === 'ashquill' || id === 'flarelynx';
+const getPhysicsAttackStyle = (skillType?: string): AttackStyle => {
+  if (skillType === 'skill1') return 'leap';
+  if (skillType === 'skill2' || skillType === 'ultimate') return 'burst';
+  return 'combo';
+};
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -1058,7 +1064,7 @@ export default function BattleOverlay() {
   const pendingBattleResult = useRef<Parameters<typeof updateBattle>[0] | null>(null);
   const pendingWildCinematic = useRef<{
     skillName: string; element: string; power: number; isCritical?: boolean;
-    attackerMythId?: string; attackerRarity?: string;
+    attackerMythId?: string; attackerRarity?: string; skillType?: string;
   } | null>(null);
 
   const prevWildHp      = useRef<number | null>(null);
@@ -1211,22 +1217,26 @@ export default function BattleOverlay() {
       cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
       cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
       cinematic.power,
+      310,
+      getPhysicsAttackStyle(cinematic.skillType),
     );
     let impactTimer: number;
+    const impactDelay = getPhysicsAttackStyle(cinematic.skillType) === 'combo' ? 780
+      : getPhysicsAttackStyle(cinematic.skillType) === 'leap' ? 940 : 790;
     if (cinematic.attackerSide === 'player') {
       setPlayerLungeKey(k => k + 1);
       impactTimer = window.setTimeout(() => {
         optimisticWildHitRef.current += 1;
         setWildShake(k => k + 1);
         window.setTimeout(() => { if (optimisticWildHitRef.current > 0) optimisticWildHitRef.current -= 1; }, 4000);
-      }, 520);
+      }, impactDelay);
     } else {
       setWildLungeKey(k => k + 1);
       impactTimer = window.setTimeout(() => {
         optimisticPlayerHitRef.current += 1;
         setPlayerShake(k => k + 1);
         window.setTimeout(() => { if (optimisticPlayerHitRef.current > 0) optimisticPlayerHitRef.current -= 1; }, 4000);
-      }, 520);
+      }, impactDelay);
     }
     return () => window.clearTimeout(impactTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1286,7 +1296,7 @@ export default function BattleOverlay() {
               phase: 'wild',
               attackerMythId: wild.attackerMythId,
               attackerRarity: wild.attackerRarity,
-              skillType: 'normal',
+              skillType: wild.skillType ?? 'normal',
             });
           }
           setOpponentTurnActive(false);
@@ -1413,6 +1423,8 @@ export default function BattleOverlay() {
       const wildEntry = logEntries.slice(-3).reverse().find(e => e.actor === 'wild');
       if (wildEntry) {
         const wildElement = updated.wildMonster?.species?.element ?? 'Fire';
+        const wildSkill = getDisplaySkills(updated.wildMonster?.species ?? {})
+          .find((candidate) => candidate.name === wildEntry.action);
         pendingWildCinematic.current = {
           skillName: wildEntry.action,
           element: wildElement,
@@ -1420,6 +1432,7 @@ export default function BattleOverlay() {
           isCritical: wildEntry.critical,
           attackerMythId: updated.wildMonster?.species?.id,
           attackerRarity:  updated.wildMonster?.species?.rarity ?? 'C',
+          skillType: wildSkill?.type ?? 'normal',
         };
       }
       pendingBattleResult.current = updated;
@@ -1551,12 +1564,13 @@ export default function BattleOverlay() {
     <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
-      <div className="relative flex-1 min-h-0 overflow-hidden battle-arena">
+      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? 'battle-focus-cinematic' : ''}`}>
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
         <div className="battle-sky-bloom" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
         <div className="battle-horizon-haze" style={{ '--arena-ambient': theme.ambientColor } as React.CSSProperties} />
+        <div className="battle-turn-camera-focus" aria-hidden="true" />
 
         {/* Ground */}
         <div
