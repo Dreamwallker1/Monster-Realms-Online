@@ -1,0 +1,31 @@
+{
+  "format": "2.5D sprite-sheet v1",
+  "sheet": {
+    "width": 1536,
+    "height": 1024,
+    "columns": 3,
+    "rows": 2,
+    "frameWidth": 512,
+    "frameHeight": 512
+  },
+  "frameOrder": [
+    "idle_a",
+    "idle_b",
+    "blink",
+    "attack_anticipation",
+    "attack",
+    "hit"
+  ],
+  "assets": {
+    "fireFox": "fire_fox_myth_sprite_sheet.png",
+    "fireBird": "fire_bird_myth_sprite_sheet.png"
+  },
+  "recommendedTimingMs": {
+    "idle_a": 520,
+    "idle_b": 520,
+    "blink": 110,
+    "attack_anticipation": 180,
+    "attack": 140,
+    "hit": 220
+  }
+}

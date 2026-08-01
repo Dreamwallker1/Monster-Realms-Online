@@ -16,7 +16,6 @@ import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components
 import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
 import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
-import LivingMythArt from './LivingMythArt';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -570,24 +569,36 @@ function HitReactionOverlay({ speciesId, element, animKey }: {
 // ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
 function MythSprite({
-  speciesId, element, rarity = 'C', size = 110, shakeKey, isFainting = false, facing = 'right',
+  speciesId, element, rarity = 'C', size = 110, shakeKey, attackKey = 0, isFainting = false, facing = 'right',
 }: {
   speciesId: string; element: string; rarity?: string;
-  size?: number; shakeKey: number; isFainting?: boolean; facing?: 'left' | 'right';
+  size?: number; shakeKey: number; attackKey?: number; isFainting?: boolean; facing?: 'left' | 'right';
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
+  const [sheetMode, setSheetMode] = useState<'idle' | 'attack' | 'hit'>('idle');
   const battleArt: Record<string, string> = {
-    flarelynx: '/myths/flarelynx-battle.webp',
-    ashquill: '/myths/ashquill-battle.webp',
+    flarelynx: '/myths/flarelynx-sprites.png',
+    ashquill: '/myths/ashquill-sprites.png',
   };
   const battleArtSrc = battleArt[speciesId];
   const hasBattleArt = Boolean(battleArtSrc);
   const renderedSize = hasBattleArt ? Math.round(size * 1.6) : size;
 
   useEffect(() => {
-    if (shakeKey > 0) setAnimKey((k) => k + 1);
+    if (shakeKey <= 0) return;
+    setAnimKey((k) => k + 1);
+    setSheetMode('hit');
+    const timer = window.setTimeout(() => setSheetMode('idle'), 240);
+    return () => window.clearTimeout(timer);
   }, [shakeKey]);
+
+  useEffect(() => {
+    if (attackKey <= 0) return;
+    setSheetMode('attack');
+    const timer = window.setTimeout(() => setSheetMode('idle'), 520);
+    return () => window.clearTimeout(timer);
+  }, [attackKey]);
 
   return (
     <div className="flex flex-col items-center">
@@ -609,12 +620,17 @@ function MythSprite({
             <div
               className="relative w-full h-full"
             >
-              <LivingMythArt
-                speciesId={speciesId}
-                src={battleArtSrc}
-                size={renderedSize}
-                facing={facing}
-                reactionKey={animKey}
+              <div
+                key={`${speciesId}-${sheetMode}-${attackKey}-${animKey}`}
+                className={`myth-sheet-sprite myth-sheet-${speciesId} myth-sheet-${sheetMode}`}
+                style={{
+                  width: renderedSize,
+                  height: renderedSize,
+                  backgroundImage: `url(${battleArtSrc})`,
+                  transform: facing === 'left' ? 'scaleX(-1)' : undefined,
+                }}
+                role="img"
+                aria-label={`${speciesId} ready for battle`}
               />
               {[0, 1, 2].map((ember) => (
                 <span
@@ -1679,6 +1695,7 @@ export default function BattleOverlay() {
               rarity={wildMonster.species.rarity}
               size={252}
               shakeKey={wildShake}
+              attackKey={wildLungeKey}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
             />
@@ -1708,6 +1725,7 @@ export default function BattleOverlay() {
               rarity={playerMonster.species.rarity}
               size={252}
               shakeKey={playerShake}
+              attackKey={playerLungeKey}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"
             />
