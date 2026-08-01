@@ -100,31 +100,6 @@ function makeStatDb(drizzle: DrizzleExecutor): StatUpdateDb {
 const router: IRouter = Router();
 const battleActionsInFlight = new Set<string>();
 const battleStartsInFlight = new Set<string>();
-const MAX_AETHER = 100;
-const STARTING_AETHER = 45;
-const ROUND_AETHER_REGEN = 10;
-const BASIC_AETHER_GAIN = 18;
-const AETHER_COST: Record<string, number> = { skill1: 30, skill2: 45, ultimate: 70 };
-
-function getPlayerAether(turn: number, log: BattleLogEntry[]): number {
-  let aether = STARTING_AETHER;
-  let regeneratedThroughTurn = 1;
-  for (const entry of log) {
-    if (entry.actor !== "player") continue;
-    while (regeneratedThroughTurn < entry.turn) {
-      aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
-      regeneratedThroughTurn += 1;
-    }
-    if (entry.action === "attack") aether = Math.min(MAX_AETHER, aether + BASIC_AETHER_GAIN);
-    else if (entry.action in AETHER_COST) aether = Math.max(0, aether - AETHER_COST[entry.action]!);
-  }
-  while (regeneratedThroughTurn < turn) {
-    aether = Math.min(MAX_AETHER, aether + ROUND_AETHER_REGEN);
-    regeneratedThroughTurn += 1;
-  }
-  return aether;
-}
-
 function lockBattleAction(req: Request, res: Response, next: NextFunction): void {
   const rawId = req.params?.battleId;
   const battleId = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -431,15 +406,10 @@ router.post(
     const skills = (wildSpecies.skills as { name: string; type: string; element: string; power: number; accuracy: number }[]);
     const playerSkills = (playerSpecies.skills as typeof skills);
 
-    if (action in AETHER_COST) {
+    if (["skill1", "skill2", "ultimate"].includes(action)) {
       const requestedSkill = playerSkills.find((skill) => skill.type === action);
       if (!requestedSkill) {
         res.status(400).json({ error: "That skill is not available to this myth" });
-        return;
-      }
-      const availableAether = getPlayerAether(battle.turn, log);
-      if (availableAether < AETHER_COST[action]!) {
-        res.status(400).json({ error: "Not enough Aether for that skill" });
         return;
       }
     }

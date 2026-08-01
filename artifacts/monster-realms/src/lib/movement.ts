@@ -1,4 +1,4 @@
-export const MOVE_RECOVERY_MS = 2100;
+export const MOVE_RECOVERY_MS = 1000;
 export const MOVE_ANIMATION_MS = 460;
 
 export type CardinalDirection = 'up' | 'down' | 'left' | 'right';

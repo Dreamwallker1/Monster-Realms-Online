@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { getMoveIntent, getMoveProgress, MOVE_RECOVERY_MS } from '@/lib/movement';
 
 describe('turn-paced world movement', () => {
+  it('allows exactly one step per second', () => {
+    expect(MOVE_RECOVERY_MS).toBe(1_000);
+  });
+
   it('maps only server-supported cardinal steps', () => {
     expect(getMoveIntent(0, -1)?.direction).toBe('up');
     expect(getMoveIntent(0, 1)?.direction).toBe('down');
