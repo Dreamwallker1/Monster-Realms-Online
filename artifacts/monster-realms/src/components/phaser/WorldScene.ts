@@ -693,11 +693,20 @@ export default class WorldScene extends Phaser.Scene {
 
   private releaseBattleCamera() {
     if (!this.playerContainer) return;
+
+    // Release gameplay immediately. Previously this flag was cleared only from
+    // zoomTo's completion callback; if Phaser lost that callback during a React
+    // remount or tab visibility change, world movement stayed locked forever.
+    this.battleFocusActive = false;
+    this.movementUnlockTimer?.remove(false);
+    this.movementUnlockTimer = undefined;
+    this.movementLocked = false;
+    dispatchMoveState({ locked: false, readyAt: 0 });
+
     const camera = this.cameras.main;
     camera.zoomTo(1, 850, 'Sine.easeInOut', true, (_camera, progress) => {
       if (progress >= 1 && this.playerContainer) {
         camera.startFollow(this.playerContainer, true, 0.1, 0.1);
-        this.battleFocusActive = false;
       }
     });
   }
