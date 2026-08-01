@@ -517,6 +517,35 @@
     bottom: 2%;
   }
 
+  .battle-screen-shell { height: 100dvh; max-height: 100dvh; overflow: hidden; isolation: isolate; }
+  .battle-arena { flex: 1 1 0%; min-height: 0; background: #05020a; }
+  .battle-hp-position-left { top: max(14px, env(safe-area-inset-top)); left: 16px; }
+  .battle-hp-position-right { top: max(14px, env(safe-area-inset-top)); right: 16px; }
+
+  .battle-celestial {
+    position: absolute; z-index: 0; left: 50%; top: 13%; width: clamp(120px, 17vw, 260px); aspect-ratio: 1;
+    transform: translateX(-50%); border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, rgba(255,255,255,.16), color-mix(in srgb, var(--arena-ambient, #f97316) 28%, transparent) 35%, transparent 70%);
+    filter: blur(1px); opacity: .62;
+  }
+  .battle-celestial-volcanic { background: radial-gradient(circle, #ffcf8555 0 8%, #ef4f2840 23%, transparent 68%); box-shadow: 0 0 90px #ef4f2829; }
+  .battle-mountain-layer { position: absolute; left: 0; right: 0; width: 100%; pointer-events: none; z-index: 0; }
+  .battle-mountain-back { bottom: 54%; height: 34%; fill: rgba(10,7,18,.55); filter: blur(1px); }
+  .battle-mountain-front { bottom: 53%; height: 28%; fill: rgba(16,9,20,.88); filter: drop-shadow(0 -8px 22px rgba(0,0,0,.45)); }
+  .battle-volcano-rift { fill: #ff7a38; filter: drop-shadow(0 0 9px #ff3d18); opacity: .78; }
+  .battle-arena-dais {
+    position: absolute; z-index: 1; left: 5%; right: 5%; bottom: -12%; height: 53%; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 15%, color-mix(in srgb, var(--arena-ambient) 17%, rgba(255,255,255,.05)), rgba(9,4,12,.42) 50%, rgba(2,1,6,.9) 75%);
+    border: 1px solid color-mix(in srgb, var(--arena-ambient) 28%, transparent);
+    box-shadow: inset 0 18px 55px rgba(255,255,255,.025), 0 -3px 40px color-mix(in srgb, var(--arena-ambient) 15%, transparent);
+    transform: perspective(700px) rotateX(57deg); transform-origin: bottom;
+  }
+  .battle-ground-cracks { position: absolute; z-index: 1; inset: auto 0 0; width: 100%; height: 58%; pointer-events: none; }
+  .battle-ground-cracks path { fill: none; stroke: color-mix(in srgb, var(--arena-ambient, #f97316) 68%, #ffca75); stroke-width: 2; opacity: .28; filter: drop-shadow(0 0 5px var(--arena-ambient, #f97316)); }
+  .battle-ash-field { position: absolute; inset: 0; z-index: 3; overflow: hidden; pointer-events: none; }
+  .battle-ash-field i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #ffba72; opacity: 0; animation: battle-ash-drift calc(4.5s + (var(--ash-i) * .13s)) linear infinite; animation-delay: calc(var(--ash-i) * -.37s); box-shadow: 0 0 5px #ff6a2b; }
+  @keyframes battle-ash-drift { 0%{opacity:0;translate:0 22px} 18%{opacity:.7} 100%{opacity:0;translate:38px -150px} }
+
   .battle-hit-wild {
     left: clamp(3%, 8vw, 10%);
     bottom: 7%;
@@ -546,7 +575,7 @@
     height: clamp(50px, 7vw, 94px);
     bottom: 0;
     border-radius: 50%;
-    z-index: 1;
+    z-index: 2;
     opacity: 0.72;
     pointer-events: none;
     background: radial-gradient(ellipse, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.2) 46%, transparent 72%);
@@ -601,7 +630,7 @@
     transform: perspective(600px) rotateX(58deg) scaleX(1.15);
     transform-origin: bottom;
   }
-  .battle-hp-anchor { transform: scale(1.08); z-index: 15; }
+  .battle-hp-anchor { transform: scale(1); z-index: 15; }
   .battle-hp-anchor-left { transform-origin: top left; }
   .battle-hp-anchor-right { transform-origin: top right; }
 
@@ -722,6 +751,14 @@
     100% { opacity: 1; clip-path: circle(150% at 50% 48%); filter: blur(0) saturate(1) brightness(1); transform: scale(1); }
   }
   .battle-screen-in { animation: battle-screen-in 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  @media (max-height: 760px) {
+    .battle-text-deck { height: 52px !important; }
+    .battle-action-deck { min-height: 132px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
+    .battle-combatant-wild, .battle-combatant-player { scale: .82; transform-origin: bottom center; bottom: 0; }
+    .battle-trainer { scale: .8; transform-origin: bottom center; bottom: 42% !important; }
+    .battle-hp-anchor { scale: .88; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .battle-screen-in { animation-duration: 0.15s; }

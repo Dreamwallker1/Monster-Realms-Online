@@ -197,6 +197,32 @@ function RockSilhouette({ color }: { color: string }) {
   );
 }
 
+function BattleBiomeScenery({ regionId, ambientColor }: { regionId?: string | null; ambientColor: string }) {
+  const volcanic = regionId === 'volcanic-rift' || regionId === 'scorched-wastes';
+  return (
+    <>
+      <div className={`battle-celestial ${volcanic ? 'battle-celestial-volcanic' : ''}`} style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
+      <svg className="battle-mountain-layer battle-mountain-back" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 260V205L92 142l55 42 96-104 74 86 88-62 77 90 112-138 89 127 71-69 92 78 102-121 106 117 66-39V260Z" />
+      </svg>
+      <svg className="battle-mountain-layer battle-mountain-front" viewBox="0 0 1200 220" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 220V190l112-72 84 58 121-116 99 117 87-72 90 85 126-154 116 144 83-82 115 92 87-61 100 62v29Z" />
+        {volcanic && <path className="battle-volcano-rift" d="M600 38l-18 67 24-21 19 32 17-74-21 18Z" />}
+      </svg>
+      <div className="battle-arena-dais" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} aria-hidden="true" />
+      <svg className="battle-ground-cracks" style={{ '--arena-ambient': ambientColor } as React.CSSProperties} viewBox="0 0 1200 430" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M610 0l-28 75 34 34-58 58 21 49-96 78M617 106l78 48-14 66 108 75M390 119l-67 52 19 49-119 73M881 104l63 70-22 57 112 67" />
+        <path d="M579 216l-69 14-27 64M680 220l45 22 64 53M342 220l-71 6-48 67M922 231l58 9 54 58" />
+      </svg>
+      {volcanic && (
+        <div className="battle-ash-field" aria-hidden="true">
+          {Array.from({ length: 18 }, (_, i) => <i key={i} style={{ '--ash-i': i, left: `${(i * 37 + 7) % 100}%`, top: `${(i * 23 + 11) % 88}%` } as React.CSSProperties} />)}
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Character front-facing SVG ─────────────────────────────────────────────────
 
 function CharacterFront({ char, size = 120 }: { char: CharacterConfig; size?: number }) {
@@ -1456,10 +1482,10 @@ export default function BattleOverlay() {
   const wildColors  = getElementColors(wildMonster.species.element);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col battle-screen-in" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+    <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
-      <div className="relative flex-1 overflow-hidden battle-arena">
+      <div className="relative flex-1 min-h-0 overflow-hidden battle-arena">
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
@@ -1487,9 +1513,10 @@ export default function BattleOverlay() {
         <div className="battle-foreground-ridge" aria-hidden="true" />
         <div className="battle-stage-pool battle-stage-pool-wild" aria-hidden="true" />
         <div className="battle-stage-pool battle-stage-pool-player" aria-hidden="true" />
+        <BattleBiomeScenery regionId={regionId} ambientColor={theme.ambientColor} />
 
         {/* Wild HP plate — upper left */}
-        <div className="absolute top-5 left-5 battle-slide-up battle-hp-anchor battle-hp-anchor-left" style={{ animationDelay: '0.75s' }}>
+        <div className="absolute battle-slide-up battle-hp-anchor battle-hp-anchor-left battle-hp-position-left" style={{ animationDelay: '0.75s' }}>
           <HpPlate
             name={wildMonster.species.name}
             level={wildMonster.level}
@@ -1584,7 +1611,7 @@ export default function BattleOverlay() {
         </div>
 
         {/* Player myth HP plate — upper right */}
-        <div className="absolute top-5 right-5 battle-slide-up battle-hp-anchor battle-hp-anchor-right" style={{ animationDelay: '0.8s' }}>
+        <div className="absolute battle-slide-up battle-hp-anchor battle-hp-anchor-right battle-hp-position-right" style={{ animationDelay: '0.8s' }}>
           <HpPlate
             name={playerMonster.species.name}
             level={playerMonster.level}
@@ -1600,10 +1627,10 @@ export default function BattleOverlay() {
 
         {/* Character — CENTER BACK (smaller, feet on ground) */}
         <div
-          className="absolute battle-entrance battle-idle-bob battle-trainer"
+          className="absolute battle-entrance battle-trainer"
           style={{
-            bottom: '47%',
-            left: '82%',
+            bottom: '43%',
+            left: '88%',
             transform: 'translateX(-50%)',
             animationDelay: '0.2s',
             zIndex: 1,
@@ -1650,7 +1677,7 @@ export default function BattleOverlay() {
               speciesId={wildMonster.species.id}
               element={wildMonster.species.element}
               rarity={wildMonster.species.rarity}
-              size={276}
+              size={252}
               shakeKey={wildShake}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
@@ -1679,7 +1706,7 @@ export default function BattleOverlay() {
               speciesId={playerMonster.species.id}
               element={playerMonster.species.element}
               rarity={playerMonster.species.rarity}
-              size={276}
+              size={252}
               shakeKey={playerShake}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"
@@ -2090,6 +2117,7 @@ export default function BattleOverlay() {
 
       {/* ── BATTLE TEXT BOX ──────────────────────────────────────────────────── */}
       <div
+        className="battle-text-deck shrink-0"
         style={{
           height: 64,
           borderTop: `2px solid rgba(255,255,255,0.08)`,
@@ -2105,7 +2133,7 @@ export default function BattleOverlay() {
 
       {/* ── ACTION PANEL ─────────────────────────────────────────────────────── */}
       <div
-        className="px-3 py-3"
+        className="px-3 py-3 battle-action-deck shrink-0"
         style={{
           background: 'linear-gradient(180deg, rgba(5,5,18,0.99), rgba(3,3,12,1))',
           minHeight: 148,
