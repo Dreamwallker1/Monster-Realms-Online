@@ -16,6 +16,7 @@ import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components
 import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
 import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
+import RiggedMythCanvas from './RiggedMythCanvas';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -578,8 +579,8 @@ function MythSprite({
   const [animKey, setAnimKey] = useState(0);
   const [sheetMode, setSheetMode] = useState<'idle' | 'attack' | 'hit'>('idle');
   const battleArt: Record<string, string> = {
-    flarelynx: '/myths/flarelynx-sprites.png',
-    ashquill: '/myths/ashquill-sprites.png',
+    flarelynx: '/myths/flarelynx-rig-master.png',
+    ashquill: '/myths/ashquill-rig-master.png',
   };
   const battleArtSrc = battleArt[speciesId];
   const hasBattleArt = Boolean(battleArtSrc);
@@ -620,17 +621,13 @@ function MythSprite({
             <div
               className="relative w-full h-full"
             >
-              <div
-                key={`${speciesId}-${sheetMode}-${attackKey}-${animKey}`}
-                className={`myth-sheet-sprite myth-sheet-${speciesId} myth-sheet-${sheetMode}`}
-                style={{
-                  width: renderedSize,
-                  height: renderedSize,
-                  backgroundImage: `url(${battleArtSrc})`,
-                  transform: facing === 'left' ? 'scaleX(-1)' : undefined,
-                }}
-                role="img"
-                aria-label={`${speciesId} ready for battle`}
+              <RiggedMythCanvas
+                key={`${speciesId}-${attackKey}-${animKey}`}
+                speciesId={speciesId}
+                src={battleArtSrc}
+                size={renderedSize}
+                facing={facing}
+                mode={sheetMode}
               />
               {[0, 1, 2].map((ember) => (
                 <span

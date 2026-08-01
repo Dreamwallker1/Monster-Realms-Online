@@ -705,6 +705,14 @@
     pointer-events: none;
   }
 
+  .rigged-myth-canvas {
+    display: block;
+    user-select: none;
+    pointer-events: none;
+    transform-origin: center bottom;
+    filter: drop-shadow(0 14px 12px rgba(0,0,0,.58)) drop-shadow(0 0 8px rgba(255,79,22,.28));
+  }
+
   /* 3x2 authored sprite sheets: idle A, idle B, blink / anticipate, attack, hit */
   .myth-sheet-sprite {
     display: block;
