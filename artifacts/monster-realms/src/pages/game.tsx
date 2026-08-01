@@ -158,7 +158,7 @@ export default function Game() {
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div className="game-page relative w-full h-[100dvh] overflow-hidden">
       <PhaserGame
         playerX={player.posX}
         playerY={player.posY}
@@ -170,7 +170,7 @@ export default function Game() {
       />
 
       {/* Menu toggle */}
-      <div className="fixed top-4 right-4 z-30">
+      <div className="mobile-menu-toggle fixed top-4 right-4 z-30">
         <Button
           variant="default"
           size="icon"

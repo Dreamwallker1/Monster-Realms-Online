@@ -54,7 +54,11 @@ function buildRevealedSet(exploredTiles: Set<string>): Set<string> {
 }
 
 export default function MinimapOverlay() {
-  const [open, setOpen] = useState(true);
+  // The full map is useful on desktop, but it obscures most of a portrait phone.
+  // Mobile players start collapsed and can reveal it with the map button.
+  const [open, setOpen] = useState(() =>
+    typeof window === 'undefined' ? true : !window.matchMedia('(max-width: 640px)').matches,
+  );
   const [movement, setMovement] = useState<MoveStateDetail>({ locked: false, readyAt: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -210,11 +214,11 @@ export default function MinimapOverlay() {
   const accentHex = numToHex(currentPalette.borderTint);
 
   return (
-    <div className="fixed top-20 right-4 z-30 flex flex-col items-end gap-2 pointer-events-auto">
+    <div className="mobile-minimap fixed top-20 right-4 z-30 flex flex-col items-end gap-2 pointer-events-auto">
       {/* Toggle button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-10 h-10 rounded-full flex items-center justify-center border backdrop-blur-sm transition-all duration-200"
+        className="mobile-minimap-toggle w-10 h-10 rounded-full flex items-center justify-center border backdrop-blur-sm transition-all duration-200"
         style={{
           background: 'rgba(10,14,26,0.88)',
           borderColor: open ? accentHex + '88' : '#ffffff22',
@@ -232,7 +236,7 @@ export default function MinimapOverlay() {
       {/* Minimap panel */}
       {open && (
         <div
-          className="rounded-xl border overflow-hidden"
+          className="mobile-minimap-panel rounded-xl border overflow-hidden"
           style={{
             background: 'rgba(8,9,15,0.95)',
             borderColor: accentHex + '44',
@@ -260,6 +264,7 @@ export default function MinimapOverlay() {
           {/* Canvas */}
           <canvas
             ref={canvasRef}
+            className="mobile-minimap-canvas"
             style={{
               display: 'block',
               imageRendering: 'pixelated',

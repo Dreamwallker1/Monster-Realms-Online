@@ -29,8 +29,8 @@ export default function DPad() {
   const remaining = movement.locked ? Math.max(0, movement.readyAt - now) : 0;
 
   return (
-    <div className="fixed left-5 z-30 select-none" style={{ bottom: 112, width: 126 }}>
-      <div className="mb-2 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 backdrop-blur-md">
+    <div className="mobile-dpad fixed left-5 z-30 select-none" style={{ bottom: 112, width: 126 }}>
+      <div className="mobile-dpad-status mb-2 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 backdrop-blur-md">
         <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest">
           <span className={movement.locked ? 'text-amber-300' : 'text-emerald-300'}>
             {movement.locked ? 'Recovering' : 'Ready'}
@@ -42,7 +42,7 @@ export default function DPad() {
         </div>
       </div>
 
-      <div className="grid aspect-square grid-cols-3 grid-rows-3 gap-1.5">
+      <div className="mobile-dpad-grid grid aspect-square grid-cols-3 grid-rows-3 gap-1.5">
         {DIRS.map(({ label, key, dx, dy, col, row }) => (
           <button
             key={label}
@@ -50,7 +50,7 @@ export default function DPad() {
             disabled={movement.locked}
             onClick={() => dispatchMove(dx, dy)}
             style={{ gridColumn: col, gridRow: row }}
-            className="relative flex items-center justify-center rounded-xl border border-white/20 bg-slate-950/80 text-xl font-bold text-white shadow-lg backdrop-blur-md transition-all active:scale-90 disabled:cursor-wait disabled:opacity-35"
+            className="mobile-dpad-button relative flex items-center justify-center rounded-xl border border-white/20 bg-slate-950/80 text-xl font-bold text-white shadow-lg backdrop-blur-md transition-all active:scale-90 disabled:cursor-wait disabled:opacity-35"
             aria-label={`Move ${key}`}
           >
             {label}

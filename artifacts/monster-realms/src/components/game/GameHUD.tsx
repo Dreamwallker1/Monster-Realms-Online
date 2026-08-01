@@ -21,11 +21,11 @@ export default function GameHUD() {
   const region = getRegionInfo(currentRegionId);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
+    <div className="mobile-game-hud fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
       {/* Region info bar */}
-      <div className="mx-4 mb-2 pointer-events-auto">
+      <div className="mobile-region-wrap mx-4 mb-2 pointer-events-auto">
         <button
-          className="w-full flex items-center justify-between gap-3 px-4 py-2 rounded-xl border backdrop-blur-sm transition-all"
+          className="mobile-region-bar w-full flex items-center justify-between gap-3 px-4 py-2 rounded-xl border backdrop-blur-sm transition-all"
           style={{
             background: 'rgba(10,14,26,0.80)',
             borderColor: region.accentColor + '55',
@@ -34,18 +34,18 @@ export default function GameHUD() {
           onClick={() => setMythsOpen((o) => !o)}
           data-testid="region-info-bar"
         >
-          <div className="flex items-center gap-2">
+          <div className="mobile-region-main flex min-w-0 items-center gap-2">
             <MapPin size={14} style={{ color: region.accentColor }} />
-            <span className="font-bold text-white text-sm">{region.name}</span>
+            <span className="mobile-region-name truncate font-bold text-white text-sm">{region.name}</span>
             <Badge
               variant="outline"
-              className="text-[10px] px-1.5 py-0 font-mono border-current"
+              className="mobile-region-badge text-[10px] px-1.5 py-0 font-mono border-current"
               style={{ color: region.accentColor, borderColor: region.accentColor + '88' }}
             >
               {region.element} {region.biome}
             </Badge>
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <div className="mobile-region-count flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
             <span>{region.speciesIds.length} myths</span>
             {mythsOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
           </div>
@@ -83,16 +83,16 @@ export default function GameHUD() {
       </div>
 
       {/* Main HUD panel */}
-      <div className="glass-panel mx-4 mb-4 p-4 rounded-2xl pointer-events-auto">
-        <div className="flex items-center justify-between gap-6">
+      <div className="mobile-hud-panel glass-panel mx-4 mb-4 p-4 rounded-2xl pointer-events-auto">
+        <div className="mobile-hud-layout flex items-center justify-between gap-6">
           {/* Team Preview */}
-          <div className="flex gap-2">
+          <div className="mobile-team-preview flex gap-2">
             {team?.slice(0, 3).map((monster, i) => {
               const hpPercent = (monster.currentHp / monster.maxHp) * 100;
               return (
                 <div
                   key={monster.id}
-                  className="w-14 h-14 rounded-lg bg-card border border-card-border p-1"
+                  className="mobile-team-card w-14 h-14 rounded-lg bg-card border border-card-border p-1"
                   data-testid={`team-monster-${i}`}
                 >
                   <div className="text-xs font-mono text-center truncate">{monster.species.name}</div>
@@ -102,14 +102,14 @@ export default function GameHUD() {
               );
             })}
             {(!team || team.length === 0) && (
-              <div className="w-14 h-14 rounded-lg bg-card border border-dashed border-card-border flex items-center justify-center text-xs text-muted-foreground">
+              <div className="mobile-team-card w-14 h-14 rounded-lg bg-card border border-dashed border-card-border flex items-center justify-center text-xs text-muted-foreground">
                 Empty
               </div>
             )}
           </div>
 
           {/* Stats */}
-          <div className="flex-1 space-y-2">
+          <div className="mobile-energy min-w-0 flex-1 space-y-2">
             <div className="flex items-center gap-3">
               <Zap size={18} className={isLowEnergy ? 'text-yellow-400 animate-pulse' : 'text-primary'} />
               <div className="flex-1">
@@ -128,7 +128,7 @@ export default function GameHUD() {
           </div>
 
           {/* Coins & Radar */}
-          <div className="flex items-center gap-4">
+          <div className="mobile-wallet flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Coins size={20} className="text-yellow-400" />
               <span className="font-mono font-bold text-lg">{player.coins}</span>

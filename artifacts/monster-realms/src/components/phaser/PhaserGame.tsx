@@ -85,7 +85,35 @@ export default function PhaserGame({
     sceneRef.current?.updateMoveHandler(onMove);
   }, [onMove]);
 
+  // Phaser takes a viewport snapshot during boot. Mobile browsers change their
+  // usable viewport when the address bar collapses or the phone rotates, so
+  // keep the renderer in lockstep with the actual container dimensions.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeGame = () => {
+      const game = gameRef.current;
+      if (!game) return;
+      const width = Math.max(1, container.clientWidth);
+      const height = Math.max(1, container.clientHeight);
+      game.scale.resize(width, height);
+    };
+
+    const observer = new ResizeObserver(resizeGame);
+    observer.observe(container);
+    window.addEventListener('orientationchange', resizeGame);
+    window.visualViewport?.addEventListener('resize', resizeGame);
+    resizeGame();
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('orientationchange', resizeGame);
+      window.visualViewport?.removeEventListener('resize', resizeGame);
+    };
+  }, []);
+
   return (
-    <div ref={containerRef} className="fixed inset-0 z-0" style={{ width: '100%', height: '100%' }} />
+    <div ref={containerRef} className="game-world-viewport fixed inset-0 z-0" />
   );
 }
