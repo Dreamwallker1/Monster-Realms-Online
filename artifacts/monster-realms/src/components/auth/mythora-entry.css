@@ -1,0 +1,178 @@
+.mythora-entry {
+  --entry-cyan: #61dcff;
+  --entry-violet: #9878ff;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  color: #edf8ff;
+  background:
+    radial-gradient(ellipse at 50% 38%, #161c49 0, #090b21 40%, #04050f 78%);
+  font-family: var(--app-font-sans), system-ui, sans-serif;
+}
+
+.mythora-nebula {
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(ellipse at 34% 45%, #44217266 0, transparent 28%),
+    radial-gradient(ellipse at 70% 36%, #0b75994d 0, transparent 25%),
+    radial-gradient(ellipse at 52% 80%, #1e235c70 0, transparent 33%);
+  filter: blur(24px);
+  animation: mythora-nebula-drift 18s ease-in-out infinite alternate;
+}
+
+.mythora-stars {
+  position: absolute;
+  inset: -50%;
+  background-image: radial-gradient(circle, #9feaff 0 1px, transparent 1.5px);
+  background-size: 97px 83px;
+  opacity: .24;
+  transform: rotate(10deg);
+  animation: mythora-stars-drift 34s linear infinite;
+}
+
+.mythora-stars-b {
+  background-size: 173px 137px;
+  opacity: .15;
+  animation-duration: 55s;
+  animation-direction: reverse;
+}
+
+.mythora-entry-panel {
+  position: relative;
+  z-index: 4;
+  width: min(410px, calc(100vw - 36px));
+  padding: 38px 34px 24px;
+  border: 1px solid #8bdfff28;
+  border-radius: 24px;
+  text-align: center;
+  background: linear-gradient(155deg, #171a3de8, #0a0c20f2);
+  box-shadow: 0 30px 100px #000b, 0 0 0 1px #8f7cff12 inset, 0 0 65px #477bff12;
+  backdrop-filter: blur(20px);
+  transition: transform .8s cubic-bezier(.16, 1, .3, 1), opacity .5s, filter .5s;
+}
+
+.mythora-entry-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 17%;
+  right: 17%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--entry-cyan), transparent);
+  box-shadow: 0 0 20px var(--entry-cyan);
+}
+
+.mythora-sigil {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 17px;
+  border-radius: 21px;
+  background: linear-gradient(135deg, #4edcff, #9979ff);
+  box-shadow: 0 0 30px #58ceff55, 0 12px 30px #0008;
+}
+
+.mythora-sigil svg { width: 37px; fill: none; stroke: #071026; stroke-width: 3; stroke-linecap: round; }
+.mythora-eyebrow { margin: 0 0 8px; color: #86dfff; font: 600 9px var(--app-font-mono); letter-spacing: .28em; }
+.mythora-entry-panel h1 { margin: 0; color: transparent; font: 800 clamp(35px, 8vw, 52px)/1 var(--app-font-sans); letter-spacing: .08em; background: linear-gradient(180deg, #f6fbff 12%, #6bd7ff 58%, #8877ff); background-clip: text; -webkit-background-clip: text; text-shadow: 0 8px 38px #55cfff38; }
+.mythora-tagline { margin: 11px 0 29px; color: #8d95af; font-size: 11px; letter-spacing: .06em; }
+.mythora-entry form { text-align: left; }
+.mythora-entry label { display: block; margin: 0 0 8px; color: #a7b3ca; font: 600 9px var(--app-font-mono); letter-spacing: .14em; }
+
+.mythora-name-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 49px;
+  padding: 0 14px;
+  border: 1px solid #8ebdff24;
+  border-radius: 11px;
+  background: #050819aa;
+  transition: border-color .25s, box-shadow .25s;
+}
+
+.mythora-name-field:focus-within { border-color: #67dfff88; box-shadow: 0 0 0 3px #5ad5ff12, 0 0 28px #5ad5ff12; }
+.mythora-name-field span { color: #62d9ff; }
+.mythora-name-field input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #edfaff; font: 600 13px var(--app-font-sans); }
+.mythora-name-field input::placeholder { color: #526079; }
+
+.mythora-enter-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 51px;
+  margin-top: 13px;
+  padding: 0 18px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 11px;
+  color: #04111c;
+  background: linear-gradient(100deg, #56d8ff, #6ac7ef 46%, #9a80ff);
+  box-shadow: 0 12px 32px #49c8ff26;
+  font: 700 11px var(--app-font-mono);
+  letter-spacing: .12em;
+  cursor: pointer;
+  transition: transform .2s, filter .2s, box-shadow .2s;
+}
+
+.mythora-enter-button::before { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, #fff9 50%, transparent 70%); transform: translateX(-140%); transition: transform .7s; }
+.mythora-enter-button:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); box-shadow: 0 16px 40px #49c8ff46; }
+.mythora-enter-button:hover::before { transform: translateX(140%); }
+.mythora-enter-button b { position: absolute; right: 18px; font-size: 18px; }
+.mythora-enter-button:disabled { cursor: not-allowed; filter: saturate(.25) brightness(.55); }
+.mythora-sign-in { margin: 17px 0 0; border: 0; background: none; color: #737d96; font-size: 10px; cursor: pointer; }
+.mythora-sign-in:disabled { cursor: default; opacity: .55; }
+.mythora-sign-in u { color: #b6c9e8; text-underline-offset: 3px; }
+.mythora-sign-in:hover:not(:disabled) u { color: #72ddff; }
+.mythora-system-line { display: flex; justify-content: center; align-items: center; gap: 7px; margin: 23px -34px -5px; padding-top: 14px; border-top: 1px solid #ffffff0a; color: #4e5a72; font: 500 7px var(--app-font-mono); letter-spacing: .16em; }
+.mythora-system-line i { width: 5px; height: 5px; border-radius: 50%; background: #62f5be; box-shadow: 0 0 8px #62f5be; }
+.mythora-footer-mark { position: absolute; bottom: max(19px, env(safe-area-inset-bottom)); color: #3f4960; font: 500 8px var(--app-font-mono); letter-spacing: .16em; }
+.mythora-footer-mark span { color: #54cbee; }
+
+.mythora-portal { position: absolute; z-index: 2; top: 50%; left: 50%; width: 14vmin; height: 14vmin; opacity: 0; transform: translate(-50%, -50%) scale(.05); }
+.mythora-portal i { position: absolute; inset: 0; border: 2px solid #75e8ff; border-radius: 50%; box-shadow: 0 0 30px #54dfff, 0 0 90px #7d68ff inset; }
+.mythora-portal i:nth-child(2) { inset: -12%; border-color: #a681ff; animation: mythora-portal-spin 1.8s linear infinite reverse; }
+.mythora-portal i:nth-child(3) { inset: 20%; border-color: white; filter: blur(2px); }
+.mythora-transition-flash { position: absolute; z-index: 8; inset: 0; pointer-events: none; background: white; opacity: 0; }
+.phase-opening .mythora-entry-panel { transform: scale(.96); filter: brightness(.75); }
+.phase-opening .mythora-portal { animation: mythora-portal-open .95s cubic-bezier(.2, .8, .2, 1) forwards; }
+.phase-opening .mythora-stars { animation-duration: 2s; }
+.phase-opening .mythora-enter-button { filter: brightness(1.35); }
+.phase-leaving .mythora-entry-panel { transform: scale(.25); opacity: 0; filter: blur(12px); }
+.phase-leaving .mythora-portal { opacity: 1; animation: mythora-portal-warp .9s cubic-bezier(.2, .8, .2, 1) forwards; }
+.phase-leaving .mythora-transition-flash { animation: mythora-flash .85s ease-in forwards; }
+.phase-leaving .mythora-stars { animation: mythora-star-warp .8s ease-in forwards; }
+
+@keyframes mythora-nebula-drift { to { transform: translate3d(4%, -2%, 0) scale(1.08); } }
+@keyframes mythora-stars-drift { to { transform: rotate(10deg) translate3d(80px, 70px, 0); } }
+@keyframes mythora-portal-spin { to { transform: rotate(360deg); } }
+@keyframes mythora-portal-open { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.05) rotate(0); } 65% { opacity: 1; } 100% { opacity: 1; transform: translate(-50%, -50%) scale(3.7) rotate(120deg); } }
+@keyframes mythora-portal-warp { to { transform: translate(-50%, -50%) scale(18) rotate(260deg); filter: brightness(2); } }
+@keyframes mythora-flash { 0%, 54% { opacity: 0; } 82% { opacity: .92; } 100% { opacity: 0; } }
+@keyframes mythora-star-warp { to { transform: scale(2.8) rotate(12deg); opacity: .75; filter: blur(1px); } }
+
+@media (max-width: 540px) {
+  .mythora-entry-panel { padding: 31px 24px 20px; border-radius: 20px; }
+  .mythora-sigil { width: 60px; height: 60px; border-radius: 18px; }
+  .mythora-system-line { margin-left: -24px; margin-right: -24px; }
+  .mythora-footer-mark { bottom: max(13px, env(safe-area-inset-bottom)); }
+  .mythora-stars { background-size: 74px 71px; }
+}
+
+@media (max-height: 640px) {
+  .mythora-entry-panel { padding-top: 22px; padding-bottom: 17px; transform: scale(.9); }
+  .mythora-sigil { width: 54px; height: 54px; margin-bottom: 11px; }
+  .mythora-tagline { margin-bottom: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mythora-entry * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

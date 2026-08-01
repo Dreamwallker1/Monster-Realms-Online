@@ -10,7 +10,8 @@ import { useGameStore } from '@/store/game-store';
 import { CHARACTERS } from '@/lib/characters';
 import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
 import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
-import { Sparkles, ArrowRight, ArrowLeft, User, Package } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, Package } from 'lucide-react';
+import MythoraEntry from '@/components/auth/MythoraEntry';
 
 // ─── SVG character preview ────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ export default function Landing() {
   const [starterPack, setStarterPack] = useState<StarterMyth[]>([]);
   const [boxOpened, setBoxOpened] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [authReturnStep, setAuthReturnStep] = useState<'name' | 'element'>('name');
 
   const guestLogin = useGuestLogin();
   const register = useRegisterPlayer();
@@ -149,66 +151,22 @@ export default function Landing() {
     }
   };
 
-  const canProceedFromName = username.trim().length >= 2;
-
   // ─── Step: Enter username ───────────────────────────────────────────────────
   if (step === 'name') {
     return (
-      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
-        <ParticleBackground />
-        <div className="glass-panel p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl relative z-10">
-          <div className="text-center space-y-3">
-            <div className="flex justify-center mb-2">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-cyan">
-                <Sparkles size={40} className="text-primary-foreground" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Mythora
-            </h1>
-            <p className="text-muted-foreground text-sm">Discover. Bond. Become legendary.</p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="flex items-center gap-2">
-                <User size={14} /> Explorer Name
-              </Label>
-              <Input
-                id="username"
-                placeholder="Enter your name"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && canProceedFromName && setStep('character')}
-                maxLength={20}
-                autoFocus
-                data-testid="input-username"
-              />
-            </div>
-
-            <Button
-              variant="default"
-              size="lg"
-              className="w-full glow-cyan font-bold text-base flex items-center justify-center gap-2"
-              onClick={() => setStep('character')}
-              disabled={!canProceedFromName}
-              data-testid="button-next-character"
-            >
-              Choose Your Character <ArrowRight size={18} />
-            </Button>
-
-            <div className="text-center">
-              <button
-                className="text-xs text-muted-foreground underline underline-offset-2"
-                onClick={() => { setStep('register'); setIsRegistering(false); }}
-              >
-                Already have an account? Sign in
-              </button>
-            </div>
-
-          </div>
-        </div>
-      </div>
+      <MythoraEntry
+        initialName={username}
+        onContinue={(explorerName) => {
+          setUsername(explorerName);
+          setStep('character');
+        }}
+        onSignIn={(explorerName) => {
+          if (explorerName) setUsername(explorerName);
+          setAuthReturnStep('name');
+          setIsRegistering(false);
+          setStep('register');
+        }}
+      />
     );
   }
 
@@ -362,7 +320,7 @@ export default function Landing() {
               variant="outline"
               size="lg"
               className="flex-1"
-              onClick={() => setStep('register')}
+              onClick={() => { setAuthReturnStep('element'); setStep('register'); }}
               disabled={!selectedElement}
             >
               Create Account
@@ -566,7 +524,7 @@ export default function Landing() {
           </Button>
 
           <div className="flex gap-3">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(selectedElement ? 'element' : 'character')}>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(authReturnStep)}>
               <ArrowLeft size={14} className="mr-1" /> Back
             </Button>
             <button
