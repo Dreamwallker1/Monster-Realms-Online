@@ -11,7 +11,7 @@ import { CHARACTERS } from '@/lib/characters';
 import { ELEMENT_COLORS, RARITY_COLORS, QUALITY_LABEL } from '@/lib/element-colors';
 import { ELEMENT_EMOJI, getMonsterEmoji } from '@/lib/monster-emoji';
 import { Sparkles, ArrowRight, ArrowLeft, Package } from 'lucide-react';
-import MythoraEntry from '@/components/auth/MythoraEntry';
+import MythoraEntry, { LitardiaBackdrop, LitardiaWordmark } from '@/components/auth/MythoraEntry';
 
 // ─── SVG character preview ────────────────────────────────────────────────────
 
@@ -475,20 +475,24 @@ export default function Landing() {
 
   // ─── Step: Register / Login ─────────────────────────────────────────────────
   return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden">
-      <ParticleBackground />
-      <div className="glass-panel p-8 rounded-3xl w-full max-w-md shadow-2xl relative z-10 space-y-6">
-        <div className="text-center space-y-1">
-          <h2 className="text-2xl font-bold text-primary">
-            {isRegistering ? 'Create Account' : 'Welcome Back'}
-          </h2>
-          <div className="flex justify-center my-3">
-            <CharacterSVG char={selectedChar} size={80} />
-          </div>
+    <main className="mythora-entry mythora-auth-entry" data-testid="litardia-auth-screen">
+      <LitardiaBackdrop />
+      <section className="mythora-entry-panel mythora-auth-panel" aria-labelledby="auth-title">
+        <div className="mythora-auth-brand">
+          <p className="mythora-eyebrow">SECURE EXPLORER ACCESS</p>
+          <LitardiaWordmark />
+          <h2 id="auth-title">{isRegistering ? 'FORGE YOUR ACCOUNT' : 'WELCOME BACK, EXPLORER'}</h2>
+          <p>{isRegistering ? 'Bind your name to the realm.' : 'Your bonded Myths are waiting.'}</p>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
+        <form
+          className="mythora-auth-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void (isRegistering ? handleRegister() : handleLogin());
+          }}
+        >
+          <div className="mythora-auth-field">
             <Label htmlFor="reg-username">Username</Label>
             <Input
               id="reg-username"
@@ -496,9 +500,13 @@ export default function Landing() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Explorer name"
               data-testid="input-username-register"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              autoFocus
             />
           </div>
-          <div className="space-y-2">
+          <div className="mythora-auth-field">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
@@ -507,42 +515,45 @@ export default function Landing() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               data-testid="input-password"
+              autoComplete={isRegistering ? 'new-password' : 'current-password'}
             />
           </div>
 
-          <Button
-            variant="default"
-            size="lg"
-            className="w-full glow-violet font-bold"
-            onClick={isRegistering ? handleRegister : handleLogin}
+          <button
+            type="submit"
+            className="mythora-enter-button mythora-auth-submit"
             disabled={!username.trim() || !password || register.isPending || login.isPending}
             data-testid="button-register"
           >
             {isRegistering
               ? (register.isPending ? 'Creating account...' : 'Create & Play')
               : (login.isPending ? 'Signing in...' : 'Sign In')}
-          </Button>
+            <b aria-hidden="true">→</b>
+          </button>
 
-          <div className="flex gap-3">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setStep(authReturnStep)}>
+          <div className="mythora-auth-actions">
+            <button type="button" className="mythora-auth-back" onClick={() => setStep(authReturnStep)}>
               <ArrowLeft size={14} className="mr-1" /> Back
-            </Button>
+            </button>
             <button
-              className="text-xs text-muted-foreground underline underline-offset-2"
+              type="button"
+              className="mythora-auth-switch"
               onClick={() => setIsRegistering(!isRegistering)}
             >
               {isRegistering ? 'Sign in instead' : 'Create account'}
             </button>
           </div>
-        </div>
+        </form>
 
         {(isRegistering ? register.isError : login.isError) && (
-          <p className="text-sm text-destructive text-center">
+          <p className="mythora-auth-error" role="alert">
             {((isRegistering ? register.error : login.error) as Error)?.message || 'Something went wrong.'}
           </p>
         )}
-      </div>
-    </div>
+        <div className="mythora-system-line"><i /> LITARDIA NETWORK ONLINE</div>
+      </section>
+      <p className="mythora-footer-mark">MONSTER REALMS ONLINE <span>·</span> ALPHA</p>
+    </main>
   );
 }
 

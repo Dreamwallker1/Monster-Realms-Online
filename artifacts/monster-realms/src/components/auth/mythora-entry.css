@@ -271,3 +271,35 @@
   .mythora-wordmark { height: 76px; }
   .mythora-tagline { margin-bottom: 15px; }
 }
+
+/* Login and registration share the same world instead of falling back to the
+   legacy glass-card screen. */
+.mythora-auth-panel { width: min(440px, calc(100vw - 34px)); padding-top: 25px; }
+.mythora-auth-brand { position: relative; z-index: 1; text-align: center; }
+.mythora-auth-brand .mythora-wordmark { height: 88px; margin-top: -10px; margin-bottom: -13px; }
+.mythora-auth-brand h2 { margin: 0; color: #d8eef1; font: 700 12px var(--app-font-mono); letter-spacing: .16em; }
+.mythora-auth-brand > p:last-child { margin: 7px 0 22px; color: #64777e; font: 500 8px var(--app-font-mono); letter-spacing: .08em; }
+.mythora-auth-form { position: relative; z-index: 1; display: grid; gap: 14px; }
+.mythora-auth-field { display: grid; gap: 7px; }
+.mythora-auth-field input { width: 100%; height: 47px; padding: 0 14px; border: 1px solid #678d982e; border-radius: 4px; outline: none; color: #e7f5f6; background: #010609c7; box-shadow: inset 0 1px 9px #000b; font: 600 12px var(--app-font-sans); transition: border-color .2s, box-shadow .2s; }
+.mythora-auth-field input:focus { border-color: #68dcf899; box-shadow: 0 0 0 2px #48cfe614, inset 0 1px 9px #000b; }
+.mythora-auth-field input::placeholder { color: #46575e; }
+.mythora-auth-submit { margin-top: 2px; }
+.mythora-auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mythora-auth-back, .mythora-auth-switch { display: flex; align-items: center; justify-content: center; min-height: 38px; border: 1px solid #59727a2e; border-radius: 3px; color: #71858c; background: #050b0e80; font: 600 8px var(--app-font-mono); letter-spacing: .06em; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+.mythora-auth-back:hover, .mythora-auth-switch:hover { color: #bce9ef; border-color: #64cce24f; background: #0c1b20cc; }
+.mythora-auth-error { position: relative; z-index: 1; margin: 12px 0 0; padding: 9px 11px; border: 1px solid #ff633b3d; color: #ff9478; background: #54170f36; font: 600 9px var(--app-font-mono); text-align: center; }
+.mythora-auth-entry .mythora-guardian { opacity: .19; }
+
+@media (max-width: 540px) {
+  .mythora-auth-panel { padding: 21px 23px 17px; }
+  .mythora-auth-brand .mythora-wordmark { height: 75px; }
+  .mythora-auth-brand h2 { font-size: 10px; }
+}
+
+@media (max-height: 640px) {
+  .mythora-auth-panel { transform: scale(.86); padding-top: 15px; }
+  .mythora-auth-brand .mythora-wordmark { height: 66px; }
+  .mythora-auth-brand > p:last-child { margin-bottom: 13px; }
+  .mythora-auth-form { gap: 9px; }
+}
