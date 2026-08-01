@@ -26,6 +26,9 @@ export function LitardiaBackdrop() {
       </div>
       <img className="mythora-guardian mythora-guardian-ashquill" src={entryAsset('myths/ashquill-battle.webp')} alt="" aria-hidden="true" />
       <img className="mythora-guardian mythora-guardian-flarelynx" src={entryAsset('myths/flarelynx-battle.webp')} alt="" aria-hidden="true" />
+      <div className="mythora-wanderer" aria-hidden="true">
+        <span style={{ backgroundImage: `url(${entryAsset('myths/flarelynx-sprites.png')})` }} />
+      </div>
       <div className="mythora-embers" aria-hidden="true">
         {Array.from({ length: 16 }, (_, index) => <i key={index} />)}
       </div>
