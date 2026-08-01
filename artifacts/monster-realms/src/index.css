@@ -533,9 +533,6 @@
     background:linear-gradient(90deg,transparent,rgba(255,181,113,.14),rgba(255,224,184,.42),rgba(255,181,113,.14),transparent);
     box-shadow:0 0 18px rgba(255,101,42,.25);
   }
-  .battle-hp-position-left { top: max(14px, env(safe-area-inset-top)); left: 16px; }
-  .battle-hp-position-right { top: max(14px, env(safe-area-inset-top)); right: 16px; }
-
   .battle-celestial {
     position: absolute; z-index: 0; left: 50%; top: 13%; width: clamp(120px, 17vw, 260px); aspect-ratio: 1;
     transform: translateX(-50%); border-radius: 50%; pointer-events: none;
@@ -681,12 +678,41 @@
   .battle-hp-anchor { transform: scale(1); z-index: 15; }
   .battle-hp-anchor-left { transform-origin: top left; }
   .battle-hp-anchor-right { transform-origin: top right; }
-  .battle-hp-card { position:relative; overflow:hidden; width:clamp(226px,23vw,290px); }
+  .battle-hp-over-myth { position:relative; z-index:16; margin-bottom:10px; pointer-events:none; }
+  .battle-hp-over-myth-wild { align-self:flex-start; }
+  .battle-hp-over-myth-player { align-self:flex-end; }
+  .battle-hp-card { position:relative; overflow:visible; width:clamp(226px,23vw,290px); }
   .battle-hp-card::before { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 28% 72%,rgba(255,255,255,.035)); }
   .battle-hp-card::after { content:""; position:absolute; left:10%; right:10%; top:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent); opacity:.55; }
   .battle-hp-caption { display:flex; align-items:center; justify-content:space-between; margin:0 2px 4px; color:rgba(255,255,255,.72); font:800 9px var(--font-mono,monospace); letter-spacing:.13em; }
   .battle-hp-caption b { color:#fff; font-size:11px; text-shadow:0 0 8px rgba(255,255,255,.25); }
   .battle-vital-bar { height:28px; box-shadow:inset 0 2px 7px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.1),0 0 14px rgba(34,197,94,.1); }
+  .battle-hp-meter-wrap { position:relative; isolation:isolate; }
+  .battle-hp-card-fire { border-color:rgba(251,92,36,.72) !important; box-shadow:0 8px 28px rgba(0,0,0,.82),0 0 18px rgba(249,74,20,.42) !important; }
+  .battle-vital-fire { background:linear-gradient(180deg,#211008,#070201) !important; box-shadow:inset 0 2px 8px #000,0 0 14px rgba(255,83,15,.34); }
+  .battle-fire-hp-fill {
+    overflow:visible; transform-origin:left center;
+    background:linear-gradient(180deg,#fff2a4 0 8%,#ffbf32 22%,#ff5b18 58%,#8e1609 100%);
+    box-shadow:0 0 7px #ffcc3d,0 0 16px rgba(255,73,10,.78),inset 0 -5px 8px rgba(92,8,3,.55);
+    transition:width .48s cubic-bezier(.2,.75,.25,1);
+  }
+  .battle-fire-hp-fill::before {
+    content:""; position:absolute; inset:-5px 0 0; opacity:.82;
+    background:
+      radial-gradient(ellipse at 12% 100%,#fff6ad 0 7%,#ff8b1f 9% 18%,transparent 21%),
+      radial-gradient(ellipse at 36% 100%,#ffd14c 0 8%,#ff4d12 11% 20%,transparent 23%),
+      radial-gradient(ellipse at 64% 100%,#fff09a 0 7%,#ff7718 10% 18%,transparent 22%),
+      radial-gradient(ellipse at 88% 100%,#ffd33d 0 8%,#f13b0b 11% 20%,transparent 23%);
+    background-size:34px 31px; animation:battle-fire-hp-flame .72s ease-in-out infinite alternate;
+  }
+  .battle-fire-hp-fill > i { position:absolute; z-index:2; bottom:3px; width:3px; height:3px; border-radius:50%; background:#fff2a0; box-shadow:0 0 5px #ff7a17; animation:battle-fire-hp-ember 1.05s ease-out infinite; }
+  .battle-fire-hp-fill > i:nth-child(1){left:12%;animation-delay:-.2s}.battle-fire-hp-fill > i:nth-child(2){left:31%;animation-delay:-.75s}.battle-fire-hp-fill > i:nth-child(3){left:52%;animation-delay:-.4s}.battle-fire-hp-fill > i:nth-child(4){left:72%;animation-delay:-.9s}.battle-fire-hp-fill > i:nth-child(5){left:91%;animation-delay:-.55s}
+  .battle-fire-ash { position:absolute; z-index:4; top:12px; height:42px; pointer-events:none; overflow:visible; }
+  .battle-fire-ash > i { position:absolute; top:0; width:3px; height:3px; border-radius:45% 55% 55% 45%; background:#a69e97; box-shadow:0 0 3px #4b4541; opacity:0; animation:battle-fire-ash-fall 1.45s linear infinite; }
+  .battle-fire-ash > i:nth-child(1){left:5%;animation-delay:-.2s}.battle-fire-ash > i:nth-child(2){left:18%;animation-delay:-.85s;width:4px}.battle-fire-ash > i:nth-child(3){left:33%;animation-delay:-1.2s}.battle-fire-ash > i:nth-child(4){left:47%;animation-delay:-.45s;width:2px}.battle-fire-ash > i:nth-child(5){left:61%;animation-delay:-1s}.battle-fire-ash > i:nth-child(6){left:74%;animation-delay:-.65s;width:4px}.battle-fire-ash > i:nth-child(7){left:87%;animation-delay:-1.35s}.battle-fire-ash > i:nth-child(8){left:96%;animation-delay:-.05s;width:2px}
+  @keyframes battle-fire-hp-flame { from{transform:translateY(2px) scaleY(.88);filter:saturate(1)} to{transform:translateY(-1px) scaleY(1.08);filter:saturate(1.2) brightness(1.08)} }
+  @keyframes battle-fire-hp-ember { 0%{opacity:0;transform:translate(0,3px) scale(.5)} 30%{opacity:1} 100%{opacity:0;transform:translate(5px,-18px) scale(.1)} }
+  @keyframes battle-fire-ash-fall { 0%{opacity:0;transform:translate(0,-4px) rotate(0)} 18%{opacity:.82} 100%{opacity:0;transform:translate(9px,34px) rotate(190deg)} }
   .battle-hp-lag { background:linear-gradient(90deg,#f4d86a,#fff0a2); opacity:.8; transition:width .72s cubic-bezier(.18,.72,.2,1); box-shadow:0 0 9px #ffe78388; }
   .battle-hp-critical { animation:battle-hp-critical 1.15s ease-in-out infinite alternate; }
   @keyframes battle-hp-critical { to { border-color:#ef444488; box-shadow:0 4px 24px rgba(0,0,0,.78),0 0 18px rgba(239,68,68,.3); } }
@@ -1068,7 +1094,8 @@
     .battle-hit-wild { left: 11%; }
     .battle-hit-player { right: 11%; }
     .battle-hp-anchor { scale:1; }
-    .battle-hp-card { width:min(42vw,190px); padding:8px 9px !important; }
+    .battle-hp-over-myth { transform:scale(1.34); transform-origin:bottom center; margin-bottom:18px; }
+    .battle-hp-card { width:min(39vw,190px); padding:8px 9px !important; }
     .battle-vital-bar { height:23px; }
     .battle-hp-caption { margin-bottom:3px; }
   }
@@ -1078,6 +1105,8 @@
     .battle-combatant-player { scale: .52; bottom: 2%; }
     .battle-combatant-wild { left: -5%; }
     .battle-combatant-player { right: -5%; }
+    .battle-hp-over-myth { transform:scale(1.62); margin-bottom:25px; }
+    .battle-hp-card { width:37vw; }
     .myth-lunge-left { --battle-lunge-x: -32vw; --battle-lunge-recoil: -30vw; }
     .myth-lunge-right { --battle-lunge-x: 32vw; --battle-lunge-recoil: 30vw; }
     .battle-stage-pool { width: 42vw; }

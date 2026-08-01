@@ -715,6 +715,7 @@ function HpPlate({
   const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
   const [lagPct, setLagPct] = useState(pct);
   const elColors = getElementColors(element);
+  const isFire = element.toLowerCase() === 'fire';
   const barColor = pct > 50 ? '#22C55E' : pct > 20 ? '#EAB308' : '#EF4444';
   const qualLabel = QUALITY_LABEL[rarity] ?? rarity;
 
@@ -727,7 +728,7 @@ function HpPlate({
 
   return (
     <div
-      className={`rounded-xl px-4 py-3 battle-hp-card ${pct <= 20 ? 'battle-hp-critical' : ''}`}
+      className={`rounded-xl px-4 py-3 battle-hp-card ${isFire ? 'battle-hp-card-fire' : ''} ${pct <= 20 ? 'battle-hp-critical' : ''}`}
       style={{
         background: 'linear-gradient(135deg, rgba(8,8,22,0.92), rgba(4,4,14,0.96))',
         border: `2px solid ${elColors.primary}66`,
@@ -759,28 +760,37 @@ function HpPlate({
         <b>HP</b><span>{Math.round(pct)}%</span>
       </div>
       {/* HP bar — numbers live inside the bar */}
-      <div
-        className="relative w-full rounded-full overflow-hidden battle-vital-bar"
-        style={{ background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(255,255,255,0.16)' }}
-      >
-        <div className="absolute inset-y-0 left-0 rounded-full battle-hp-lag" style={{ width: `${lagPct}%` }} />
+      <div className="battle-hp-meter-wrap">
         <div
-          className="absolute inset-y-0 left-0 rounded-full hp-bar-fill"
-          style={{
-            width: `${pct}%`,
-            background: `linear-gradient(90deg, ${barColor}88, ${barColor}dd)`,
-            boxShadow: `0 0 6px ${barColor}66`,
-          }}
-        />
-        {/* HP text overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span
-            className="text-xs font-mono font-black leading-none"
-            style={{ color: 'rgba(255,255,255,0.92)', textShadow: '0 1px 4px rgba(0,0,0,0.98)' }}
+          className={`relative w-full rounded-full overflow-hidden battle-vital-bar ${isFire ? 'battle-vital-fire' : ''}`}
+          style={{ background: 'rgba(0,0,0,0.72)', border: '1px solid rgba(255,255,255,0.16)' }}
+        >
+          <div className="absolute inset-y-0 left-0 rounded-full battle-hp-lag" style={{ width: `${lagPct}%` }} />
+          <div
+            className={`absolute inset-y-0 left-0 rounded-full hp-bar-fill ${isFire ? 'battle-fire-hp-fill' : ''}`}
+            style={{
+              width: `${pct}%`,
+              background: isFire ? undefined : `linear-gradient(90deg, ${barColor}88, ${barColor}dd)`,
+              boxShadow: isFire ? undefined : `0 0 6px ${barColor}66`,
+            }}
           >
-            {currentHp}<span style={{ opacity: 0.5 }}>/{maxHp}</span>
-          </span>
+            {isFire && <><i /><i /><i /><i /><i /></>}
+          </div>
+          {/* HP text overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span
+              className="text-xs font-mono font-black leading-none"
+              style={{ color: 'rgba(255,255,255,0.96)', textShadow: '0 1px 4px rgba(0,0,0,0.98)' }}
+            >
+              {currentHp}<span style={{ opacity: 0.58 }}>/{maxHp}</span>
+            </span>
+          </div>
         </div>
+        {isFire && pct < 99 && (
+          <div className="battle-fire-ash" style={{ left: `${pct}%`, width: `${100 - pct}%` }} aria-hidden="true">
+            <i /><i /><i /><i /><i /><i /><i /><i />
+          </div>
+        )}
       </div>
       {statusEffect && <div className="battle-status-chip">{statusEffect}</div>}
     </div>
@@ -1634,30 +1644,6 @@ export default function BattleOverlay() {
         <div className="battle-stage-pool battle-stage-pool-player" aria-hidden="true" />
         <BattleBiomeScenery regionId={regionId} ambientColor={theme.ambientColor} />
 
-        {/* Wild HP plate — upper left */}
-        <div className="absolute battle-slide-up battle-hp-anchor battle-hp-anchor-left battle-hp-position-left" style={{ animationDelay: '0.75s' }}>
-          <HpPlate
-            name={wildMonster.species.name}
-            level={wildMonster.level}
-            element={wildMonster.species.element}
-            rarity={wildMonster.species.rarity}
-            currentHp={wildMonster.currentHp}
-            maxHp={wildMonster.maxHp}
-            align="left"
-            statusEffect={wildMonster.statusEffect}
-          />
-          {wildMonster.shinyVariant && (
-            <div className="mt-1 text-center text-[10px] font-bold" style={{ color: '#FFD700', textShadow: '0 0 8px gold' }}>
-              ✨ {wildMonster.shinyVariant} Shiny
-            </div>
-          )}
-          {wildHpPct < 30 && (
-            <div className="mt-1 text-center text-[10px] animate-pulse" style={{ color: '#34D399' }}>
-              ● Good catch chance!
-            </div>
-          )}
-        </div>
-
         {/* ── Unified turn widget — top centre ────────────────────────────── */}
         <div
           className="absolute top-3 left-1/2 -translate-x-1/2 battle-slide-up flex flex-col items-center"
@@ -1730,20 +1716,6 @@ export default function BattleOverlay() {
 
         </div>
 
-        {/* Player myth HP plate — upper right */}
-        <div className="absolute battle-slide-up battle-hp-anchor battle-hp-anchor-right battle-hp-position-right" style={{ animationDelay: '0.8s' }}>
-          <HpPlate
-            name={playerMonster.species.name}
-            level={playerMonster.level}
-            element={playerMonster.species.element}
-            rarity={playerMonster.species.rarity}
-            currentHp={playerMonster.currentHp}
-            maxHp={playerMonster.maxHp}
-            align="right"
-            statusEffect={playerMonster.statusEffect}
-          />
-        </div>
-
         {/* ── Combatants — depth-layered absolute positioning ──────────────── */}
 
         {/* Character — CENTER BACK (smaller, feet on ground) */}
@@ -1769,6 +1741,28 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance battle-combatant-wild"
           style={{ animationDelay: '0.05s', zIndex: 2 }}
         >
+          <div className="battle-hp-over-myth battle-hp-over-myth-wild battle-slide-up" style={{ animationDelay: '0.75s' }}>
+            <HpPlate
+              name={wildMonster.species.name}
+              level={wildMonster.level}
+              element={wildMonster.species.element}
+              rarity={wildMonster.species.rarity}
+              currentHp={wildMonster.currentHp}
+              maxHp={wildMonster.maxHp}
+              align="left"
+              statusEffect={wildMonster.statusEffect}
+            />
+            {wildMonster.shinyVariant && (
+              <div className="mt-1 text-center text-[10px] font-bold" style={{ color: '#FFD700', textShadow: '0 0 8px gold' }}>
+                ✨ {wildMonster.shinyVariant} Shiny
+              </div>
+            )}
+            {wildHpPct < 30 && (
+              <div className="mt-1 text-center text-[10px] animate-pulse" style={{ color: '#34D399' }}>
+                ● Good catch chance!
+              </div>
+            )}
+          </div>
           {/* Stagger wrapper — re-keyed when wild takes a hit */}
           <div key={`wstagger-${wildShake}`} className={wildShake > 0 ? 'hit-stagger-right' : ''}>
           {/* Inner lunge wrapper — re-keyed on each wild attack to replay animation */}
@@ -1815,6 +1809,18 @@ export default function BattleOverlay() {
           className="absolute flex flex-col items-center battle-entrance battle-combatant-player"
           style={{ animationDelay: '0.1s', zIndex: 2 }}
         >
+          <div className="battle-hp-over-myth battle-hp-over-myth-player battle-slide-up" style={{ animationDelay: '0.8s' }}>
+            <HpPlate
+              name={playerMonster.species.name}
+              level={playerMonster.level}
+              element={playerMonster.species.element}
+              rarity={playerMonster.species.rarity}
+              currentHp={playerMonster.currentHp}
+              maxHp={playerMonster.maxHp}
+              align="right"
+              statusEffect={playerMonster.statusEffect}
+            />
+          </div>
           {/* Stagger wrapper — re-keyed when player myth takes a hit */}
           <div key={`pstagger-${playerShake}`} className={playerShake > 0 ? 'hit-stagger-left' : ''}>
           {/* Inner lunge wrapper — re-keyed on each player attack to replay animation */}
