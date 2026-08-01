@@ -654,10 +654,21 @@ router.post(
 
     // Wild monster attacks back if battle still active
     if (newStatus === "active") {
-      const wildNormalSkill = skills.find((s) => s.type === "normal");
-      const wildSkillPower = wildNormalSkill?.power ?? 40;
-      const wildSkillName = wildNormalSkill?.name ?? "Attack";
-      const wildSkillElement = wildNormalSkill?.element ?? wildSpecies.element;
+      // The opponent builds combat momentum instead of repeating its basic
+      // attack forever. Stronger techniques enter the rotation on later turns,
+      // while a missing catalogue slot safely falls back to the normal skill.
+      const preferredWildType = battle.turn % 6 === 0
+        ? "ultimate"
+        : battle.turn % 3 === 0
+          ? "skill2"
+          : battle.turn % 2 === 0
+            ? "skill1"
+            : "normal";
+      const wildSkill = skills.find((s) => s.type === preferredWildType)
+        ?? skills.find((s) => s.type === "normal");
+      const wildSkillPower = wildSkill?.power ?? 40;
+      const wildSkillName = wildSkill?.name ?? "Attack";
+      const wildSkillElement = wildSkill?.element ?? wildSpecies.element;
 
       const wCrit = rollCritical();
       const wMult = getElementMultiplier(wildSkillElement, playerSpecies.element);

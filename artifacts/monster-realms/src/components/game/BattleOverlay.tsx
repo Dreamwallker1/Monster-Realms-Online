@@ -58,6 +58,17 @@ const ACTION_TO_SKILL_TYPE: Record<string, SkillData['type']> = {
   ultimate: 'ultimate',
 };
 
+const MAX_AETHER = 100;
+const AETHER_COST: Record<SkillData['type'], number> = {
+  normal: 0,
+  skill1: 30,
+  skill2: 45,
+  ultimate: 70,
+  passive: 0,
+};
+const BASIC_AETHER_GAIN = 18;
+const ROUND_AETHER_REGEN = 10;
+
 function getSkillForAction(action: string, skills: SkillData[]): SkillData {
   const type = ACTION_TO_SKILL_TYPE[action];
   if (type) {
@@ -706,19 +717,28 @@ function MythSprite({
 // ─── HP Plate ───────────────────────────────────────────────────────────────────
 
 function HpPlate({
-  name, level, element, rarity, currentHp, maxHp, align,
+  name, level, element, rarity, currentHp, maxHp, align, aether, statusEffect,
 }: {
   name: string; level: number; element: string; rarity: string;
   currentHp: number; maxHp: number; align: 'left' | 'right';
+  aether: number; statusEffect?: string | null;
 }) {
   const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
+  const [lagPct, setLagPct] = useState(pct);
   const elColors = getElementColors(element);
   const barColor = pct > 50 ? '#22C55E' : pct > 20 ? '#EAB308' : '#EF4444';
   const qualLabel = QUALITY_LABEL[rarity] ?? rarity;
 
+  useEffect(() => {
+    if (pct > lagPct) { setLagPct(pct); return; }
+    if (pct === lagPct) return;
+    const timer = window.setTimeout(() => setLagPct(pct), 620);
+    return () => window.clearTimeout(timer);
+  }, [pct, lagPct]);
+
   return (
     <div
-      className="rounded-xl px-3 py-2.5 battle-hp-card"
+      className={`rounded-xl px-3 py-2.5 battle-hp-card ${pct <= 20 ? 'battle-hp-critical' : ''}`}
       style={{
         minWidth: 158, maxWidth: 204,
         background: 'linear-gradient(135deg, rgba(8,8,22,0.92), rgba(4,4,14,0.96))',
@@ -749,10 +769,10 @@ function HpPlate({
       </div>
       {/* HP bar — numbers live inside the bar */}
       <div
-        className="relative w-full rounded-full overflow-hidden"
+        className="relative w-full rounded-full overflow-hidden battle-vital-bar"
         style={{ height: 20, background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.07)' }}
       >
-        {/* Filled portion */}
+        <div className="absolute inset-y-0 left-0 rounded-full battle-hp-lag" style={{ width: `${lagPct}%` }} />
         <div
           className="absolute inset-y-0 left-0 rounded-full hp-bar-fill"
           style={{
@@ -771,6 +791,15 @@ function HpPlate({
           </span>
         </div>
       </div>
+      <div className="battle-aether-row">
+        <span>AETHER</span>
+        <div className="battle-aether-track">
+          <div className="battle-aether-fill" style={{ width: `${Math.max(0, Math.min(100, aether))}%` }} />
+          <i /><i /><i /><i />
+        </div>
+        <b>{aether}</b>
+      </div>
+      {statusEffect && <div className="battle-status-chip">{statusEffect}</div>}
     </div>
   );
 }
@@ -831,6 +860,7 @@ function ActionPanel({
   handleAction,
   setShowSwitchPanel,
   setShowOrbPicker,
+  playerAether,
 }: {
   playerMonster: { species?: { skills?: unknown; element?: string } } | null;
   wildElement: string;
@@ -843,6 +873,7 @@ function ActionPanel({
   handleAction: (a: 'capture' | 'flee') => void;
   setShowSwitchPanel: (v: boolean) => void;
   setShowOrbPicker: (v: boolean) => void;
+  playerAether: number;
 }) {
   const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
   const skillDefs: { action: ActionType; type: SkillData['type'] }[] = [
@@ -862,6 +893,10 @@ function ActionPanel({
 
   return (
     <div className="flex flex-col gap-2">
+      <div className="battle-aether-command">
+        <span><b>◆ {playerAether}</b> / {MAX_AETHER} AETHER</span>
+        <em>Basic attacks charge · techniques spend</em>
+      </div>
       {/* Opponent-turn indicator */}
       {opponentTurnActive && (
         <div
@@ -901,12 +936,14 @@ function ActionPanel({
             mult >= 1.5 ? '#86EFAC' :
             mult === 0   ? '#94A3B8' :
             mult <= 0.5  ? '#FCA5A5' : null;
+          const aetherCost = AETHER_COST[type];
+          const lacksAether = playerAether < aetherCost;
           return (
             <button
               key={action}
               onClick={() => handleSkillAction(action)}
-              disabled={isBlocked}
-              className="relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden battle-skill-card"
+              disabled={isBlocked || lacksAether}
+              className={`relative flex flex-col items-start rounded-xl font-bold transition-all active:scale-95 disabled:opacity-50 overflow-hidden battle-skill-card ${lacksAether ? 'battle-skill-locked' : ''}`}
               style={{ background: style.grad, border: `1.5px solid ${matchupColor ? matchupColor + '55' : style.border}`, boxShadow: `0 0 16px ${matchupColor ? matchupColor + '44' : style.glow}, inset 0 1px 0 rgba(255,255,255,0.12)`, minHeight: 52, padding: '8px 10px' }}
               data-testid={`button-${action}`}
             >
@@ -923,6 +960,9 @@ function ActionPanel({
                 <span className="text-[8px] text-white/30 uppercase font-mono">
                   {type === 'normal' ? 'normal' : type === 'skill1' ? 'special' : type === 'skill2' ? 'power' : '★ ult'}
                 </span>
+                <span className={`battle-skill-cost ${type === 'normal' ? 'battle-skill-gain' : ''}`}>
+                  {type === 'normal' ? `+${BASIC_AETHER_GAIN}` : `◆ ${aetherCost}`}
+                </span>
                 {matchupText && matchupColor && (
                   <span
                     className="text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none"
@@ -934,6 +974,7 @@ function ActionPanel({
               </div>
               <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
                 style={{ background: skill.accuracy >= 90 ? '#22C55E' : skill.accuracy >= 75 ? '#EAB308' : '#EF4444' }} />
+              {lacksAether && <div className="battle-skill-lock-label">NEED {aetherCost} AETHER</div>}
             </button>
           );
         }) : (
@@ -1043,6 +1084,8 @@ export default function BattleOverlay() {
   const [showBattleIntro, setShowBattleIntro]     = useState(false);
   const [opponentTurnActive, setOpponentTurnActive] = useState(false);
   const [opponentTimer, setOpponentTimer]           = useState(10);
+  const [playerAether, setPlayerAether]             = useState(45);
+  const [wildAether, setWildAether]                 = useState(45);
   const opponentCinematicFiredRef = useRef(false);
   const opponentFireAtRef         = useRef(7); // randomised per turn (timer value at which wild fires)
 
@@ -1203,6 +1246,8 @@ export default function BattleOverlay() {
   useEffect(() => {
     if (battle.battleId && battle.battleId !== seenBattleId.current) {
       seenBattleId.current = battle.battleId;
+      setPlayerAether(45);
+      setWildAether(45);
       setShowBattleIntro(true);
       setShowPlayerEntrance(true);
       setShowWildEntrance(true);
@@ -1277,6 +1322,8 @@ export default function BattleOverlay() {
     prevRoundRef.current = currentRound;
     setRoundTimer(10);
     if (currentRound > 1) {
+      setPlayerAether(value => Math.min(MAX_AETHER, value + ROUND_AETHER_REGEN));
+      setWildAether(value => Math.min(MAX_AETHER, value + ROUND_AETHER_REGEN));
       pendingRoundRef.current = currentRound; // deferred — announced after both turns
     } else {
       setDisplayedRound(1); // battle start
@@ -1423,6 +1470,11 @@ export default function BattleOverlay() {
     const playerSkills = getDisplaySkills(playerMonster?.species ?? {});
     const skill = getSkillForAction(action, playerSkills);
     const skillElement = skill.element ?? playerMonster?.species?.element ?? 'Fire';
+    const aetherCost = AETHER_COST[skill.type];
+    if (playerAether < aetherCost) return;
+    setPlayerAether(value => skill.type === 'normal'
+      ? Math.min(MAX_AETHER, value + BASIC_AETHER_GAIN)
+      : Math.max(0, value - aetherCost));
 
     // Show player cinematic immediately (optimistic)
     setCinematic({
@@ -1450,6 +1502,10 @@ export default function BattleOverlay() {
         const wildElement = updated.wildMonster?.species?.element ?? 'Fire';
         const wildSkill = getDisplaySkills(updated.wildMonster?.species ?? {})
           .find((candidate) => candidate.name === wildEntry.action);
+        const wildSkillType = wildSkill?.type ?? 'normal';
+        setWildAether(value => wildSkillType === 'normal'
+          ? Math.min(MAX_AETHER, value + BASIC_AETHER_GAIN)
+          : Math.max(0, value - AETHER_COST[wildSkillType]));
         pendingWildCinematic.current = {
           skillName: wildEntry.action,
           element: wildElement,
@@ -1457,16 +1513,26 @@ export default function BattleOverlay() {
           isCritical: wildEntry.critical,
           attackerMythId: updated.wildMonster?.species?.id,
           attackerRarity:  updated.wildMonster?.species?.rarity ?? 'C',
-          skillType: wildSkill?.type ?? 'normal',
+          skillType: wildSkillType,
         };
       }
       pendingBattleResult.current = updated;
     } catch (err) {
       console.error('Battle action failed:', err);
+      setPlayerAether(value => skill.type === 'normal'
+        ? Math.max(0, value - BASIC_AETHER_GAIN)
+        : Math.min(MAX_AETHER, value + aetherCost));
       pendingBattleResult.current = null;
       pendingWildCinematic.current = null;
     }
-  }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction]);
+  }, [battle.battleId, isPending, isOver, cinematic, playerMonster, performAction, playerAether]);
+
+  // A turn that expires resolves as a basic attack. The timer therefore
+  // creates pressure without freezing the match or granting a free skip.
+  useEffect(() => {
+    if (roundTimer !== 0 || isOver || cinematic || isPending || opponentTurnActive) return;
+    void handleSkillAction('attack');
+  }, [roundTimer, isOver, cinematic, isPending, opponentTurnActive, handleSkillAction]);
 
   // Keep finalizeCaptureRef.current up-to-date on every render so both
   // the animation callback and the API promise always call the latest version.
@@ -1630,6 +1696,8 @@ export default function BattleOverlay() {
             currentHp={wildMonster.currentHp}
             maxHp={wildMonster.maxHp}
             align="left"
+            aether={wildAether}
+            statusEffect={wildMonster.statusEffect}
           />
           {wildMonster.shinyVariant && (
             <div className="mt-1 text-center text-[10px] font-bold" style={{ color: '#FFD700', textShadow: '0 0 8px gold' }}>
@@ -1725,6 +1793,8 @@ export default function BattleOverlay() {
             currentHp={playerMonster.currentHp}
             maxHp={playerMonster.maxHp}
             align="right"
+            aether={playerAether}
+            statusEffect={playerMonster.statusEffect}
           />
         </div>
 
@@ -2262,6 +2332,7 @@ export default function BattleOverlay() {
               handleAction={handleAction}
               setShowSwitchPanel={setShowSwitchPanel}
               setShowOrbPicker={setShowOrbPicker}
+              playerAether={playerAether}
             />
           </>
         ) : (

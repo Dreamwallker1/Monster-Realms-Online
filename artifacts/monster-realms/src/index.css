@@ -684,10 +684,27 @@
   .battle-hp-card { position:relative; overflow:hidden; }
   .battle-hp-card::before { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 28% 72%,rgba(255,255,255,.035)); }
   .battle-hp-card::after { content:""; position:absolute; left:10%; right:10%; top:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent); opacity:.55; }
+  .battle-vital-bar { box-shadow:inset 0 2px 7px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.06); }
+  .battle-hp-lag { background:linear-gradient(90deg,#f4d86a,#fff0a2); opacity:.8; transition:width .72s cubic-bezier(.18,.72,.2,1); box-shadow:0 0 9px #ffe78388; }
+  .battle-hp-critical { animation:battle-hp-critical 1.15s ease-in-out infinite alternate; }
+  @keyframes battle-hp-critical { to { border-color:#ef444488; box-shadow:0 4px 24px rgba(0,0,0,.78),0 0 18px rgba(239,68,68,.3); } }
+  .battle-aether-row { display:grid; grid-template-columns:auto 1fr 24px; align-items:center; gap:6px; margin-top:7px; color:#73dcff; font:700 7px var(--font-mono,monospace); letter-spacing:.12em; }
+  .battle-aether-row b { text-align:right; color:#bceeff; font-size:8px; letter-spacing:0; }
+  .battle-aether-track { position:relative; display:flex; height:7px; overflow:hidden; border:1px solid rgba(100,211,255,.2); border-radius:999px; background:#020911; box-shadow:inset 0 1px 4px #000,0 0 7px rgba(28,180,255,.12); }
+  .battle-aether-fill { position:absolute; inset:0 auto 0 0; border-radius:inherit; background:linear-gradient(90deg,#175dca,#25bff5 64%,#baf4ff); box-shadow:0 0 9px #20baf5; transition:width .45s cubic-bezier(.2,.75,.25,1); }
+  .battle-aether-track i { position:relative; z-index:1; width:25%; border-right:1px solid rgba(2,13,26,.8); }
+  .battle-status-chip { width:max-content; margin-top:5px; padding:2px 6px; border:1px solid #fb923c55; border-radius:999px; color:#fdba74; background:#7c2d1233; font:700 7px var(--font-mono,monospace); letter-spacing:.08em; text-transform:uppercase; }
   .battle-skill-card { isolation:isolate; transform:translateZ(0); }
   .battle-skill-card::before { content:""; position:absolute; z-index:-1; inset:-80% -35%; background:linear-gradient(110deg,transparent 38%,rgba(255,255,255,.18) 48%,transparent 58%); transform:translateX(-55%) rotate(8deg); transition:transform .65s cubic-bezier(.2,.7,.2,1); }
   .battle-skill-card:hover:not(:disabled)::before { transform:translateX(55%) rotate(8deg); }
   .battle-skill-card:hover:not(:disabled) { translate:0 -2px; filter:brightness(1.12) saturate(1.08); }
+  .battle-aether-command { display:flex; align-items:center; justify-content:space-between; min-height:22px; padding:3px 9px; border:1px solid rgba(56,189,248,.16); border-radius:8px; color:#7dd3fc; background:linear-gradient(90deg,rgba(3,32,54,.78),rgba(7,14,31,.7)); box-shadow:inset 0 1px rgba(255,255,255,.035); font:700 8px var(--font-mono,monospace); letter-spacing:.06em; }
+  .battle-aether-command b { color:#d7f6ff; font-size:9px; }
+  .battle-aether-command em { color:rgba(186,230,253,.42); font-size:7px; font-style:normal; }
+  .battle-skill-cost { margin-left:auto; padding:1px 5px; border:1px solid rgba(125,211,252,.35); border-radius:999px; color:#bae6fd; background:rgba(3,105,161,.25); font:800 8px var(--font-mono,monospace); }
+  .battle-skill-gain { color:#86efac; border-color:rgba(74,222,128,.35); background:rgba(21,128,61,.22); }
+  .battle-skill-locked { filter:grayscale(.45) brightness(.62); }
+  .battle-skill-lock-label { position:absolute; inset:auto 7px 5px auto; color:#7dd3fc; font:800 7px var(--font-mono,monospace); letter-spacing:.06em; text-shadow:0 1px 3px #000; }
 
   /* World-map camera → local battlefield cinematic veil */
   .battle-transition-veil { position: fixed; inset: 0; z-index: 80; pointer-events: none; overflow: hidden; }
@@ -1043,6 +1060,36 @@
   .battle-focus-cinematic .battle-combatant-player,
   .battle-focus-cinematic .battle-combatant-wild { opacity:1; filter:brightness(1.06) saturate(1.1); }
   .battle-action-melee .battle-stage-pool { opacity:.9; filter:blur(1px) brightness(1.16); }
+
+  /* Mobile battle staging: keep both 252px authored rigs inside their own
+     half of the arena. `scale` composes with the turn-camera transform, so
+     focus still works without pushing the combatants into each other. */
+  @media (max-width: 760px) {
+    .battle-combatant-wild,
+    .battle-combatant-player {
+      scale: .68;
+      bottom: 1%;
+      transform-origin: bottom center;
+    }
+    .battle-combatant-wild { left: -1%; }
+    .battle-combatant-player { right: -1%; }
+    .myth-lunge-left { --battle-lunge-x: -47vw; --battle-lunge-recoil: -45vw; }
+    .myth-lunge-right { --battle-lunge-x: 47vw; --battle-lunge-recoil: 45vw; }
+    .battle-hit-wild { left: 11%; }
+    .battle-hit-player { right: 11%; }
+    .battle-hp-anchor { scale:.78; }
+    .battle-aether-command em { display:none; }
+  }
+
+  @media (max-width: 480px) {
+    .battle-combatant-wild,
+    .battle-combatant-player { scale: .52; bottom: 2%; }
+    .battle-combatant-wild { left: -5%; }
+    .battle-combatant-player { right: -5%; }
+    .myth-lunge-left { --battle-lunge-x: -32vw; --battle-lunge-recoil: -30vw; }
+    .myth-lunge-right { --battle-lunge-x: 32vw; --battle-lunge-recoil: 30vw; }
+    .battle-stage-pool { width: 42vw; }
+  }
 
   /* ── Floating damage number ─────────────────────────────────────────── */
   @keyframes dmg-float {
