@@ -16,6 +16,7 @@ import MythEntranceCinematic, { ARCHETYPE_STRIKE, getStrike } from '@/components
 import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
 import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
+import LivingMythArt from './LivingMythArt';
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -581,15 +582,13 @@ function MythSprite({
           {hasBattleArt ? (
             <div
               className="relative w-full h-full"
-              style={{ transform: facing === 'left' ? 'scaleX(-1)' : undefined }}
             >
-              <img
+              <LivingMythArt
+                speciesId={speciesId}
                 src={battleArtSrc}
-                alt={`${speciesId} ready for battle`}
-                width={renderedSize}
-                height={renderedSize}
-                className="flarelynx-battle-sprite w-full h-full object-contain"
-                draggable={false}
+                size={renderedSize}
+                facing={facing}
+                reactionKey={animKey}
               />
               {[0, 1, 2].map((ember) => (
                 <span
@@ -1020,7 +1019,7 @@ export default function BattleOverlay() {
   });
 
   const { data: teamCollection } = useGetPlayerCollection(player?.id ?? '', undefined, {
-    query: { enabled: !!player?.id && battle.active },
+    query: { enabled: !!player?.id && battle.active, queryKey: ['battle-team-collection', player?.id] },
   });
 
   const { data: inventory } = useGetPlayerInventory(player?.id ?? '', {
@@ -1122,6 +1121,7 @@ export default function BattleOverlay() {
       const t = setTimeout(() => setShowBattleIntro(false), 2800);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [battle.battleId]);
 
   // Trigger player entrance on myth switch

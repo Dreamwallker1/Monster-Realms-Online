@@ -771,7 +771,7 @@ export default function TeamBuilder() {
   const { data: collection = [], isLoading } = useGetPlayerCollection(
     player?.id ?? '',
     undefined,
-    { query: { enabled: !!player?.id } as any },
+    { query: { enabled: !!player?.id, queryKey: ['team-builder-collection', player?.id] } },
   );
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

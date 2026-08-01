@@ -11,7 +11,7 @@ export default function GameHUD() {
   const [mythsOpen, setMythsOpen] = useState(false);
 
   const { data: team } = useGetPlayerTeam(player?.id || '', {
-    query: { enabled: !!player?.id },
+    query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
   });
 
   if (!player) return null;

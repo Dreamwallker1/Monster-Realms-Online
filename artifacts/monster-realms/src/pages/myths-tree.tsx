@@ -19,8 +19,8 @@ export default function MythsTree() {
   const [selectedMyth, setSelectedMyth] = useState<MythEntry | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<number | undefined>(undefined);
 
-  const { data: collection } = useGetPlayerCollection(player?.id ?? '', {
-    query: { enabled: !!player?.id },
+  const { data: collection } = useGetPlayerCollection(player?.id ?? '', undefined, {
+    query: { enabled: !!player?.id, queryKey: ['myths-tree-collection', player?.id] },
   });
 
   // Build a map of owned myth IDs → highest level

@@ -35,7 +35,7 @@ export default function Game() {
   } = useGameStore();
 
   const { data: me, isLoading } = useGetMe({
-    query: { enabled: !!getToken() },
+    query: { enabled: !!getToken(), queryKey: ['authenticated-player'] },
   });
 
   const exploreTile = useExploreTile();
@@ -100,16 +100,17 @@ export default function Game() {
   }, [player?.id]);
 
   const handleMove = async (input: ExploreInput) => {
-    if (!player) return;
+    const livePlayer = useGameStore.getState().player;
+    if (!livePlayer) return false;
     try {
-      const result = await exploreTile.mutateAsync({ playerId: player.id, data: input });
+      const result = await exploreTile.mutateAsync({ playerId: livePlayer.id, data: input });
 
       setPlayer({
-        ...player,
+        ...livePlayer,
         posX: result.newPosX,
         posY: result.newPosY,
         energy: result.remainingEnergy,
-        regionId: input.regionId || player.regionId,
+        regionId: input.regionId || livePlayer.regionId,
       });
 
       // Update current region whenever the player crosses a zone boundary
@@ -132,8 +133,10 @@ export default function Game() {
         posY: result.newPosY,
         regionId: input.regionId,
       });
+      return true;
     } catch (err) {
       console.error('Failed to explore tile:', err);
+      return false;
     }
   };
 

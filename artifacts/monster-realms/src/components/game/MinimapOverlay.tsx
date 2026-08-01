@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '@/store/game-store';
 import {
   getRegionIdForPosition,
   REGION_PALETTE,
   WORLD_W,
   WORLD_H,
+  generateTerrain,
+  TileType,
 } from '@/lib/terrain';
 import { Map } from 'lucide-react';
+import { MRO_MOVE_STATE_EVENT, type MoveStateDetail } from '@/lib/dpad-events';
 
 /** Tile size in canvas pixels — 3 gives a 150×150 minimap for a 50×50 world */
-const TILE_PX = 3;
+const TILE_PX = 4;
 /** Match WorldScene's fog-of-war reveal radius */
 const REVEAL_RADIUS = 6;
 
@@ -51,10 +54,12 @@ function buildRevealedSet(exploredTiles: Set<string>): Set<string> {
 }
 
 export default function MinimapOverlay() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+  const [movement, setMovement] = useState<MoveStateDetail>({ locked: false, readyAt: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const { player, exploredTiles } = useGameStore();
+  const { player, exploredTiles, otherPlayers } = useGameStore();
+  const terrain = useMemo(() => generateTerrain(WORLD_W, WORLD_H), []);
   const playerX = player?.posX ?? 25;
   const playerY = player?.posY ?? 4;
 
@@ -79,7 +84,13 @@ export default function MinimapOverlay() {
         if (revealed.has(`${x},${y}`)) {
           const regionId = getRegionIdForPosition(x, y);
           const palette = REGION_PALETTE[regionId] ?? REGION_PALETTE['verdant-meadows']!;
-          ctx.fillStyle = numToHex(palette.grass[0]);
+          const tile = terrain[y]?.[x] ?? TileType.Grass;
+          ctx.fillStyle = tile === TileType.Path ? '#b7a484'
+            : tile === TileType.Pond ? '#176b87'
+            : tile === TileType.Tree ? numToHex(palette.treeCanopy[0])
+            : tile === TileType.Building ? '#9b6b47'
+            : tile === TileType.Flower ? numToHex(palette.grass[2])
+            : numToHex(palette.grass[0]);
         } else {
           ctx.fillStyle = '#08090f';
         }
@@ -142,7 +153,19 @@ export default function MinimapOverlay() {
       });
     });
 
-    // ── 4. Player marker ──────────────────────────────────────────────────
+    // ── 4. Other explorers ────────────────────────────────────────────────
+    otherPlayers.forEach((other) => {
+      if (!revealed.has(`${other.x},${other.y}`)) return;
+      ctx.beginPath();
+      ctx.arc(other.x * TILE_PX + TILE_PX / 2, other.y * TILE_PX + TILE_PX / 2, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = other.color || '#f0abfc';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.85)';
+      ctx.lineWidth = 0.75;
+      ctx.stroke();
+    });
+
+    // ── 5. Player marker ──────────────────────────────────────────────────
     const px = playerX * TILE_PX + TILE_PX / 2;
     const py = playerY * TILE_PX + TILE_PX / 2;
 
@@ -164,7 +187,20 @@ export default function MinimapOverlay() {
     ctx.strokeStyle = '#00ffff';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-  }, [open, exploredTiles, playerX, playerY]);
+  }, [open, exploredTiles, playerX, playerY, otherPlayers, terrain]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'm' || event.key === 'M') setOpen((value) => !value);
+    };
+    const onMovement = (event: Event) => setMovement((event as CustomEvent<MoveStateDetail>).detail);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener(MRO_MOVE_STATE_EVENT, onMovement);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener(MRO_MOVE_STATE_EVENT, onMovement);
+    };
+  }, []);
 
   const currentRegionId = player
     ? getRegionIdForPosition(playerX, playerY)
@@ -213,11 +249,12 @@ export default function MinimapOverlay() {
               className="text-[9px] font-mono uppercase tracking-widest"
               style={{ color: accentHex }}
             >
-              World Map
+              Litardia · World Map
             </span>
-            <span className="text-[9px] font-mono text-muted-foreground">
-              {REGION_ZONES.find((z) => z.id === currentRegionId)?.label ?? ''}
-            </span>
+            <div className="text-right">
+              <div className="text-[9px] font-mono text-muted-foreground">{REGION_ZONES.find((z) => z.id === currentRegionId)?.label ?? ''}</div>
+              <div className="text-[8px] font-mono text-white/30">X {playerX} · Y {playerY}</div>
+            </div>
           </div>
 
           {/* Canvas */}
@@ -228,6 +265,17 @@ export default function MinimapOverlay() {
               imageRendering: 'pixelated',
             }}
           />
+
+          <div className="h-1 bg-white/5">
+            <div
+              className="h-full transition-all duration-200"
+              style={{
+                width: movement.locked ? '38%' : '100%',
+                background: movement.locked ? '#f59e0b' : '#34d399',
+                boxShadow: `0 0 8px ${movement.locked ? '#f59e0b' : '#34d399'}`,
+              }}
+            />
+          </div>
 
           {/* Legend */}
           <div
@@ -247,6 +295,9 @@ export default function MinimapOverlay() {
                 style={{ background: '#08090f', border: '1px solid #ffffff22' }}
               />
               <span className="text-[9px] font-mono text-muted-foreground">Unexplored</span>
+            </div>
+            <div className="ml-auto text-[8px] font-mono uppercase" style={{ color: movement.locked ? '#fbbf24' : '#6ee7b7' }}>
+              {movement.locked ? 'Move recovering' : 'Move ready'}
             </div>
           </div>
         </div>

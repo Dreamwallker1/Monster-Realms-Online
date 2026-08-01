@@ -11,7 +11,8 @@ import {
   WORLD_W, WORLD_H,
 } from '@/lib/terrain';
 import { getCharacter, type CharacterConfig } from '@/lib/characters';
-import { MRO_MOVE_EVENT } from '@/lib/dpad-events';
+import { MRO_MOVE_EVENT, dispatchMoveState } from '@/lib/dpad-events';
+import { MOVE_ANIMATION_MS, MOVE_RECOVERY_MS, getMoveIntent } from '@/lib/movement';
 import {
   BATTLE_FOCUS_EVENT,
   BATTLE_FOCUS_READY_EVENT,
@@ -47,8 +48,10 @@ export default class WorldScene extends Phaser.Scene {
   private exploredTiles: Set<string> = new Set();
   private otherPlayerContainers: Map<string, Phaser.GameObjects.Container> = new Map();
   private battleFocusActive = false;
+  private movementLocked = false;
+  private movementUnlockTimer?: Phaser.Time.TimerEvent;
 
-  private onMove?: (input: ExploreInput) => void;
+  private onMove?: (input: ExploreInput) => Promise<boolean>;
   private onRadarUpdate?: () => void;
 
   constructor() {
@@ -59,7 +62,7 @@ export default class WorldScene extends Phaser.Scene {
     playerX: number;
     playerY: number;
     characterType: string;
-    onMove: (input: ExploreInput) => void;
+    onMove: (input: ExploreInput) => Promise<boolean>;
     onRadarUpdate: () => void;
     exploredTiles: Set<string>;
   }>) {
@@ -131,6 +134,8 @@ export default class WorldScene extends Phaser.Scene {
       window.removeEventListener(MRO_MOVE_EVENT, onDpadMove);
       window.removeEventListener(BATTLE_FOCUS_EVENT, onBattleFocus);
       window.removeEventListener(BATTLE_RELEASE_EVENT, onBattleRelease);
+      this.movementUnlockTimer?.remove(false);
+      dispatchMoveState({ locked: false, readyAt: 0 });
     });
 
     this.revealNearbyTiles();
@@ -583,18 +588,24 @@ export default class WorldScene extends Phaser.Scene {
 
   /** Called from keyboard handler and from the React D-pad overlay */
   public moveInDirection(dx: number, dy: number) {
-    if (this.battleFocusActive) return;
+    if (this.battleFocusActive || this.movementLocked) return;
+    const intent = getMoveIntent(dx, dy);
+    if (!intent) return;
+
+    const oldX = this.playerX;
+    const oldY = this.playerY;
     const newX = this.playerX + dx;
     const newY = this.playerY + dy;
 
     if (newX < 0 || newX >= WORLD_WIDTH || newY < 0 || newY >= WORLD_HEIGHT) return;
 
-    // For diagonals, both target tile AND the two corner tiles must be passable
+    // Only destination passability is needed: the public movement contract is
+    // cardinal-only so client and API can never disagree about a step.
     if (!isPassable(this.terrain[newY]?.[newX] ?? TileType.Tree)) return;
-    if (dx !== 0 && dy !== 0) {
-      if (!isPassable(this.terrain[this.playerY]?.[newX] ?? TileType.Tree)) return;
-      if (!isPassable(this.terrain[newY]?.[this.playerX] ?? TileType.Tree)) return;
-    }
+
+    this.movementLocked = true;
+    const readyAt = Date.now() + MOVE_RECOVERY_MS;
+    dispatchMoveState({ locked: true, readyAt });
 
     this.playerX = newX;
     this.playerY = newY;
@@ -604,8 +615,8 @@ export default class WorldScene extends Phaser.Scene {
       targets: this.playerContainer,
       x: this.playerX * TILE_SIZE + TILE_SIZE / 2,
       y: this.playerY * TILE_SIZE + TILE_SIZE / 2,
-      duration: 105,
-      ease: 'Cubic.easeOut',
+      duration: MOVE_ANIMATION_MS,
+      ease: 'Sine.easeInOut',
     });
 
     // Squash & stretch: quick scale-down during movement, snap back
@@ -614,7 +625,7 @@ export default class WorldScene extends Phaser.Scene {
         targets: this.playerContainer,
         scaleX: 0.88,
         scaleY: 1.10,
-        duration: 50,
+        duration: Math.round(MOVE_ANIMATION_MS * 0.42),
         ease: 'Sine.easeIn',
         yoyo: true,
         onComplete: () => {
@@ -625,11 +636,41 @@ export default class WorldScene extends Phaser.Scene {
       });
     }
 
-    // Map dx/dy → API direction (cardinal only for API; diagonals handled locally)
-    const apiDir = this.toApiDirection(dx, dy);
     const regionId = getRegionIdForPosition(this.playerX, this.playerY);
-    this.onMove?.({ direction: apiDir ?? 'up', regionId, posX: this.playerX, posY: this.playerY });
-    this.revealNearbyTiles();
+    void this.commitMove({
+      direction: intent.direction,
+      regionId,
+      // The API applies direction to these coordinates. They must therefore
+      // be the origin tile, not the already-updated destination tile.
+      posX: oldX,
+      posY: oldY,
+    }, oldX, oldY, readyAt);
+  }
+
+  private async commitMove(input: ExploreInput, oldX: number, oldY: number, readyAt: number) {
+    const accepted = await this.onMove?.(input);
+    if (accepted === false) {
+      this.playerX = oldX;
+      this.playerY = oldY;
+      this.tweens.add({
+        targets: this.playerContainer,
+        x: oldX * TILE_SIZE + TILE_SIZE / 2,
+        y: oldY * TILE_SIZE + TILE_SIZE / 2,
+        duration: 260,
+        ease: 'Back.easeOut',
+      });
+    } else {
+      this.revealNearbyTiles();
+    }
+
+    // A step is unlocked only when both conditions are true: the server has
+    // answered and the pacing recovery has elapsed. Slow connections can no
+    // longer create overlapping movement requests.
+    const remaining = Math.max(0, readyAt - Date.now());
+    this.movementUnlockTimer = this.time.delayedCall(remaining, () => {
+      this.movementLocked = false;
+      dispatchMoveState({ locked: false, readyAt: 0 });
+    });
   }
 
   private focusBattleCamera() {
@@ -661,25 +702,16 @@ export default class WorldScene extends Phaser.Scene {
     });
   }
 
-  private toApiDirection(dx: number, dy: number): 'up' | 'down' | 'left' | 'right' | null {
-    if (dx === 0 && dy === -1) return 'up';
-    if (dx === 0 && dy === 1)  return 'down';
-    if (dx === -1 && dy === 0) return 'left';
-    if (dx === 1 && dy === 0)  return 'right';
-    return null; // diagonal — local only; we still pass posX/posY to server
-  }
-
   private handleKeyDown(key: string) {
     // Cardinal
     if (key === 'ArrowUp'    || key === 'w' || key === 'W' || key === '8') { this.moveInDirection(0, -1);  return; }
     if (key === 'ArrowDown'  || key === 's' || key === 'S' || key === '2') { this.moveInDirection(0,  1);  return; }
     if (key === 'ArrowLeft'  || key === 'a' || key === 'A' || key === '4') { this.moveInDirection(-1, 0);  return; }
     if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === '6') { this.moveInDirection(1,  0);  return; }
-    // Diagonal
-    if (key === 'q' || key === 'Q' || key === '7') { this.moveInDirection(-1, -1); return; }
-    if (key === 'e' || key === 'E' || key === '9') { this.moveInDirection(1,  -1); return; }
-    if (key === 'z' || key === 'Z' || key === '1') { this.moveInDirection(-1,  1); return; }
-    if (key === 'c' || key === 'C' || key === '3') { this.moveInDirection(1,   1); return; }
+  }
+
+  public updateMoveHandler(onMove: (input: ExploreInput) => Promise<boolean>) {
+    this.onMove = onMove;
   }
 
   // ─── Fog of war ───────────────────────────────────────────────────────────

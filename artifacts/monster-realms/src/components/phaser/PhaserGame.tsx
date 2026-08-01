@@ -7,7 +7,7 @@ interface PhaserGameProps {
   playerX: number;
   playerY: number;
   characterType: string;
-  onMove: (input: ExploreInput) => void;
+  onMove: (input: ExploreInput) => Promise<boolean>;
   onRadarUpdate: () => void;
   exploredTiles: Set<string>;
   otherPlayers: Map<string, { username: string; x: number; y: number; color: string; characterType: string }>;
@@ -78,6 +78,12 @@ export default function PhaserGame({
   useEffect(() => {
     sceneRef.current?.updateCharacterType(characterType);
   }, [characterType]);
+
+  // Keep the scene callback current; otherwise Phaser retains the first React
+  // render's player/region state for the entire session.
+  useEffect(() => {
+    sceneRef.current?.updateMoveHandler(onMove);
+  }, [onMove]);
 
   return (
     <div ref={containerRef} className="fixed inset-0 z-0" style={{ width: '100%', height: '100%' }} />

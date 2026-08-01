@@ -18,9 +18,7 @@ export default function Leaderboard() {
   const { player } = useGameStore();
   const [activeTab, setActiveTab] = useState<GetLeaderboardType>('explorer');
   
-  const { data: leaderboard, isLoading } = useGetLeaderboard({
-    params: { type: activeTab, limit: 50 },
-  });
+  const { data: leaderboard, isLoading } = useGetLeaderboard({ type: activeTab, limit: 50 });
   
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="text-yellow-400" size={20} />;

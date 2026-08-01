@@ -207,7 +207,7 @@ export default function EncounterPopup() {
   const [isStarting, setIsStarting] = useState(false);
 
   const { data: team } = useGetPlayerTeam(player?.id || '', {
-    query: { enabled: !!player?.id },
+    query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
   });
 
   const startBattleMutation = useStartBattle();

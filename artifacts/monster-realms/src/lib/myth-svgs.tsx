@@ -1839,7 +1839,7 @@ const ARCHETYPE_COLORS: Record<string, [string, string, string]> = {
   Dark:     ['#0A0015', '#26004A', '#9B40E0'],
 };
 
-const ARCHETYPE_COMPONENTS: Record<ArchetypeName, (p: SvgCreatureProps) => JSX.Element> = {
+const ARCHETYPE_COMPONENTS: Record<ArchetypeName, (p: SvgCreatureProps) => React.ReactElement> = {
   // Original 20
   FireWolf:       (p) => <FireWolfSvg {...p} />,
   FireDrake:      (p) => <FireDrakeSvg {...p} />,

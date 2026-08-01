@@ -11,11 +11,11 @@ export default function Profile() {
   const { player } = useGameStore();
   
   const { data: stats, isLoading: statsLoading } = useGetPlayerStats(player?.id || '', {
-    query: { enabled: !!player?.id },
+    query: { enabled: !!player?.id, queryKey: ['player-stats', player?.id] },
   });
   
   const { data: team, isLoading: teamLoading } = useGetPlayerTeam(player?.id || '', {
-    query: { enabled: !!player?.id },
+    query: { enabled: !!player?.id, queryKey: ['player-team', player?.id] },
   });
   
   if (!player) return null;

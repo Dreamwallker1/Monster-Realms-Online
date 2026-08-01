@@ -17,11 +17,9 @@ export default function Encyclopedia() {
   const [selectedSpecies, setSelectedSpecies] = useState<MonsterSpecies | null>(null);
   
   const { data: species, isLoading } = useListMonsterSpecies({
-    params: {
       element: elementFilter || undefined,
       rarity: rarityFilter || undefined,
       search: search || undefined,
-    },
   });
   
   return (
