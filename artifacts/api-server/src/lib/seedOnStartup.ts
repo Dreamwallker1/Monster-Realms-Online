@@ -15,6 +15,10 @@ import { logger } from "./logger.js";
  * counts — so it detects catalogue swaps where totals are equal but species
  * differ.
  *
+ * Regions are additionally fingerprinted by the *contents* of their
+ * monsterSpeciesIds pools, so editing a spawn pool in regionData.ts (without
+ * changing any region ID) still triggers a re-seed on existing databases.
+ *
  * When a mismatch is found the function upserts all species and regions.
  * It NEVER deletes battles, captured_monsters, or any player-progress tables;
  * player collections are always preserved.
@@ -28,17 +32,37 @@ function catalogueFingerprint(ids: string[]): string {
   return [...ids].sort().join(",");
 }
 
+/**
+ * Deterministic fingerprint of regions including their spawn-pool contents.
+ * Sorted at both levels so row/array ordering never causes a spurious
+ * mismatch (which would re-run the upsert on every boot).
+ *
+ * Exported for regression tests only.
+ */
+export function regionFingerprint(
+  rows: Array<{ id: string; monsterSpeciesIds: string[] }>,
+): string {
+  return rows
+    .map(r => `${r.id}:${[...r.monsterSpeciesIds].sort().join("|")}`)
+    .sort()
+    .join(",");
+}
+
 export async function seedOnStartup(): Promise<void> {
   try {
     const [regionRows, speciesRows] = await Promise.all([
-      db.select({ id: regionsTable.id }).from(regionsTable),
+      db
+        .select({ id: regionsTable.id, monsterSpeciesIds: regionsTable.monsterSpeciesIds })
+        .from(regionsTable),
       db.select({ id: monsterSpeciesTable.id }).from(monsterSpeciesTable),
     ]);
 
     const dbSpeciesFingerprint  = catalogueFingerprint(speciesRows.map(r => r.id));
-    const dbRegionsFingerprint  = catalogueFingerprint(regionRows.map(r => r.id));
+    const dbRegionsFingerprint  = regionFingerprint(regionRows);
     const catSpeciesFingerprint = catalogueFingerprint(MONSTER_SEED_DATA.map(m => m.id as string));
-    const catRegionsFingerprint = catalogueFingerprint(REGION_SEED_DATA.map(r => r.id));
+    const catRegionsFingerprint = regionFingerprint(
+      REGION_SEED_DATA.map(r => ({ id: r.id, monsterSpeciesIds: r.monsterSpeciesIds })),
+    );
 
     const speciesMismatch = dbSpeciesFingerprint !== catSpeciesFingerprint;
     const regionsMismatch = dbRegionsFingerprint !== catRegionsFingerprint;
