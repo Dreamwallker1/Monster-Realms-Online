@@ -153,6 +153,8 @@ export const MonsterSpeciesElement = {
   Metal: 'Metal',
   Crystal: 'Crystal',
   Void: 'Void',
+  Storm: 'Storm',
+  Shadow: 'Shadow',
 } as const;
 
 export type MonsterSpeciesRarity = typeof MonsterSpeciesRarity[keyof typeof MonsterSpeciesRarity];
