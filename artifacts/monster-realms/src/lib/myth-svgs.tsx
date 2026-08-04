@@ -1775,6 +1775,23 @@ export const MYTH_ARCHETYPE: Record<string, ArchetypeName> = {
   'voidraven':'ShadowGolem',
   // S
   'umbraeon':'EclipseOwl', 'noctiris':'AbyssSpider',
+
+  // ── Myth Catalogue v3 (live 25) — mapped to the closest existing archetype ──
+  // Fire
+  'emberpup':'FireWolf',   'cinderclaw':'LavaCrab',  'flamewing':'EmberMoth',
+  'magmahorn':'FireGolem', 'pyredrake':'FireDrake',
+  // Water
+  'bubblefin':'SeaJelly',  'wavecrest':'WaterTurtle','tidalwing':'TempestEel',
+  'deepfang':'SeaSerpent', 'abyssalord':'AbyssAngler',
+  // Earth
+  'pebbleback':'WaterTurtle','thornbriar':'ThornSerpent','graniteclaw':'NatureWolf',
+  'crystalhorn':'ForestBeast','terravast':'MossGolem',
+  // Storm
+  'zappet':'SparkRabbit',  'galecub':'LightningFox', 'thunderwing':'ThunderHawk',
+  'stormcrown':'StormGolem','vortexwyrm':'ThunderWorm',
+  // Shadow
+  'gloomite':'AbyssSpider','veilpaw':'ShadowCat',    'duskfang':'NightHound',
+  'nightshade':'VoidWraith','voidreign':'ShadowGolem',
 };
 
 // ── Per-myth deterministic color generation ───────────────────────────────────
@@ -1806,6 +1823,10 @@ const ELEMENT_BANDS: Record<string, ElementBand> = {
   Nature:   { primaryHue:[85,145],  secondaryHue:[70,130], accentHue:[55,120],  sat:78, primaryL:22,  secondaryL:40, accentL:56 },
   Electric: { primaryHue:[38,68],   secondaryHue:[42,72],  accentHue:[48,80],   sat:95, primaryL:32,  secondaryL:50, accentL:65 },
   Dark:     { primaryHue:[255,310], secondaryHue:[250,300],accentHue:[270,330], sat:80, primaryL:12,  secondaryL:26, accentL:52 },
+  // v3 live elements — bands match element-colors.ts (Earth amber, Storm violet, Shadow indigo)
+  Earth:    { primaryHue:[22,48],   secondaryHue:[28,54],  accentHue:[36,62],   sat:68, primaryL:22,  secondaryL:38, accentL:55 },
+  Storm:    { primaryHue:[258,288], secondaryHue:[252,282],accentHue:[262,300], sat:88, primaryL:26,  secondaryL:44, accentL:64 },
+  Shadow:   { primaryHue:[228,258], secondaryHue:[222,252],accentHue:[238,278], sat:72, primaryL:14,  secondaryL:28, accentL:54 },
 };
 
 function lerp(a: number, b: number, t: number) { return Math.round(a + (b - a) * t); }
@@ -1952,6 +1973,7 @@ function fallback(element: string): ArchetypeName {
   const defaults: Record<string, ArchetypeName> = {
     Fire: 'FireWolf', Water: 'WaterCanine', Nature: 'ForestBeast',
     Electric: 'LightningFox', Dark: 'ShadowCat',
+    Earth: 'MossGolem', Storm: 'ThunderHawk', Shadow: 'NightHound',
   };
   return defaults[element] ?? 'FireWolf';
 }

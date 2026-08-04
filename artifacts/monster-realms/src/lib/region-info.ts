@@ -42,12 +42,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Meadow Zone',
     element: '🌿',
     accentColor: '#6edd70',
-    // regionData.ts → verdant-meadows → monsterSpeciesIds
-    speciesIds: [
-      'seed-sprite', 'leaf-ferret', 'vine-pup', 'moss-crab', 'petal-bee',
-      'root-mole', 'fern-hatchling', 'sprout-sprite',
-      'bloom-guardian', 'grove-hawk',
-    ],
+    // regionData.ts → verdant-meadows → monsterSpeciesIds (v3 Earth pool)
+    speciesIds: ['pebbleback', 'thornbriar', 'graniteclaw', 'crystalhorn', 'terravast'],
   },
 
   'volcanic-rift': {
@@ -56,12 +52,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Fire Zone',
     element: '🔥',
     accentColor: '#ff6620',
-    // regionData.ts → volcanic-rift → monsterSpeciesIds
-    speciesIds: [
-      'cinder-pup', 'flame-wisp', 'ash-lizard', 'ember-crab', 'scorch-moth',
-      'pyro-toad', 'torch-kit', 'blaze-sprite',
-      'magmar-wolf', 'inferno-bat', 'lava-serpent', 'char-wyvern',
-    ],
+    // regionData.ts → volcanic-rift → monsterSpeciesIds (v3 Fire pool)
+    speciesIds: ['emberpup', 'cinderclaw', 'flamewing', 'magmahorn', 'pyredrake'],
   },
 
   'ocean-ruins': {
@@ -70,11 +62,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Coastal Zone',
     element: '💧',
     accentColor: '#40c8cc',
-    // regionData.ts → ocean-ruins → monsterSpeciesIds
-    speciesIds: [
-      'tide-pup', 'coral-sprite', 'brook-turtle', 'wave-imp', 'reef-hatchling',
-      'surge-hound', 'sea-golem', 'aqua-guardian', 'storm-crab',
-    ],
+    // regionData.ts → ocean-ruins → monsterSpeciesIds (v3 Water pool)
+    speciesIds: ['bubblefin', 'wavecrest', 'tidalwing', 'deepfang', 'abyssalord'],
   },
 
   'shadow-marsh': {
@@ -83,12 +72,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Dark Zone',
     element: '🌑',
     accentColor: '#9060cc',
-    // regionData.ts → shadow-marsh → monsterSpeciesIds
-    speciesIds: [
-      'shadow-imp', 'gloom-wisp', 'dusk-ferret', 'night-crab',
-      'umbra-moth', 'murk-toad',
-      'void-stalker', 'shadow-bat', 'dusk-serpent', 'gloom-golem', 'eclipse-hawk',
-    ],
+    // regionData.ts → shadow-marsh → monsterSpeciesIds (v3 Shadow pool)
+    speciesIds: ['gloomite', 'veilpaw', 'duskfang', 'nightshade', 'voidreign'],
   },
 
   'ancient-forest': {
@@ -97,12 +82,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Forest Zone',
     element: '🌲',
     accentColor: '#44cc66',
-    // regionData.ts → ancient-forest → monsterSpeciesIds
-    speciesIds: [
-      'seed-sprite', 'leaf-ferret', 'vine-pup', 'fern-hatchling',
-      'bloom-guardian', 'thorn-wolf', 'briar-golem', 'spore-bat', 'canopy-serpent',
-      'ancient-treant', 'verdant-titan', 'thorn-colossus', 'gaia-wyrm',
-    ],
+    // regionData.ts → ancient-forest → monsterSpeciesIds (v3 Earth pool)
+    speciesIds: ['pebbleback', 'thornbriar', 'graniteclaw', 'crystalhorn', 'terravast'],
   },
 
   'thunder-valley': {
@@ -111,12 +92,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Storm Zone',
     element: '⚡',
     accentColor: '#eeee30',
-    // regionData.ts → thunder-valley → monsterSpeciesIds
-    speciesIds: [
-      'spark-kit', 'zap-moth', 'volt-hatchling', 'arc-sprite',
-      'static-crab', 'buzz-bee', 'jolt-lizard', 'charge-pup',
-      'thunder-wolf', 'storm-bat', 'storm-serpent', 'arc-golem', 'lightning-hawk',
-    ],
+    // regionData.ts → thunder-valley → monsterSpeciesIds (v3 Storm pool)
+    speciesIds: ['zappet', 'galecub', 'thunderwing', 'stormcrown', 'vortexwyrm'],
   },
 
   // ── High-level server regions (not on the movement map; reachable via API) ─
@@ -127,12 +104,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Wasteland Zone',
     element: '🌋',
     accentColor: '#cc4400',
-    // regionData.ts → scorched-wastes → monsterSpeciesIds
-    speciesIds: [
-      'cinder-pup', 'ash-lizard', 'torch-kit', 'blaze-sprite',
-      'forge-golem', 'scorched-mantis', 'lava-serpent',
-      'volcanus', 'pyro-titan', 'magma-basilisk', 'cinder-phoenix',
-    ],
+    // regionData.ts → scorched-wastes → monsterSpeciesIds (v3 Fire pool)
+    speciesIds: ['emberpup', 'cinderclaw', 'flamewing', 'magmahorn', 'pyredrake'],
   },
 
   'deep-current': {
@@ -141,13 +114,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Ocean Trench',
     element: '🌊',
     accentColor: '#2266cc',
-    // regionData.ts → deep-current → monsterSpeciesIds
-    speciesIds: [
-      'mist-jellyfish', 'stream-otter', 'puddle-toad',
-      'deep-ray', 'abyssal-eel',
-      'tempest-leviathan', 'ocean-titan', 'tide-colossus', 'abyss-wyrm',
-      'poseidon-serpent', 'thalassa-deity',
-    ],
+    // regionData.ts → deep-current → monsterSpeciesIds (v3 Water pool)
+    speciesIds: ['bubblefin', 'wavecrest', 'tidalwing', 'deepfang', 'abyssalord'],
   },
 
   'storm-peaks': {
@@ -156,13 +124,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Mountain Storm',
     element: '🌩️',
     accentColor: '#aaaaff',
-    // regionData.ts → storm-peaks → monsterSpeciesIds
-    speciesIds: [
-      'volt-hatchling', 'static-crab', 'jolt-lizard',
-      'plasma-ray', 'storm-serpent',
-      'storm-colossus', 'galvanos', 'tempest-titan', 'arc-leviathan',
-      'zeus-wyrm', 'thunder-deity',
-    ],
+    // regionData.ts → storm-peaks → monsterSpeciesIds (v3 Storm pool)
+    speciesIds: ['zappet', 'galecub', 'thunderwing', 'stormcrown', 'vortexwyrm'],
   },
 
   'void-realm': {
@@ -171,13 +134,8 @@ export const REGION_INFO: Record<string, RegionInfo> = {
     biome: 'Dimensional Rift',
     element: '🕳️',
     accentColor: '#8800cc',
-    // regionData.ts → void-realm → monsterSpeciesIds
-    speciesIds: [
-      'dark-sprite', 'shade-hatchling', 'dusk-ferret',
-      'nightmare-specter',
-      'abyssal-wraith', 'void-titan', 'dark-colossus', 'shadow-leviathan',
-      'erebus-entity', 'void-deity',
-    ],
+    // regionData.ts → void-realm → monsterSpeciesIds (v3 Shadow pool)
+    speciesIds: ['gloomite', 'veilpaw', 'duskfang', 'nightshade', 'voidreign'],
   },
 };
 
