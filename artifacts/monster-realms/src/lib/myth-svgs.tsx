@@ -1817,7 +1817,8 @@ type ElementBand = {
   accentL:   number;
 };
 
-const ELEMENT_BANDS: Record<string, ElementBand> = {
+// Exported for regression tests (coverage of live v3 elements).
+export const ELEMENT_BANDS: Record<string, ElementBand> = {
   Fire:     { primaryHue:[0,40],    secondaryHue:[10,50],  accentHue:[20,60],   sat:90, primaryL:28,  secondaryL:45, accentL:62 },
   Water:    { primaryHue:[190,230], secondaryHue:[175,215],accentHue:[165,210], sat:82, primaryL:28,  secondaryL:46, accentL:60 },
   Nature:   { primaryHue:[85,145],  secondaryHue:[70,130], accentHue:[55,120],  sat:78, primaryL:22,  secondaryL:40, accentL:56 },
@@ -1969,7 +1970,8 @@ export function MythSvgIcon({ mythId, element, rarity = 'C', size = 100, classNa
   );
 }
 
-function fallback(element: string): ArchetypeName {
+// Exported for regression tests (coverage of live v3 elements).
+export function fallback(element: string): ArchetypeName {
   const defaults: Record<string, ArchetypeName> = {
     Fire: 'FireWolf', Water: 'WaterCanine', Nature: 'ForestBeast',
     Electric: 'LightningFox', Dark: 'ShadowCat',
