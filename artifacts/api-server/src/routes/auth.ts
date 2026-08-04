@@ -69,9 +69,15 @@ function rollStarterRarity(slot: number): 'C' | 'B' | 'A' | 'S' {
   return r < 0.35 ? 'B' : 'C';
 }
 
+/**
+ * Elements a new player may choose a starter from. Must match the live v3
+ * catalogue (monsterData.ts) or the element query below returns zero species
+ * and the player receives an empty starter pack. Exported for regression tests.
+ */
+export const STARTER_ELEMENTS = ['Fire', 'Water', 'Earth', 'Storm', 'Shadow'] as const;
+
 async function grantStarterPack(playerId: string, element: string): Promise<StarterMythResult[]> {
-  const VALID_ELEMENTS = ['Fire', 'Water', 'Nature', 'Electric', 'Dark'];
-  const chosenElement = VALID_ELEMENTS.includes(element) ? element : 'Nature';
+  const chosenElement = (STARTER_ELEMENTS as readonly string[]).includes(element) ? element : 'Fire';
 
   // Fetch all species for the chosen element (one query instead of four)
   const allByElement = await db.select().from(monsterSpeciesTable)
@@ -379,7 +385,7 @@ router.post("/auth/gm-login", async (_req, res): Promise<void> => {
 
   const allSpecies = await db.select().from(monsterSpeciesTable);
 
-  const ELEMENTS = ["Fire", "Water", "Nature", "Electric", "Dark"];
+  const ELEMENTS = STARTER_ELEMENTS;
   const sTierSpecies = allSpecies.filter(s => s.rarity === "S");
 
   // Pick one S-tier per element for the active team (slots 0-5)
