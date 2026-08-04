@@ -1,4 +1,17 @@
 import type { InsertRegion } from "@workspace/db";
+import { MONSTER_SEED_DATA } from "./monsterData.js";
+
+/**
+ * Spawn pool for a region, derived from the canonical v3 catalogue
+ * (MONSTER_SEED_DATA[].regionIds). Single source of truth: adding or moving
+ * a myth in monsterData.ts automatically updates the region pools, so the
+ * two files can never drift apart again.
+ */
+function poolFor(regionId: string): string[] {
+  return MONSTER_SEED_DATA
+    .filter(m => (m.regionIds ?? []).includes(regionId))
+    .map(m => m.id as string);
+}
 
 export const REGION_SEED_DATA: InsertRegion[] = [
   {
@@ -9,16 +22,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 1,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Nature C
-      "leaflet", "sprouti", "brambix", "cloverit", "fernkit",
-      // Nature B
-      "bloombo", "fernix", "grasspin",
-      // Nature A
-      "leafenix", "wildbud",
-      // Nature S
-      "verdantis",
-    ],
+    monsterSpeciesIds: poolFor("verdant-meadows"),
   },
   {
     id: "volcanic-rift",
@@ -28,16 +32,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 5,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Fire C
-      "sparkub", "flammi", "torchip", "kindleo", "firette",
-      // Fire B
-      "flareonix", "magmaroo", "lavabit", "pyrehorn",
-      // Fire A
-      "blazion", "volcanix", "fireclaw",
-      // Fire S
-      "pyrorax",
-    ],
+    monsterSpeciesIds: poolFor("volcanic-rift"),
   },
   {
     id: "scorched-wastes",
@@ -47,16 +42,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 10,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Fire C
-      "sparkub", "torchip", "blazibit", "seatpur", "emberkit",
-      // Fire B
-      "flareonix", "cinderoar", "burnyx", "pyrehorn",
-      // Fire A
-      "blazion", "emberwolf", "fireclaw",
-      // Fire S
-      "infernix",
-    ],
+    monsterSpeciesIds: poolFor("scorched-wastes"),
   },
   {
     id: "ocean-ruins",
@@ -66,16 +52,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 5,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Water C
-      "puddleo", "droppi", "fintee", "splashy", "ripplowl", "tinwave",
-      // Water B
-      "shellion", "wavenix", "bubblio",
-      // Water A
-      "coralux", "tidalor",
-      // Water S
-      "aquarion",
-    ],
+    monsterSpeciesIds: poolFor("ocean-ruins"),
   },
   {
     id: "deep-current",
@@ -85,16 +62,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 15,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Water C
-      "puddleo", "fintee", "octazur", "tinwave", "driplet",
-      // Water B
-      "wavenix", "nereel", "glaciero", "kelpheon",
-      // Water A
-      "marinel", "hydralisk",
-      // Water S
-      "leviaqua",
-    ],
+    monsterSpeciesIds: poolFor("deep-current"),
   },
   {
     id: "ancient-forest",
@@ -104,16 +72,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 10,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Nature C
-      "leaflet", "buddle", "mossy", "twiglet",
-      // Nature B
-      "vinegor", "thornbel", "seedleaf",
-      // Nature A
-      "mossfern", "rootora", "wildbud",
-      // Nature S
-      "florazar",
-    ],
+    monsterSpeciesIds: poolFor("ancient-forest"),
   },
   {
     id: "thunder-valley",
@@ -123,16 +82,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 8,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Electric C
-      "zaplet", "zipbee", "boltin", "sparkit", "charglet", "voltspark",
-      // Electric B
-      "shockip", "elekio", "statichu",
-      // Electric A
-      "thundkit",
-      // Electric S
-      "voltiger",
-    ],
+    monsterSpeciesIds: poolFor("thunder-valley"),
   },
   {
     id: "storm-peaks",
@@ -142,16 +92,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 18,
     width: 45,
     height: 45,
-    monsterSpeciesIds: [
-      // Electric C
-      "zaplet", "electrix", "wattspy",
-      // Electric B
-      "voltyk", "amphare", "joltoll", "statichu",
-      // Electric A
-      "sparko", "lumirae", "chargeon",
-      // Electric S
-      "zapdrix", "voltiger",
-    ],
+    monsterSpeciesIds: poolFor("storm-peaks"),
   },
   {
     id: "shadow-marsh",
@@ -161,16 +102,7 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 8,
     width: 50,
     height: 50,
-    monsterSpeciesIds: [
-      // Dark C
-      "darkit", "inko", "shadeek", "nyxie", "scuppi", "shadowpup",
-      // Dark B
-      "grimclaw", "spectrix", "eclipseer", "murkrowl",
-      // Dark A
-      "shadowlurk", "duskhowl", "voidraven",
-      // Dark S
-      "umbraeon",
-    ],
+    monsterSpeciesIds: poolFor("shadow-marsh"),
   },
   {
     id: "void-realm",
@@ -180,15 +112,6 @@ export const REGION_SEED_DATA: InsertRegion[] = [
     requiredExplorerLevel: 20,
     width: 40,
     height: 40,
-    monsterSpeciesIds: [
-      // Dark C
-      "darkit", "gloombat", "wispurr",
-      // Dark B
-      "nightfang", "dreadimp", "eclipseer",
-      // Dark A
-      "maligno", "voidraven",
-      // Dark S
-      "noctiris",
-    ],
+    monsterSpeciesIds: poolFor("void-realm"),
   },
 ];
