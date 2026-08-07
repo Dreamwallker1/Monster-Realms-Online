@@ -79,6 +79,14 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Local split-port: browser → Vite (:5173) → API (:5000)
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
   preview: {
     port,
