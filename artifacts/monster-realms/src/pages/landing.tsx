@@ -49,6 +49,8 @@ function CharacterSVG({ char, size = 80 }: { char: typeof CHARACTERS[0]; size?: 
 
 // ─── Element data ──────────────────────────────────────────────────────────────
 
+// Must match the server's STARTER_ELEMENTS (api-server/src/routes/auth.ts) —
+// offering an element with no live species yields an empty starter pack.
 const ELEMENTS = [
   { id: 'Fire',     emoji: '🔥', flavor: 'Fierce & unstoppable' },
   { id: 'Water',    emoji: '💧', flavor: 'Fluid & enduring' },

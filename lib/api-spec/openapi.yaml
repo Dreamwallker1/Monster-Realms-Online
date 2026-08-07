@@ -851,7 +851,7 @@ components:
           type: string
         element:
           type: string
-          enum: [Fire, Water, Nature, Electric, Ice, Earth, Air, Light, Dark, Metal, Crystal, Void]
+          enum: [Fire, Water, Nature, Electric, Ice, Earth, Air, Light, Dark, Metal, Crystal, Void, Storm, Shadow]
         rarity:
           type: string
           enum: [Common, Uncommon, Rare, Epic, Legendary, Mythic, Ancient, Celestial, Void]

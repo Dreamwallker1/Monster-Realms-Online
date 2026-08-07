@@ -265,7 +265,7 @@ export const GetPlayerTeamResponseItem = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -330,7 +330,7 @@ export const UpdatePlayerTeamResponseItem = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -400,7 +400,7 @@ export const ListMonsterSpeciesQueryParams = zod.object({
 export const ListMonsterSpeciesResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -438,7 +438,7 @@ export const GetMonsterSpeciesParams = zod.object({
 export const GetMonsterSpeciesResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -484,7 +484,7 @@ export const GetPlayerCollectionResponseItem = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -548,7 +548,7 @@ export const CaptureMonsterResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -605,7 +605,7 @@ export const GetCapturedMonsterResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -669,7 +669,7 @@ export const UpdateCapturedMonsterResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -734,7 +734,7 @@ export const StartBattleResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -774,7 +774,7 @@ export const StartBattleResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -845,7 +845,7 @@ export const GetBattleResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -885,7 +885,7 @@ export const GetBattleResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -966,7 +966,7 @@ export const PerformBattleActionResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -1006,7 +1006,7 @@ export const PerformBattleActionResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -1074,7 +1074,7 @@ export const ListRegionsResponseItem = zod.object({
   "monsters": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -1122,7 +1122,7 @@ export const GetRegionResponse = zod.object({
   "monsters": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -1173,7 +1173,7 @@ export const ExploreTileResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
@@ -1253,7 +1253,7 @@ export const UseItemResponse = zod.object({
   "species": zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "element": zod.enum(['Fire', 'Water', 'Earth', 'Storm', 'Shadow']),
+  "element": zod.enum(['Fire', 'Water', 'Nature', 'Electric', 'Ice', 'Earth', 'Air', 'Light', 'Dark', 'Metal', 'Crystal', 'Void', 'Storm', 'Shadow']),
   "rarity": zod.enum(['C', 'B', 'A', 'S']),
   "baseHp": zod.number(),
   "baseAttack": zod.number(),
