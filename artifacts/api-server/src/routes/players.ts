@@ -5,7 +5,7 @@ import {
   capturedMonstersTable,
   monsterSpeciesTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { formatPlayer } from "./auth.js";
 import {
@@ -197,7 +197,12 @@ router.put(
       for (let i = 0; i < requestedIds.length; i += 1) {
         await tx
           .update(capturedMonstersTable)
-          .set({ inTeam: true, teamSlot: i })
+          .set({
+            inTeam: true,
+            teamSlot: i,
+            // Entering the world from Team Builder restores myths after PvP/KO
+            currentHp: sql`${capturedMonstersTable.maxHp}`,
+          })
           .where(
             and(
               eq(capturedMonstersTable.id, requestedIds[i]!),

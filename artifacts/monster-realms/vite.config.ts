@@ -61,6 +61,11 @@ export default defineConfig({
     },
     dedupe: ['react', 'react-dom'],
   },
+  assetsInclude: ['**/*.riv', '**/*.wasm'],
+  optimizeDeps: {
+    // Prebundle CJS/UMD so Vite exposes a stable default/namespace interop.
+    include: ['@rive-app/canvas'],
+  },
   root: path.resolve(import.meta.dirname),
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),

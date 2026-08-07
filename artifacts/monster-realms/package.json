@@ -83,6 +83,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@rive-app/canvas": "^2.39.2",
     "@solana/web3.js": "^1.98.4",
     "phaser": "^4.2.1",
     "socket.io-client": "^4.8.3",

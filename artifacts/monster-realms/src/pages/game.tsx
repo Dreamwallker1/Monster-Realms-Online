@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import PhaserGame from '@/components/phaser/PhaserGame';
@@ -11,14 +12,32 @@ import RegionBanner from '@/components/game/RegionBanner';
 import MinimapOverlay from '@/components/game/MinimapOverlay';
 import BattleTransitionVeil from '@/components/game/BattleTransitionVeil';
 import { useGameStore } from '@/store/game-store';
-import { useGetMe, useExploreTile, type ExploreInput } from '@workspace/api-client-react';
+import {
+  useGetMe,
+  useExploreTile,
+  getGetMeQueryKey,
+  type ExploreInput,
+  type Player,
+} from '@workspace/api-client-react';
 import { getToken } from '@/lib/auth';
 import { Menu } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
+const ME_QUERY_KEY = ['authenticated-player'] as const;
+
+function isHttpConflict(err: unknown): boolean {
+  const status =
+    (err as { status?: number; statusCode?: number; response?: { status?: number } })?.status ??
+    (err as { statusCode?: number })?.statusCode ??
+    (err as { response?: { status?: number } })?.response?.status;
+  return status === 409;
+}
+
 export default function Game() {
   const [, setLocation] = useLocation();
   const socketRef = useRef<Socket | null>(null);
+  const seededPlayerIdRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
 
   const {
     player,
@@ -34,36 +53,37 @@ export default function Game() {
     setCurrentRegionId,
   } = useGameStore();
 
-  const { data: me, isLoading } = useGetMe({
-    query: { enabled: !!getToken(), queryKey: ['authenticated-player'] },
+  const { data: me, isLoading, refetch: refetchMe } = useGetMe({
+    query: { enabled: !!getToken(), queryKey: ME_QUERY_KEY },
   });
 
   const exploreTile = useExploreTile();
 
-  // Redirect if no token
   useEffect(() => {
     if (!getToken()) {
       setLocation('/');
     }
   }, []);
 
-  // Sync latest server state into store
+  // Seed store from /auth/me once per mount/player — never clobber live explore updates
   useEffect(() => {
-    if (me) {
-      setPlayer(me);
-      markTileExplored(me.posX, me.posY);
-      // Seed region from server position on initial load
-      if (me.regionId) {
-        setCurrentRegionId(me.regionId);
-      }
+    if (!me) return;
+    if (seededPlayerIdRef.current === me.id) return;
+    seededPlayerIdRef.current = me.id;
+    setPlayer(me);
+    markTileExplored(me.posX, me.posY);
+    if (me.regionId) {
+      setCurrentRegionId(me.regionId);
     }
-  }, [me]);
+  }, [me, setPlayer, markTileExplored, setCurrentRegionId]);
 
-  // Socket.io multiplayer
   useEffect(() => {
     if (!player) return;
 
-    const socket = io('/game', { auth: { token: getToken() } });
+    const socket = io('/game', {
+      path: '/api/socket.io',
+      auth: { token: getToken() },
+    });
     socketRef.current = socket;
 
     socket.on(
@@ -87,7 +107,6 @@ export default function Game() {
       },
     );
 
-    // Announce ourselves
     socket.emit('player:join', {
       username: player.username,
       avatarColor: player.avatarColor,
@@ -99,22 +118,41 @@ export default function Game() {
     return () => { socket.disconnect(); };
   }, [player?.id]);
 
-  const handleMove = async (input: ExploreInput) => {
+  const applyAuthoritativePlayer = useCallback((fresh: Player) => {
+    setPlayer(fresh);
+    markTileExplored(fresh.posX, fresh.posY);
+    if (fresh.regionId) {
+      setCurrentRegionId(fresh.regionId);
+    }
+    queryClient.setQueryData(ME_QUERY_KEY, fresh);
+    queryClient.setQueryData(getGetMeQueryKey(), fresh);
+  }, [setPlayer, markTileExplored, setCurrentRegionId, queryClient]);
+
+  const resyncFromServer = useCallback(async () => {
+    const result = await refetchMe();
+    const fresh = result.data;
+    if (!fresh) return;
+    applyAuthoritativePlayer(fresh);
+  }, [refetchMe, applyAuthoritativePlayer]);
+
+  const handleMove = useCallback(async (input: ExploreInput) => {
     const livePlayer = useGameStore.getState().player;
     if (!livePlayer) return false;
     try {
       const result = await exploreTile.mutateAsync({ playerId: livePlayer.id, data: input });
 
-      setPlayer({
+      const nextPlayer: Player = {
         ...livePlayer,
         posX: result.newPosX,
         posY: result.newPosY,
         energy: result.remainingEnergy,
         regionId: input.regionId || livePlayer.regionId,
-      });
+      };
+      setPlayer(nextPlayer);
+      queryClient.setQueryData(ME_QUERY_KEY, nextPlayer);
+      queryClient.setQueryData(getGetMeQueryKey(), nextPlayer);
 
-      // Update current region whenever the player crosses a zone boundary
-      if (input.regionId && input.regionId !== currentRegionId) {
+      if (input.regionId && input.regionId !== useGameStore.getState().currentRegionId) {
         setCurrentRegionId(input.regionId);
       }
 
@@ -136,12 +174,24 @@ export default function Game() {
       return true;
     } catch (err) {
       console.error('Failed to explore tile:', err);
+      if (isHttpConflict(err)) {
+        try {
+          await resyncFromServer();
+        } catch (resyncErr) {
+          console.error('Failed to resync player after explore 409:', resyncErr);
+        }
+      }
       return false;
     }
-  };
+  }, [exploreTile, setPlayer, setCurrentRegionId, markTileExplored, triggerEncounter, resyncFromServer, queryClient]);
 
-  // Show spinner only when we have no player at all yet (e.g. hard refresh)
-  if (!player && isLoading) {
+  const worldReady = !!player && seededPlayerIdRef.current === player.id && !isLoading;
+
+  if (!getToken()) {
+    return null;
+  }
+
+  if (!worldReady || !player) {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -152,14 +202,10 @@ export default function Game() {
     );
   }
 
-  // No token and no cached player → send to landing (must happen outside render)
-  if (!player) {
-    return null;
-  }
-
   return (
     <div className="game-page relative w-full h-[100dvh] overflow-hidden">
       <PhaserGame
+        key={player.id}
         playerX={player.posX}
         playerY={player.posY}
         characterType={characterType}
@@ -169,7 +215,6 @@ export default function Game() {
         otherPlayers={otherPlayers}
       />
 
-      {/* Menu toggle */}
       <div className="mobile-menu-toggle fixed top-4 right-4 z-30">
         <Button
           variant="default"
@@ -182,7 +227,7 @@ export default function Game() {
         </Button>
       </div>
 
-      <RegionBanner regionId={currentRegionId} isReady={!!me} />
+      <RegionBanner regionId={currentRegionId} isReady />
       <MinimapOverlay />
       <DPad />
       <GameHUD />

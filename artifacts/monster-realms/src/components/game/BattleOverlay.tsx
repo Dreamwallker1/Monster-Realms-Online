@@ -17,26 +17,51 @@ import MythFaintCinematic from '@/components/battle/MythFaintCinematic';
 import BattleEndCinematic from '@/components/battle/BattleEndCinematic';
 import { BATTLE_RELEASE_EVENT } from '@/lib/battle-transition-events';
 import RiggedMythCanvas from './RiggedMythCanvas';
+import FlarelynxBattleRive from './FlarelynxBattleRive';
+import {
+  flarelynxAttackClipForSkill,
+  flarelynxImpactDelayMs,
+  flarelynxIsRangedClip,
+  flarelynxApproachDurationMs,
+  FLARELYNX_ATTACK_TAIL_FIRE,
+  FLARELYNX_TAIL_FIRE_LAUNCH_MS,
+  FLARELYNX_TAIL_FIRE_FLIGHT_MS,
+} from '@/lib/rive/flarelynxAnims';
 import { useMythPhysics } from '@/lib/myth-physics/use-myth-physics';
 import type { MythKind, RenderPose } from '@/lib/myth-physics/myth-physics-engine';
 import type { AttackStyle } from '@/lib/myth-physics/myth-physics-engine';
 
 const PLAYER_PHYSICS_ID = 'battle-player-myth';
 const WILD_PHYSICS_ID = 'battle-wild-myth';
-const isPhysicsMyth = (id?: string): id is MythKind => id === 'ashquill' || id === 'flarelynx';
+// Ashquill keeps the physics PNG rig. Flarelynx is Rive-only (physics pose would
+// drive a second visual path and was a ghost-renderer source).
+const isPhysicsMyth = (id?: string): id is MythKind => id === 'ashquill';
 const getPhysicsAttackStyle = (skillType?: string): AttackStyle => {
   if (skillType === 'skill1') return 'leap';
   if (skillType === 'skill2' || skillType === 'ultimate') return 'burst';
   return 'combo';
 };
 type BattleChoreography = 'melee' | 'projectile';
-const getBattleChoreography = (skillType?: string, mythId?: string): BattleChoreography => {
-  // Flarelynx's basic is the authored twin fire-claw wave. Skill 2 / ultimates
-  // are ranged finishers; skill 1 and Ashquill's basic make physical contact.
+const getBattleChoreography = (
+  skillType?: string,
+  mythId?: string,
+  skillName?: string,
+): BattleChoreography => {
+  if (mythId === 'flarelynx') {
+    const clip = flarelynxAttackClipForSkill(skillType, skillName);
+    return flarelynxIsRangedClip(clip) ? 'projectile' : 'melee';
+  }
   if (skillType === 'skill2' || skillType === 'ultimate') return 'projectile';
-  if ((!skillType || skillType === 'normal' || skillType === 'attack') && mythId === 'flarelynx') return 'projectile';
   return 'melee';
 };
+
+function getImpactDelayMs(skillType?: string, mythId?: string, skillName?: string): number {
+  if (mythId === 'flarelynx') return flarelynxImpactDelayMs(skillType, skillName);
+  const style = getPhysicsAttackStyle(skillType);
+  const choreography = getBattleChoreography(skillType, mythId, skillName);
+  if (choreography === 'melee') return style === 'leap' ? 1120 : 980;
+  return style === 'burst' ? 1180 : 820;
+}
 
 // ─── Skill types ─────────────────────────────────────────────────────────────
 
@@ -602,26 +627,187 @@ function HitReactionOverlay({ speciesId, element, animKey }: {
   );
 }
 
+// ─── Stable combatant motion (Flarelynx must never remount on attack/hit) ───
+
+function CombatantMotionShell({
+  speciesId,
+  side,
+  attackKey,
+  shakeKey,
+  isAttacking,
+  skillType,
+  skillName,
+  children,
+}: {
+  speciesId: string;
+  side: 'player' | 'wild';
+  attackKey: number;
+  shakeKey: number;
+  isAttacking: boolean;
+  skillType?: string;
+  skillName?: string;
+  children: React.ReactNode;
+}) {
+  const isFlarelynx = speciesId === 'flarelynx';
+  const clip = isFlarelynx ? flarelynxAttackClipForSkill(skillType, skillName) : null;
+  const ranged = flarelynxIsRangedClip(clip);
+  const [flareMotionClass, setFlareMotionClass] = useState('');
+
+  useEffect(() => {
+    if (!isFlarelynx || !isAttacking || attackKey <= 0) return;
+    const cls = ranged
+      ? (side === 'player' ? 'flarelynx-cast-left' : 'flarelynx-cast-right')
+      : (side === 'player' ? 'flarelynx-melee-left' : 'flarelynx-melee-right');
+    setFlareMotionClass('');
+    const raf = window.requestAnimationFrame(() => {
+      setFlareMotionClass(cls);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [attackKey, isFlarelynx, isAttacking, ranged, side]);
+
+  if (isFlarelynx) {
+    const hitClass = shakeKey > 0
+      ? (side === 'player' ? 'hit-stagger-left' : 'hit-stagger-right')
+      : '';
+    return (
+      <div
+        className={`flex flex-col items-center ${hitClass} ${flareMotionClass}`}
+        style={
+          flareMotionClass.includes('flarelynx-melee')
+            ? { animationDuration: `${flarelynxApproachDurationMs(clip)}ms` }
+            : flareMotionClass.includes('flarelynx-cast')
+              ? { animationDuration: `${flarelynxApproachDurationMs(FLARELYNX_ATTACK_TAIL_FIRE)}ms` }
+              : undefined
+        }
+        data-testid="flarelynx-motion-shell"
+      >
+        {children}
+      </div>
+    );
+  }
+
+  const choreography = getBattleChoreography(skillType, speciesId, skillName);
+  const lungeClass = isAttacking && attackKey > 0
+    ? (choreography === 'projectile'
+      ? (side === 'player' ? 'myth-cast-left' : 'myth-cast-right')
+      : (side === 'player' ? 'myth-lunge-left' : 'myth-lunge-right'))
+    : '';
+
+  return (
+    <div key={`stagger-${side}-${shakeKey}`} className={shakeKey > 0 ? (side === 'player' ? 'hit-stagger-left' : 'hit-stagger-right') : ''}>
+      <div key={`lunge-${side}-${attackKey}`} className={`flex flex-col items-center ${lungeClass}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Flarelynx Tail Fire projectile (arena overlay; .riv stays on own side) ───
+
+function FlarelynxTailFireProjectile({
+  side,
+  shotKey,
+}: {
+  side: 'player' | 'wild';
+  shotKey: number;
+}) {
+  const [phase, setPhase] = useState<'wait' | 'fly' | 'hit' | 'done'>('wait');
+
+  useEffect(() => {
+    if (shotKey <= 0) return;
+    setPhase('wait');
+    const launch = window.setTimeout(() => setPhase('fly'), FLARELYNX_TAIL_FIRE_LAUNCH_MS);
+    const hit = window.setTimeout(
+      () => setPhase('hit'),
+      FLARELYNX_TAIL_FIRE_LAUNCH_MS + FLARELYNX_TAIL_FIRE_FLIGHT_MS,
+    );
+    const done = window.setTimeout(
+      () => setPhase('done'),
+      FLARELYNX_TAIL_FIRE_LAUNCH_MS + FLARELYNX_TAIL_FIRE_FLIGHT_MS + 280,
+    );
+    return () => {
+      window.clearTimeout(launch);
+      window.clearTimeout(hit);
+      window.clearTimeout(done);
+    };
+  }, [shotKey]);
+
+  if (shotKey <= 0 || phase === 'done' || phase === 'wait') return null;
+
+  const fromPlayer = side === 'player';
+  // Tail flame tip: behind Flarelynx (player faces left → tip further right).
+  const startLeft = fromPlayer ? '74%' : '26%';
+  const endLeft = fromPlayer ? '26%' : '74%';
+  const startBottom = '34%';
+  const endBottom = '42%';
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[25]" aria-hidden="true">
+      {phase === 'fly' && (
+        <div
+          key={`tailfire-bolt-${shotKey}`}
+          className="flarelynx-tailfire-bolt"
+          style={{
+            ['--tf-start-left' as string]: startLeft,
+            ['--tf-end-left' as string]: endLeft,
+            ['--tf-start-bottom' as string]: startBottom,
+            ['--tf-end-bottom' as string]: endBottom,
+            animationDuration: `${FLARELYNX_TAIL_FIRE_FLIGHT_MS}ms`,
+          }}
+        />
+      )}
+      {phase === 'hit' && (
+        <div
+          key={`tailfire-impact-${shotKey}`}
+          className="flarelynx-tailfire-impact"
+          style={{ left: endLeft, bottom: endBottom }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Myth combatant sprite ───────────────────────────────────────────────────────
 
 function MythSprite({
-  speciesId, element, rarity = 'C', size = 110, shakeKey, attackKey = 0, isFainting = false, facing = 'right', getPhysicsPose,
+  speciesId, element, rarity = 'C', size = 110, shakeKey, attackKey = 0, skillType, skillName, isFainting = false, facing = 'right', getPhysicsPose,
 }: {
   speciesId: string; element: string; rarity?: string;
-  size?: number; shakeKey: number; attackKey?: number; isFainting?: boolean; facing?: 'left' | 'right';
+  size?: number; shakeKey: number; attackKey?: number; skillType?: string; skillName?: string;
+  isFainting?: boolean; facing?: 'left' | 'right';
   getPhysicsPose?: () => RenderPose | undefined;
 }) {
   const colors   = getElementColors(element);
   const [animKey, setAnimKey] = useState(0);
   const [hitEffectActive, setHitEffectActive] = useState(false);
   const [sheetMode, setSheetMode] = useState<'idle' | 'attack' | 'hit'>('idle');
+  const [flarelynxRiveFailed, setFlarelynxRiveFailed] = useState(false);
+  const [latchedAttackClip, setLatchedAttackClip] = useState<string | null>(null);
+  const onFlarelynxRiveFailed = useCallback(() => setFlarelynxRiveFailed(true), []);
   const battleArt: Record<string, string> = {
-    flarelynx: '/myths/flarelynx-rig-master.png',
+    // Flarelynx intentionally omitted — Rive only, never PNG ghost.
     ashquill: '/myths/ashquill-rig-master.png',
   };
   const battleArtSrc = battleArt[speciesId];
-  const hasBattleArt = Boolean(battleArtSrc);
-  const renderedSize = hasBattleArt ? Math.round(size * 1.6) : size;
+  const isFlarelynx = speciesId === 'flarelynx';
+  // Flarelynx: single Rive renderer only. Never fall back to RiggedMythCanvas.
+  const useFlarelynxRive = isFlarelynx;
+  const useRiggedPng = Boolean(battleArtSrc) && !isFlarelynx;
+  const hasLargeBattleVisual = useFlarelynxRive || useRiggedPng;
+  const renderedSize = hasLargeBattleVisual ? Math.round(size * 1.6) : size;
+
+  useEffect(() => {
+    setFlarelynxRiveFailed(false);
+    setLatchedAttackClip(null);
+  }, [speciesId]);
+
+  useEffect(() => {
+    if (attackKey <= 0) {
+      setLatchedAttackClip(null);
+      return;
+    }
+    setLatchedAttackClip(flarelynxAttackClipForSkill(skillType, skillName));
+  }, [attackKey, skillType, skillName]);
 
   useEffect(() => {
     if (shakeKey <= 0) return;
@@ -636,11 +822,11 @@ function MythSprite({
   }, [shakeKey]);
 
   useEffect(() => {
-    if (attackKey <= 0) return;
+    if (attackKey <= 0 || isFlarelynx) return;
     setSheetMode('attack');
     const timer = window.setTimeout(() => setSheetMode('idle'), 900);
     return () => window.clearTimeout(timer);
-  }, [attackKey]);
+  }, [attackKey, isFlarelynx]);
 
   return (
     <div className="flex flex-col items-center">
@@ -649,7 +835,8 @@ function MythSprite({
         style={{ width: renderedSize, height: renderedSize }}
       >
         <div
-          key={animKey}
+          // Flarelynx keeps a stable key so the sole Rive instance is never remounted.
+          key={useFlarelynxRive ? 'flarelynx-rive-only' : `myth-anim-${animKey}`}
           className={`battle-grounded-idle ${hitEffectActive ? 'hit-flash' : ''}`}
           style={{
             filter: hitEffectActive ? `drop-shadow(0 0 16px ${colors.primary})` : undefined,
@@ -658,30 +845,33 @@ function MythSprite({
             transform: isFainting ? 'translateY(18px) scale(0.85)' : undefined,
           }}
         >
-          {hasBattleArt ? (
+          {useFlarelynxRive ? (
             <div
-              className="relative w-full h-full"
+              className="relative w-full h-full flex items-end justify-center overflow-visible"
+              data-testid="flarelynx-battle-slot"
+              data-rive-failed={flarelynxRiveFailed ? '1' : '0'}
             >
+              {!flarelynxRiveFailed && (
+                <FlarelynxBattleRive
+                  size={renderedSize}
+                  facing={facing}
+                  attackAnim={attackKey > 0 ? latchedAttackClip : null}
+                  attackKey={attackKey}
+                  onFailed={onFlarelynxRiveFailed}
+                />
+              )}
+            </div>
+          ) : useRiggedPng ? (
+            <div className="relative w-full h-full">
               <RiggedMythCanvas
                 key={`${speciesId}-${attackKey}-${animKey}`}
                 speciesId={speciesId}
-                src={battleArtSrc}
+                src={battleArtSrc!}
                 size={renderedSize}
                 facing={facing}
                 mode={sheetMode}
                 getPhysicsPose={getPhysicsPose}
               />
-              {[0, 1, 2].map((ember) => (
-                <span
-                  key={ember}
-                  className="flarelynx-battle-ember"
-                  style={{
-                    left: `${25 + ember * 23}%`,
-                    bottom: `${20 + (ember % 2) * 17}%`,
-                    animationDelay: `${ember * 0.55}s`,
-                  }}
-                />
-              ))}
             </div>
           ) : (
             <MythSvgIcon mythId={speciesId} element={element} rarity={rarity} size={size}/>
@@ -691,9 +881,9 @@ function MythSprite({
       </div>
       {/* Ground shadow */}
       <div style={{
-        width: renderedSize * (hasBattleArt ? 0.58 : 0.65), height: hasBattleArt ? 18 : 12,
-        borderRadius: '50%', marginTop: hasBattleArt ? -34 : -7,
-        background: hasBattleArt
+        width: renderedSize * (hasLargeBattleVisual ? 0.58 : 0.65), height: hasLargeBattleVisual ? 18 : 12,
+        borderRadius: '50%', marginTop: hasLargeBattleVisual ? -34 : -7,
+        background: hasLargeBattleVisual
           ? 'radial-gradient(ellipse, rgba(0,0,0,0.68) 0%, rgba(97,24,8,0.28) 48%, transparent 78%)'
           : 'radial-gradient(ellipse, rgba(0,0,0,0.5) 0%, transparent 80%)',
         transition: isFainting ? 'opacity 0.35s ease-in' : undefined,
@@ -1342,21 +1532,25 @@ export default function BattleOverlay() {
     return true;
   }, [cinematic?.isCritical]);
 
-  // ── Lunge: increment the lunge key for the attacker on each new cinematic ─
+  // ── Attack cue: play Rive clip + approach (Flarelynx) or legacy physics (Ashquill)
   useEffect(() => {
     if (!cinematic) return;
-    const choreography = getBattleChoreography(cinematic.skillType, cinematic.attackerMythId);
-    mythPhysics.attack(
-      cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
-      cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
-      cinematic.power,
-      310,
-      getPhysicsAttackStyle(cinematic.skillType),
-    );
+    // Flarelynx is Rive-driven — do not run the old physics lunge tween on it.
+    if (cinematic.attackerMythId !== 'flarelynx') {
+      mythPhysics.attack(
+        cinematic.attackerSide === 'player' ? PLAYER_PHYSICS_ID : WILD_PHYSICS_ID,
+        cinematic.attackerSide === 'player' ? WILD_PHYSICS_ID : PLAYER_PHYSICS_ID,
+        cinematic.power,
+        310,
+        getPhysicsAttackStyle(cinematic.skillType),
+      );
+    }
     let impactTimer: number;
-    const impactDelay = choreography === 'melee'
-      ? (getPhysicsAttackStyle(cinematic.skillType) === 'leap' ? 1120 : 980)
-      : (getPhysicsAttackStyle(cinematic.skillType) === 'burst' ? 1180 : 820);
+    const impactDelay = getImpactDelayMs(
+      cinematic.skillType,
+      cinematic.attackerMythId,
+      cinematic.skillName,
+    );
     if (cinematic.attackerSide === 'player') {
       setPlayerLungeKey(k => k + 1);
       impactTimer = window.setTimeout(() => {
@@ -1706,7 +1900,7 @@ export default function BattleOverlay() {
     <div className="fixed inset-0 z-50 flex flex-col battle-screen-in battle-screen-shell" style={{ fontFamily: 'var(--font-mono, monospace)' }}>
 
       {/* ── ARENA ─────────────────────────────────────────────────────────── */}
-      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? `battle-focus-cinematic battle-action-${getBattleChoreography(cinematic.skillType, cinematic.attackerMythId)}` : ''}`}>
+      <div className={`relative flex-1 min-h-0 overflow-hidden battle-arena ${opponentTurnActive || cinematic?.attackerSide === 'wild' ? 'battle-focus-wild' : 'battle-focus-player'} ${cinematic ? `battle-focus-cinematic battle-action-${getBattleChoreography(cinematic.skillType, cinematic.attackerMythId, cinematic.skillName)}` : ''}`}>
 
         {/* Sky */}
         <div className="absolute inset-0" style={{ background: theme.skyGrad }} />
@@ -1856,12 +2050,14 @@ export default function BattleOverlay() {
               </div>
             )}
           </div>
-          {/* Stagger wrapper — re-keyed when wild takes a hit */}
-          <div key={`wstagger-${wildShake}`} className={wildShake > 0 ? 'hit-stagger-right' : ''}>
-          {/* Inner lunge wrapper — re-keyed on each wild attack to replay animation */}
-          <div
-            key={`wlunge-${wildLungeKey}`}
-            className={`flex flex-col items-center ${wildLungeKey > 0 && cinematic?.attackerSide === 'wild' ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-right' : 'myth-lunge-right') : ''}`}
+          <CombatantMotionShell
+            speciesId={wildMonster.species.id}
+            side="wild"
+            attackKey={wildLungeKey}
+            shakeKey={wildShake}
+            isAttacking={!!cinematic && cinematic.attackerSide === 'wild'}
+            skillType={cinematic?.attackerSide === 'wild' ? cinematic.skillType : undefined}
+            skillName={cinematic?.attackerSide === 'wild' ? cinematic.skillName : undefined}
           >
             {/* Type matchup badge */}
             {(() => {
@@ -1888,12 +2084,13 @@ export default function BattleOverlay() {
               size={252}
               shakeKey={wildShake}
               attackKey={wildLungeKey}
+              skillType={cinematic?.attackerSide === 'wild' ? cinematic.skillType : undefined}
+              skillName={cinematic?.attackerSide === 'wild' ? cinematic.skillName : undefined}
               isFainting={faintCinematic?.side === 'wild'}
               facing="right"
-              getPhysicsPose={getWildPhysicsPose}
+              getPhysicsPose={wildMonster.species.id === 'flarelynx' ? undefined : getWildPhysicsPose}
             />
-          </div>
-          </div> {/* ← close stagger wrapper */}
+          </CombatantMotionShell>
         </div>
 
         {/* Player Myth — RIGHT FRONT */}
@@ -1914,12 +2111,14 @@ export default function BattleOverlay() {
               statusEffect={playerMonster.statusEffect}
             />
           </div>
-          {/* Stagger wrapper — re-keyed when player myth takes a hit */}
-          <div key={`pstagger-${playerShake}`} className={playerShake > 0 ? 'hit-stagger-left' : ''}>
-          {/* Inner lunge wrapper — re-keyed on each player attack to replay animation */}
-          <div
-            key={`plunge-${playerLungeKey}`}
-            className={`flex flex-col items-center ${playerLungeKey > 0 && cinematic?.attackerSide === 'player' ? (getBattleChoreography(cinematic.skillType, cinematic.attackerMythId) === 'projectile' ? 'myth-cast-left' : 'myth-lunge-left') : ''}`}
+          <CombatantMotionShell
+            speciesId={playerMonster.species.id}
+            side="player"
+            attackKey={playerLungeKey}
+            shakeKey={playerShake}
+            isAttacking={!!cinematic && cinematic.attackerSide === 'player'}
+            skillType={cinematic?.attackerSide === 'player' ? cinematic.skillType : undefined}
+            skillName={cinematic?.attackerSide === 'player' ? cinematic.skillName : undefined}
           >
             <div className="text-[10px] font-bold tracking-widest uppercase mb-2 text-center text-white/50">
               Your Myth
@@ -1931,12 +2130,13 @@ export default function BattleOverlay() {
               size={252}
               shakeKey={playerShake}
               attackKey={playerLungeKey}
+              skillType={cinematic?.attackerSide === 'player' ? cinematic.skillType : undefined}
+              skillName={cinematic?.attackerSide === 'player' ? cinematic.skillName : undefined}
               isFainting={faintCinematic?.side === 'player'}
               facing="left"
-              getPhysicsPose={getPlayerPhysicsPose}
+              getPhysicsPose={playerMonster.species.id === 'flarelynx' ? undefined : getPlayerPhysicsPose}
             />
-          </div>
-          </div> {/* ← close stagger wrapper */}
+          </CombatantMotionShell>
         </div>
 
         {/* ── Myth entrance cinematics (non-blocking cosmetic overlay) ── */}
@@ -2291,6 +2491,16 @@ export default function BattleOverlay() {
             playerHpPct={(visiblePlayerHp / playerMonster.maxHp) * 100}
             totalRounds={battle.battle.round ?? 1}
             battleLog={log as { actor: string; damageDealt: number | null; critical: boolean; description?: string }[]}
+          />
+        )}
+
+        {/* Flarelynx Blazing Tailspin — arena fire bolt from tail tip */}
+        {cinematic
+          && cinematic.attackerMythId === 'flarelynx'
+          && flarelynxAttackClipForSkill(cinematic.skillType, cinematic.skillName) === FLARELYNX_ATTACK_TAIL_FIRE && (
+          <FlarelynxTailFireProjectile
+            side={cinematic.attackerSide}
+            shotKey={cinematic.attackerSide === 'player' ? playerLungeKey : wildLungeKey}
           />
         )}
 
